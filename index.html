@@ -1,8 +1,6 @@
 <style>
-/* ===== RESET & BASE ===== */
 *,:after,:before{box-sizing:border-box;margin:0;padding:0}
 
-/* Hide Squarespace default UI when using this as a full page */
 .header, #header, .site-header, .footer-wrapper, #footer,
 .site-footer, .announcement-bar-wrapper, #siteWrapper > header,
 #siteWrapper > footer { display:none!important }
@@ -16,21 +14,19 @@
   -webkit-user-select:none;
 }
 
-/* ===== ESPN ZONE BACKGROUND ===== */
 #desktop-root .desktop-bg {
   position:absolute; inset:0; bottom:42px;
-  background-color:#1a0000;
+  background-color:#1a0a00;
   background-image:
-    linear-gradient(45deg, rgba(204,0,0,0.05) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(204,0,0,0.05) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(204,0,0,0.05) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(204,0,0,0.05) 75%);
+    linear-gradient(45deg, rgba(218,2,14,0.06) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(218,2,14,0.06) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(218,2,14,0.06) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(218,2,14,0.06) 75%);
   background-size:40px 40px;
   background-position:0 0,0 20px,20px -20px,-20px 0;
   overflow:hidden;
 }
 
-/* Scanline overlay */
 #desktop-root .desktop-bg::after {
   content:'';position:absolute;inset:0;
   background:repeating-linear-gradient(
@@ -39,21 +35,19 @@
   pointer-events:none;
 }
 
-/* ===== BOOT SCREEN ===== */
 #boot-screen {
   position:fixed;inset:0;z-index:999999;
   background:#000;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  color:#cc0000;font-family:'Courier New',monospace;font-size:14px;
+  color:#DA020E;font-family:'Courier New',monospace;font-size:14px;
   transition:opacity 0.5s;
 }
 #boot-screen.hidden{opacity:0;pointer-events:none}
 #boot-text{white-space:pre-wrap;text-align:left;max-width:600px;line-height:1.6}
-#boot-screen .boot-logo{font-size:28px;font-weight:bold;margin-bottom:24px;letter-spacing:4px;color:#ffcc00}
-.boot-bar{width:300px;height:16px;border:2px solid #cc0000;margin-top:20px;padding:2px}
-.boot-bar-inner{height:100%;background:#cc0000;width:0%;transition:width 0.3s}
+#boot-screen .boot-logo{font-size:28px;font-weight:bold;margin-bottom:24px;letter-spacing:4px;color:#FFD700}
+.boot-bar{width:300px;height:16px;border:2px solid #DA020E;margin-top:20px;padding:2px}
+.boot-bar-inner{height:100%;background:#DA020E;width:0%;transition:width 0.3s}
 
-/* ===== DESKTOP ICONS ===== */
 .desktop-icons {
   position:absolute;top:20px;left:20px;
   display:flex;flex-direction:column;gap:28px;
@@ -66,8 +60,8 @@
   position:relative;
 }
 .desktop-icon.dragging{cursor:grabbing;opacity:0.8}
-.desktop-icon:hover{background:rgba(204,0,0,0.2);border-color:rgba(204,0,0,0.4)}
-.desktop-icon:active{background:rgba(204,0,0,0.3)}
+.desktop-icon:hover{background:rgba(218,2,14,0.2);border-color:rgba(218,2,14,0.4)}
+.desktop-icon:active{background:rgba(218,2,14,0.3)}
 .desktop-icon .icon-img{width:64px;height:64px;pointer-events:none}
 .desktop-icon .icon-label{
   color:#fff;font-size:11px;text-align:center;
@@ -75,14 +69,12 @@
   line-height:1.3;font-weight:bold;pointer-events:none;
 }
 
-/* ===== EXTRA DESKTOP ICONS (right side) ===== */
 .desktop-extras {
   position:absolute;top:20px;right:20px;
   display:flex;flex-direction:column;gap:28px;
   z-index:10;
 }
 
-/* ===== WINDOW STYLES (Win95/98 + ESPN Zone colors) ===== */
 .retro-window {
   position:absolute;
   background:#c0c0c0;
@@ -90,19 +82,22 @@
   border-color:#fff #808080 #808080 #fff;
   box-shadow:inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 #808080, 3px 3px 12px rgba(0,0,0,0.5);
   display:none;flex-direction:column;
-  min-width:340px;min-height:250px;
+  min-width:300px;min-height:200px;
   z-index:100;
+  resize:both;
+  overflow:auto;
 }
 .retro-window.active{z-index:200}
 .retro-window.visible{display:flex}
 .retro-window.maximized{
   top:0!important;left:0!important;
   width:100%!important;height:calc(100vh - 42px)!important;
+  resize:none;
 }
+.retro-window.minimized{display:none}
 
-/* Title bar - ESPN Zone Red */
 .win-titlebar {
-  background:linear-gradient(90deg,#660000,#cc0000,#990000);
+  background:linear-gradient(90deg,#8B0000,#DA020E,#B01010);
   padding:3px 4px;display:flex;align-items:center;gap:4px;
   cursor:grab;height:26px;flex-shrink:0;
 }
@@ -123,10 +118,11 @@
   font-family:'MS Sans Serif',Arial,sans-serif;
   padding:0;line-height:1;
 }
+.win-btn:hover{background:#d0d0d0}
 .win-btn:active{border-color:#808080 #fff #fff #808080}
 .win-btn-close{font-size:12px}
+.win-btn-close:hover{background:#DA020E;color:#fff}
 
-/* Menu bar */
 .win-menubar {
   background:#c0c0c0;padding:2px 0;display:flex;gap:0;
   border-bottom:1px solid #808080;flex-shrink:0;
@@ -134,15 +130,13 @@
 .win-menubar span {
   padding:2px 8px;font-size:11px;cursor:pointer;
 }
-.win-menubar span:hover{background:#cc0000;color:#fff}
+.win-menubar span:hover{background:#DA020E;color:#fff}
 
-/* Content */
 .win-content {
   flex:1;overflow-y:auto;overflow-x:hidden;background:#fff;
   border:2px solid;border-color:#808080 #fff #fff #808080;
   margin:2px;padding:12px;color:#000;font-size:13px;line-height:1.6;
 }
-/* Dark content variant */
 .win-content.dark {
   background:#1a1a1a;color:#eee;
 }
@@ -153,7 +147,6 @@
   border:2px solid;border-color:#fff #808080 #808080 #fff;
 }
 
-/* Status bar */
 .win-statusbar {
   background:#c0c0c0;padding:2px 6px;font-size:10px;
   border-top:2px solid;border-color:#808080 #fff #fff #808080;
@@ -164,7 +157,6 @@
   padding:1px 6px;
 }
 
-/* ===== TASKBAR ===== */
 #taskbar {
   position:absolute;bottom:0;left:0;right:0;height:42px;
   background:#c0c0c0;
@@ -182,7 +174,7 @@
   color:#000;
 }
 #start-btn:active,#start-btn.active{border-color:#808080 #fff #fff #808080}
-#start-btn .start-logo{font-size:18px;color:#cc0000}
+#start-btn .start-logo{font-size:18px;color:#DA020E}
 
 .taskbar-divider{width:2px;height:28px;border-left:1px solid #808080;border-right:1px solid #fff;margin:0 2px}
 
@@ -195,6 +187,7 @@
   color:#000;
 }
 .taskbar-item.active{border-color:#808080 #fff #fff #808080;background:#b0b0b0}
+.taskbar-item.minimized{background:#a0a0a0}
 
 #taskbar-tray {
   display:flex;align-items:center;gap:6px;
@@ -203,7 +196,6 @@
 }
 #taskbar-clock{font-weight:bold}
 
-/* ===== START MENU ===== */
 #start-menu {
   position:absolute;bottom:42px;left:2px;
   width:220px;background:#c0c0c0;
@@ -213,7 +205,7 @@
 }
 #start-menu.visible{display:flex}
 .start-menu-banner {
-  width:28px;background:linear-gradient(0deg,#660000,#cc0000,#ffcc00);
+  width:28px;background:linear-gradient(0deg,#8B0000,#DA020E,#FFD700);
   position:absolute;left:0;top:0;bottom:0;
   display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;
 }
@@ -227,51 +219,45 @@
   padding:6px 12px;display:flex;align-items:center;gap:10px;
   cursor:pointer;font-size:12px;color:#000;
 }
-.start-menu-item:hover{background:#cc0000;color:#fff}
+.start-menu-item:hover{background:#DA020E;color:#fff}
 .start-menu-item .smi-icon{width:24px;height:24px;font-size:20px;text-align:center}
 .start-menu-sep{height:1px;background:#808080;margin:2px 28px 2px 4px;border-bottom:1px solid #fff}
 
-/* ===== MARQUEE BAR ===== */
 .marquee-bar {
   position:absolute;bottom:46px;left:0;right:0;height:24px;
   background:#000;overflow:hidden;z-index:50;
-  border-top:2px solid #ffcc00;border-bottom:2px solid #ffcc00;
+  border-top:2px solid #FFD700;border-bottom:2px solid #FFD700;
 }
 .marquee-content {
   display:flex;align-items:center;height:100%;
   animation:marquee-scroll 30s linear infinite;
   white-space:nowrap;
-  color:#cc0000;font-size:12px;font-weight:bold;
+  color:#DA020E;font-size:12px;font-weight:bold;
   font-family:'Courier New',monospace;letter-spacing:1px;
 }
 @keyframes marquee-scroll{from{transform:translateX(100vw)}to{transform:translateX(-200%)}}
 
-/* ===== CONTENT STYLES ===== */
 .content-heading {
-  font-size:20px;font-weight:bold;color:#cc0000;
-  border-bottom:2px solid #cc0000;padding-bottom:6px;margin-bottom:12px;
+  font-size:20px;font-weight:bold;color:#DA020E;
+  border-bottom:2px solid #DA020E;padding-bottom:6px;margin-bottom:12px;
   text-transform:uppercase;letter-spacing:2px;
 }
-.content-heading.yellow{color:#ffcc00;border-color:#ffcc00}
+.content-heading.yellow{color:#FFD700;border-color:#FFD700}
 
 .content-section{margin-bottom:16px}
 .content-section h3{font-size:14px;color:#333;margin-bottom:6px;text-transform:uppercase}
 .content-section p{margin-bottom:8px;font-size:13px;color:#222}
 
-/* Portfolio grid */
 .portfolio-grid{display:flex;flex-direction:column;gap:16px;margin-top:12px}
 .portfolio-item {
   background:#1a1a1a;border:2px solid;border-color:#fff #808080 #808080 #fff;
   padding:12px;
 }
 .portfolio-item .pi-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.portfolio-item .pi-title{color:#ffcc00;font-size:14px;font-weight:bold;text-transform:uppercase}
-.portfolio-item .pi-years{color:#cc0000;font-size:12px;font-weight:bold}
+.portfolio-item .pi-title{color:#FFD700;font-size:14px;font-weight:bold;text-transform:uppercase}
+.portfolio-item .pi-years{color:#DA020E;font-size:12px;font-weight:bold}
 .portfolio-item .pi-desc{color:#ccc;font-size:12px;line-height:1.5}
-.portfolio-item ul{margin:8px 0 0 20px;color:#aaa;font-size:11px}
-.portfolio-item li{margin-bottom:4px}
 
-/* Contact form */
 .retro-form label{display:block;font-size:12px;font-weight:bold;margin-bottom:3px;color:#000}
 .retro-form input,.retro-form textarea {
   width:100%;padding:4px 6px;font-size:12px;margin-bottom:10px;
@@ -287,47 +273,36 @@
   font-family:'MS Sans Serif',Tahoma,sans-serif;
 }
 .retro-btn:active{border-color:#808080 #fff #fff #808080}
-.retro-btn.red{background:#cc0000;color:#fff;border-color:#ffcc00 #660000 #660000 #ffcc00}
+.retro-btn.red{background:#DA020E;color:#fff;border-color:#FFD700 #8B0000 #8B0000 #FFD700}
 
-/* Video grid */
-.video-grid{display:flex;flex-direction:column;gap:16px;margin-top:12px}
-.video-item{border:2px solid;border-color:#808080 #fff #fff #808080;background:#000;padding:2px}
-.video-item video{width:100%;height:auto;display:block;background:#000}
-.video-item .video-title{background:#c0c0c0;padding:4px 8px;font-size:11px;color:#000;font-weight:bold}
-
-/* Profile photo */
 .profile-photo{
   width:150px;height:150px;object-fit:cover;
-  border:3px solid #cc0000;margin-bottom:12px;
+  border:3px solid #DA020E;margin-bottom:12px;
 }
 
-/* Contact info box */
 .contact-info-box{
-  background:#1a1a1a;border:2px solid #cc0000;padding:12px;margin-bottom:16px;
-  color:#ffcc00;font-family:'Courier New',monospace;font-size:12px;line-height:1.8;
+  background:#1a1a1a;border:2px solid #DA020E;padding:12px;margin-bottom:16px;
+  color:#FFD700;font-family:'Courier New',monospace;font-size:12px;line-height:1.8;
 }
 
-/* Visitor counter */
 .visitor-counter {
   position:absolute;bottom:74px;right:12px;
-  background:#000;border:2px solid #cc0000;
+  background:#000;border:2px solid #DA020E;
   padding:4px 10px;font-family:'Courier New',monospace;
-  font-size:11px;color:#cc0000;z-index:10;
+  font-size:11px;color:#DA020E;z-index:10;
   display:flex;align-items:center;gap:6px;
 }
-.visitor-counter .vc-label{color:#ffcc00;font-weight:bold}
+.visitor-counter .vc-label{color:#FFD700;font-weight:bold}
 .counter-digits{letter-spacing:2px;font-size:14px;font-weight:bold}
 
-/* Blink animation */
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 .blink{animation:blink 1s step-end infinite}
 
-/* ===== MOBILE RESPONSIVE ===== */
 @media(max-width:768px){
   .desktop-icons{gap:18px}
   .desktop-icon .icon-img{width:48px;height:48px}
   .desktop-icon .icon-label{font-size:10px}
-  .retro-window{min-width:95vw!important;min-height:auto}
+  .retro-window{min-width:95vw!important;min-height:auto;resize:none}
   .retro-window.visible{
     left:2vw!important;top:10px!important;
     width:96vw!important;height:calc(100vh - 80px)!important;
@@ -351,9 +326,9 @@
     <div class="desktop-icons">
       <div class="desktop-icon" data-icon="who-are-we">
         <svg class="icon-img" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="26" cy="26" r="18" fill="#1a1a1a" stroke="#cc0000" stroke-width="3"/>
-          <line x1="39" y1="39" x2="58" y2="58" stroke="#cc0000" stroke-width="5" stroke-linecap="round"/>
-          <text x="26" y="34" text-anchor="middle" fill="#ffcc00" font-size="28" font-weight="bold" font-family="Arial">?</text>
+          <circle cx="26" cy="26" r="18" fill="#1a1a1a" stroke="#DA020E" stroke-width="3"/>
+          <line x1="39" y1="39" x2="58" y2="58" stroke="#DA020E" stroke-width="5" stroke-linecap="round"/>
+          <text x="26" y="34" text-anchor="middle" fill="#FFD700" font-size="28" font-weight="bold" font-family="Arial">?</text>
         </svg>
         <span class="icon-label">Who Are We?</span>
       </div>
@@ -361,24 +336,24 @@
       <div class="desktop-icon" data-icon="portfolio">
         <svg class="icon-img" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 20h56v34a2 2 0 01-2 2H6a2 2 0 01-2-2V20z" fill="#e8b230"/>
-          <path d="M4 18h20l4-6h14l2 6h16v4H4v-4z" fill="#f0c040"/>
+          <path d="M4 18h20l4-6h14l2 6h16v4H4v-4z" fill="#FFD700"/>
           <path d="M4 20h56v4H4z" fill="#d4a020" opacity="0.5"/>
-          <path d="M16 22c0-8 6-16 8-18 1 4 3 6 4 8 1-3 4-8 6-10 2 6 6 14 6 20 0 8-6 10-12 10s-12-2-12-10z" fill="#cc0000" opacity="0.9"/>
+          <path d="M16 22c0-8 6-16 8-18 1 4 3 6 4 8 1-3 4-8 6-10 2 6 6 14 6 20 0 8-6 10-12 10s-12-2-12-10z" fill="#DA020E" opacity="0.9"/>
           <path d="M20 24c0-5 4-12 5-13 1 3 2 5 3 6 1-2 3-6 4-7 1 4 4 10 4 14 0 6-4 8-8 8s-8-2-8-8z" fill="#ff3300"/>
-          <path d="M24 26c0-4 2-8 3-9 0 2 1 4 2 4 0-2 2-4 3-5 1 3 2 7 2 10 0 4-2 6-5 6s-5-2-5-6z" fill="#ffcc00"/>
+          <path d="M24 26c0-4 2-8 3-9 0 2 1 4 2 4 0-2 2-4 3-5 1 3 2 7 2 10 0 4-2 6-5 6s-5-2-5-6z" fill="#FFD700"/>
         </svg>
         <span class="icon-label">Portfolio</span>
       </div>
 
       <div class="desktop-icon" data-icon="contact">
         <svg class="icon-img" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="12" y="34" width="40" height="24" rx="4" fill="#222" stroke="#cc0000" stroke-width="2"/>
-          <circle cx="24" cy="44" r="2" fill="#cc0000"/><circle cx="32" cy="44" r="2" fill="#cc0000"/><circle cx="40" cy="44" r="2" fill="#cc0000"/>
-          <circle cx="24" cy="50" r="2" fill="#cc0000"/><circle cx="32" cy="50" r="2" fill="#cc0000"/><circle cx="40" cy="50" r="2" fill="#cc0000"/>
-          <path d="M10 14c0-3 3-6 6-6h4c2 0 3 2 3 4v8c0 2-1 3-3 3h-2c-1 0-2 1-2 2v6c0 1 1 2 2 2h28c1 0 2-1 2-2v-6c0-1-1-2-2-2h-2c-2 0-3-1-3-3v-8c0-2 1-4 3-4h4c3 0 6 3 6 6" stroke="#cc0000" stroke-width="3" fill="none" stroke-linecap="round"/>
-          <rect x="10" y="10" width="14" height="10" rx="3" fill="#333" stroke="#cc0000" stroke-width="2"/>
-          <rect x="40" y="10" width="14" height="10" rx="3" fill="#333" stroke="#cc0000" stroke-width="2"/>
-          <path d="M32 34 Q34 30 32 28 Q30 26 32 24 Q34 22 32 20" stroke="#cc0000" stroke-width="2" fill="none"/>
+          <rect x="12" y="34" width="40" height="24" rx="4" fill="#222" stroke="#DA020E" stroke-width="2"/>
+          <circle cx="24" cy="44" r="2" fill="#DA020E"/><circle cx="32" cy="44" r="2" fill="#DA020E"/><circle cx="40" cy="44" r="2" fill="#DA020E"/>
+          <circle cx="24" cy="50" r="2" fill="#DA020E"/><circle cx="32" cy="50" r="2" fill="#DA020E"/><circle cx="40" cy="50" r="2" fill="#DA020E"/>
+          <path d="M10 14c0-3 3-6 6-6h4c2 0 3 2 3 4v8c0 2-1 3-3 3h-2c-1 0-2 1-2 2v6c0 1 1 2 2 2h28c1 0 2-1 2-2v-6c0-1-1-2-2-2h-2c-2 0-3-1-3-3v-8c0-2 1-4 3-4h4c3 0 6 3 6 6" stroke="#DA020E" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <rect x="10" y="10" width="14" height="10" rx="3" fill="#333" stroke="#DA020E" stroke-width="2"/>
+          <rect x="40" y="10" width="14" height="10" rx="3" fill="#333" stroke="#DA020E" stroke-width="2"/>
+          <path d="M32 34 Q34 30 32 28 Q30 26 32 24 Q34 22 32 20" stroke="#DA020E" stroke-width="2" fill="none"/>
         </svg>
         <span class="icon-label">Contact</span>
       </div>
@@ -388,13 +363,13 @@
           <path d="M4 20h56v34a2 2 0 01-2 2H6a2 2 0 01-2-2V20z" fill="#1a1a1a"/>
           <path d="M4 18h20l4-6h14l2 6h16v4H4v-4z" fill="#2a2a2a"/>
           <path d="M4 20h56v4H4z" fill="#101010" opacity="0.5"/>
-          <path d="M24 30v18l18-9z" fill="#cc0000"/>
-          <rect x="8" y="26" width="6" height="4" rx="1" fill="#ffcc00" opacity="0.7"/>
-          <rect x="8" y="33" width="6" height="4" rx="1" fill="#ffcc00" opacity="0.7"/>
-          <rect x="8" y="40" width="6" height="4" rx="1" fill="#ffcc00" opacity="0.7"/>
-          <rect x="50" y="26" width="6" height="4" rx="1" fill="#ffcc00" opacity="0.7"/>
-          <rect x="50" y="33" width="6" height="4" rx="1" fill="#ffcc00" opacity="0.7"/>
-          <rect x="50" y="40" width="6" height="4" rx="1" fill="#ffcc00" opacity="0.7"/>
+          <path d="M24 30v18l18-9z" fill="#DA020E"/>
+          <rect x="8" y="26" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="8" y="33" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="8" y="40" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="50" y="26" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="50" y="33" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="50" y="40" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
         </svg>
         <span class="icon-label">Videos</span>
       </div>
@@ -402,7 +377,7 @@
 
     <div class="desktop-extras">
       <div class="desktop-icon" data-icon="who-are-we" style="opacity:0.5">
-        <svg class="icon-img" viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="4" fill="#1a1a1a" stroke="#cc0000" stroke-width="2"/><text x="32" y="40" text-anchor="middle" fill="#ffcc00" font-size="10" font-weight="bold">README</text></svg>
+        <svg class="icon-img" viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="4" fill="#1a1a1a" stroke="#DA020E" stroke-width="2"/><text x="32" y="40" text-anchor="middle" fill="#FFD700" font-size="10" font-weight="bold">README</text></svg>
         <span class="icon-label">README.txt</span>
       </div>
       <div class="desktop-icon" style="opacity:0.4">
@@ -414,12 +389,12 @@
     <!-- WHO ARE WE WINDOW -->
     <div class="retro-window" id="win-who-are-we" style="width:520px;height:420px;top:40px;left:140px">
       <div class="win-titlebar" data-window="win-who-are-we">
-        <svg class="win-icon" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="#fff" stroke-width="1.5"/><line x1="11" y1="11" x2="14" y2="14" stroke="#fff" stroke-width="2"/><text x="7" y="10" text-anchor="middle" fill="#ffcc00" font-size="8" font-weight="bold">?</text></svg>
+        <svg class="win-icon" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="#fff" stroke-width="1.5"/><line x1="11" y1="11" x2="14" y2="14" stroke="#fff" stroke-width="2"/><text x="7" y="10" text-anchor="middle" fill="#FFD700" font-size="8" font-weight="bold">?</text></svg>
         <span class="win-title">Who Are We?</span>
         <div class="win-controls">
-          <button class="win-btn" onclick="minimizeWindow('who-are-we')">_</button>
-          <button class="win-btn" onclick="maximizeWindow('who-are-we')">☐</button>
-          <button class="win-btn win-btn-close" onclick="closeWindow('who-are-we')">✕</button>
+          <button class="win-btn" onclick="minimizeWindow('who-are-we')" title="Minimize">_</button>
+          <button class="win-btn" onclick="maximizeWindow('who-are-we')" title="Maximize">☐</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('who-are-we')" title="Close">✕</button>
         </div>
       </div>
       <div class="win-menubar"><span>File</span><span>Edit</span><span>View</span><span>Help</span></div>
@@ -432,7 +407,7 @@
           <h3>Notable Work</h3>
           <p>Our work has been featured in The New York Times, ESPN, and more. We've collaborated with major personalities including Stephen A. Smith and Draymond Green.</p>
         </div>
-        <div style="margin-top:16px;padding:10px;background:#1a1a1a;border:2px solid #cc0000;color:#cc0000;font-family:'Courier New',monospace;font-size:12px">
+        <div style="margin-top:16px;padding:10px;background:#1a1a1a;border:2px solid #DA020E;color:#DA020E;font-family:'Courier New',monospace;font-size:12px">
           <span class="blink">></span> KNOWPG.exe loaded successfully<br>
           <span class="blink">></span> 9+ years experience<br>
           <span class="blink">></span> Ready to create
@@ -447,12 +422,12 @@
     <!-- PORTFOLIO WINDOW -->
     <div class="retro-window" id="win-portfolio" style="width:580px;height:520px;top:60px;left:180px">
       <div class="win-titlebar" data-window="win-portfolio">
-        <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#e8b230"/><path d="M1 5h6l1-2h4l1 2h3" fill="#f0c040"/><path d="M6 4c0-2 1-3 2-3s2 2 2 0" fill="#cc0000" opacity="0.8"/></svg>
+        <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#e8b230"/><path d="M1 5h6l1-2h4l1 2h3" fill="#FFD700"/><path d="M6 4c0-2 1-3 2-3s2 2 2 0" fill="#DA020E" opacity="0.8"/></svg>
         <span class="win-title">Portfolio — Work Examples</span>
         <div class="win-controls">
-          <button class="win-btn" onclick="minimizeWindow('portfolio')">_</button>
-          <button class="win-btn" onclick="maximizeWindow('portfolio')">☐</button>
-          <button class="win-btn win-btn-close" onclick="closeWindow('portfolio')">✕</button>
+          <button class="win-btn" onclick="minimizeWindow('portfolio')" title="Minimize">_</button>
+          <button class="win-btn" onclick="maximizeWindow('portfolio')" title="Maximize">☐</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('portfolio')" title="Close">✕</button>
         </div>
       </div>
       <div class="win-menubar"><span>File</span><span>Edit</span><span>View</span><span>Tools</span></div>
@@ -491,12 +466,12 @@
     <!-- CONTACT WINDOW -->
     <div class="retro-window" id="win-contact" style="width:480px;height:520px;top:80px;left:220px">
       <div class="win-titlebar" data-window="win-contact">
-        <svg class="win-icon" viewBox="0 0 16 16"><rect x="3" y="8" width="10" height="6" rx="1" fill="#333" stroke="#cc0000" stroke-width="0.8"/><rect x="2" y="2" width="5" height="4" rx="1" fill="#333" stroke="#cc0000" stroke-width="0.8"/><rect x="9" y="2" width="5" height="4" rx="1" fill="#333" stroke="#cc0000" stroke-width="0.8"/></svg>
+        <svg class="win-icon" viewBox="0 0 16 16"><rect x="3" y="8" width="10" height="6" rx="1" fill="#333" stroke="#DA020E" stroke-width="0.8"/><rect x="2" y="2" width="5" height="4" rx="1" fill="#333" stroke="#DA020E" stroke-width="0.8"/><rect x="9" y="2" width="5" height="4" rx="1" fill="#333" stroke="#DA020E" stroke-width="0.8"/></svg>
         <span class="win-title">Reach Out</span>
         <div class="win-controls">
-          <button class="win-btn" onclick="minimizeWindow('contact')">_</button>
-          <button class="win-btn" onclick="maximizeWindow('contact')">☐</button>
-          <button class="win-btn win-btn-close" onclick="closeWindow('contact')">✕</button>
+          <button class="win-btn" onclick="minimizeWindow('contact')" title="Minimize">_</button>
+          <button class="win-btn" onclick="maximizeWindow('contact')" title="Maximize">☐</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('contact')" title="Close">✕</button>
         </div>
       </div>
       <div class="win-menubar"><span>File</span><span>Edit</span><span>Send</span></div>
@@ -508,7 +483,7 @@
           ☎ Phone: 347.260.2952
         </div>
         <p style="font-size:12px;margin-bottom:12px"><strong>Let's connect!</strong> Send me a message below.</p>
-        <form class="retro-form" action="https://formspree.io/f/pat.r.gunther@gmail.com" method="POST">
+        <form class="retro-form" action="https://formspree.io/f/mgolwnel" method="POST">
           <label>Your Name:</label>
           <input type="text" name="name" placeholder="Enter your name..." required>
           <label>Your Email:</label>
@@ -530,12 +505,12 @@
     <!-- VIDEOS WINDOW -->
     <div class="retro-window" id="win-videos" style="width:700px;height:550px;top:30px;left:150px">
       <div class="win-titlebar" data-window="win-videos">
-        <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#1a1a1a"/><path d="M1 5h6l1-2h4l1 2h3" fill="#2a2a2a"/><path d="M6 7v6l5-3z" fill="#cc0000"/></svg>
+        <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#1a1a1a"/><path d="M1 5h6l1-2h4l1 2h3" fill="#2a2a2a"/><path d="M6 7v6l5-3z" fill="#DA020E"/></svg>
         <span class="win-title">Videos — Work Examples</span>
         <div class="win-controls">
-          <button class="win-btn" onclick="minimizeWindow('videos')">_</button>
-          <button class="win-btn" onclick="maximizeWindow('videos')">☐</button>
-          <button class="win-btn win-btn-close" onclick="closeWindow('videos')">✕</button>
+          <button class="win-btn" onclick="minimizeWindow('videos')" title="Minimize">_</button>
+          <button class="win-btn" onclick="maximizeWindow('videos')" title="Maximize">☐</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('videos')" title="Close">✕</button>
         </div>
       </div>
       <div class="win-menubar"><span>File</span><span>Play</span><span>View</span><span onclick="window.open('https://knowpg.com/work-examples','_blank')">Open in New Tab</span></div>
@@ -548,19 +523,19 @@
       </div>
     </div>
 
-    <!-- LET'S WORK TOGETHER WINDOW (Start button) -->
+    <!-- LET'S WORK TOGETHER WINDOW -->
     <div class="retro-window" id="win-lets-work" style="width:400px;height:280px;top:120px;left:260px">
       <div class="win-titlebar" data-window="win-lets-work">
-        <svg class="win-icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#cc0000"/><text x="8" y="11" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">!</text></svg>
+        <svg class="win-icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#DA020E"/><text x="8" y="11" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">!</text></svg>
         <span class="win-title">Let's Work Together</span>
         <div class="win-controls">
-          <button class="win-btn" onclick="minimizeWindow('lets-work')">_</button>
-          <button class="win-btn" onclick="maximizeWindow('lets-work')">☐</button>
-          <button class="win-btn win-btn-close" onclick="closeWindow('lets-work')">✕</button>
+          <button class="win-btn" onclick="minimizeWindow('lets-work')" title="Minimize">_</button>
+          <button class="win-btn" onclick="maximizeWindow('lets-work')" title="Maximize">☐</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('lets-work')" title="Close">✕</button>
         </div>
       </div>
       <div class="win-content" style="text-align:center;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-size:18px;font-weight:bold;color:#cc0000;margin-bottom:16px">Interested in working together?</div>
+        <div style="font-size:18px;font-weight:bold;color:#DA020E;margin-bottom:16px">Interested in working together?</div>
         <div style="font-size:14px;margin-bottom:20px">Let's get started...</div>
         <div class="contact-info-box" style="text-align:left;margin:0 auto;max-width:280px">
           ✉ pat.r.gunther@gmail.com<br>
@@ -624,7 +599,6 @@
 
 <script>
 (function(){
-  /* ===== BOOT SEQUENCE ===== */
   var bootLines = [
     'BIOS v3.14 ... OK',
     'Loading system files ... OK',
@@ -652,7 +626,6 @@
   }
   setTimeout(bootNext, 400);
 
-  /* ===== CLOCK ===== */
   function updateClock(){
     var d=new Date();
     var h=d.getHours(),m=d.getMinutes();
@@ -662,20 +635,23 @@
   }
   updateClock();setInterval(updateClock,30000);
 
-  /* ===== VISITOR COUNTER ===== */
   var vc=Math.floor(Math.random()*8000)+1000;
   var vcEl=document.getElementById('visitor-count');
   if(vcEl)vcEl.textContent=String(vc).replace(/\B(?=(\d{3})+(?!\d))/g,',').padStart(7,'0');
 
-  /* ===== WINDOW MANAGEMENT ===== */
   var openWindows = [];
   var zCounter = 100;
+  var windowStates = {};
 
   window.openWindow = function(name){
     var win = document.getElementById('win-'+name);
     if(!win)return;
     win.classList.add('visible');
+    win.classList.remove('minimized');
     win.classList.remove('maximized');
+    if(windowStates[name] && windowStates[name].maximized){
+      win.classList.add('maximized');
+    }
     bringToFront(win);
     if(openWindows.indexOf(name)===-1) openWindows.push(name);
     updateTaskbar();
@@ -683,14 +659,24 @@
 
   window.closeWindow = function(name){
     var win=document.getElementById('win-'+name);
-    if(win){win.classList.remove('visible');win.classList.remove('maximized')}
+    if(win){
+      win.classList.remove('visible');
+      win.classList.remove('maximized');
+      win.classList.remove('minimized');
+    }
+    delete windowStates[name];
     openWindows=openWindows.filter(function(n){return n!==name});
     updateTaskbar();
   };
 
   window.minimizeWindow = function(name){
     var win=document.getElementById('win-'+name);
-    if(win)win.classList.remove('visible');
+    if(win){
+      win.classList.remove('visible');
+      win.classList.add('minimized');
+      if(!windowStates[name]) windowStates[name] = {};
+      windowStates[name].minimized = true;
+    }
     updateTaskbar();
   };
 
@@ -698,12 +684,27 @@
     var win=document.getElementById('win-'+name);
     if(win){
       win.classList.toggle('maximized');
+      if(!windowStates[name]) windowStates[name] = {};
+      windowStates[name].maximized = win.classList.contains('maximized');
       bringToFront(win);
     }
   };
 
   window.closeAllWindows = function(){
     openWindows.slice().forEach(function(n){window.closeWindow(n)});
+  };
+
+  window.restoreWindow = function(name){
+    var win=document.getElementById('win-'+name);
+    if(win){
+      if(win.classList.contains('minimized')){
+        win.classList.remove('minimized');
+        win.classList.add('visible');
+        if(windowStates[name]) windowStates[name].minimized = false;
+      }
+      bringToFront(win);
+    }
+    updateTaskbar();
   };
 
   function bringToFront(win){
@@ -719,27 +720,32 @@
     openWindows.forEach(function(name){
       var win=document.getElementById('win-'+name);
       var isVis=win&&win.classList.contains('visible');
+      var isMin=win&&win.classList.contains('minimized');
       var btn=document.createElement('button');
-      btn.className='taskbar-item'+(isVis?' active':'');
+      btn.className='taskbar-item';
+      if(isVis && win.classList.contains('active')) btn.className += ' active';
+      if(isMin) btn.className += ' minimized';
       btn.textContent=name.replace(/-/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase()});
       btn.onclick=function(){
-        if(win.classList.contains('visible')){
+        if(isMin){
+          restoreWindow(name);
+        } else if(win.classList.contains('visible')){
           if(win.classList.contains('active')){
-            win.classList.remove('visible');
+            minimizeWindow(name);
           } else {
             bringToFront(win);
+            updateTaskbar();
           }
         } else {
           win.classList.add('visible');
           bringToFront(win);
+          updateTaskbar();
         }
-        updateTaskbar();
       };
       tb.appendChild(btn);
     });
   }
 
-  /* ===== WINDOW DRAGGING ===== */
   var dragWin=null;
   document.querySelectorAll('.win-titlebar').forEach(function(tb){
     tb.addEventListener('mousedown',function(e){
@@ -753,9 +759,14 @@
       dragWin={el:win,offsetX:e.clientX-rect.left,offsetY:e.clientY-rect.top,titlebar:tb};
       e.preventDefault();
     });
+    tb.addEventListener('dblclick',function(e){
+      if(e.target.closest('.win-controls'))return;
+      var winId=tb.getAttribute('data-window');
+      var name=winId.replace('win-','');
+      maximizeWindow(name);
+    });
   });
 
-  /* ===== ICON DRAGGING ===== */
   var dragIcon=null;
   document.querySelectorAll('.desktop-icon').forEach(function(icon){
     var clickTimer=null;
@@ -816,7 +827,6 @@
     }
   });
 
-  /* ===== START MENU ===== */
   window.toggleStartMenu=function(){
     var m=document.getElementById('start-menu');
     var b=document.getElementById('start-btn');
@@ -833,7 +843,6 @@
     }
   });
 
-  /* Click desktop bg to deselect */
   document.querySelector('.desktop-bg').addEventListener('click',function(e){
     if(e.target===this){
       document.querySelectorAll('.retro-window').forEach(function(w){w.classList.remove('active')});
