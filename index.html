@@ -69,11 +69,6 @@
   line-height:1.3;font-weight:bold;pointer-events:none;
 }
 
-.desktop-extras {
-  position:absolute;top:20px;right:20px;
-  display:flex;flex-direction:column;gap:28px;
-  z-index:10;
-}
 
 .retro-window {
   position:absolute;
@@ -238,15 +233,45 @@
 @keyframes marquee-scroll{from{transform:translateX(100vw)}to{transform:translateX(-200%)}}
 
 .content-heading {
-  font-size:20px;font-weight:bold;color:#DA020E;
+  font-size:20px;font-weight:900;color:#DA020E;
   border-bottom:2px solid #DA020E;padding-bottom:6px;margin-bottom:12px;
   text-transform:uppercase;letter-spacing:2px;
 }
 .content-heading.yellow{color:#FFD700;border-color:#FFD700}
 
 .content-section{margin-bottom:16px}
-.content-section h3{font-size:14px;color:#333;margin-bottom:6px;text-transform:uppercase}
-.content-section p{margin-bottom:8px;font-size:13px;color:#222}
+.content-section h3{font-size:14px;color:#333;margin-bottom:6px;text-transform:uppercase;font-weight:900}
+.content-section p{margin-bottom:8px;font-size:13px;color:#222;text-transform:uppercase;font-weight:600}
+
+/* Make all window text uppercase and bolder */
+.win-content{text-transform:uppercase;font-weight:600}
+.win-content strong{font-weight:900}
+.win-statusbar{text-transform:uppercase}
+
+/* 8-bit pixelated photo effect */
+.photo-popup {
+  position:absolute;
+  background:#c0c0c0;
+  border:2px solid;
+  border-color:#fff #808080 #808080 #fff;
+  box-shadow:3px 3px 12px rgba(0,0,0,0.5);
+  z-index:300;
+  min-width:200px;
+  display:flex;flex-direction:column;
+}
+.photo-popup .win-titlebar{cursor:grab}
+.photo-popup .photo-content{
+  padding:4px;background:#000;
+}
+.photo-popup img {
+  width:100%;height:auto;
+  image-rendering:pixelated;
+  filter:contrast(1.1) saturate(1.2);
+}
+.photo-popup.pixelated img {
+  image-rendering:pixelated;
+  -ms-interpolation-mode:nearest-neighbor;
+}
 
 .portfolio-grid{display:flex;flex-direction:column;gap:16px;margin-top:12px}
 .portfolio-item {
@@ -375,91 +400,90 @@
       </div>
     </div>
 
-    <div class="desktop-extras">
-      <div class="desktop-icon" data-icon="who-are-we" style="opacity:0.5">
-        <svg class="icon-img" viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="4" fill="#1a1a1a" stroke="#DA020E" stroke-width="2"/><text x="32" y="40" text-anchor="middle" fill="#FFD700" font-size="10" font-weight="bold">README</text></svg>
-        <span class="icon-label">README.txt</span>
-      </div>
-      <div class="desktop-icon" style="opacity:0.4">
-        <svg class="icon-img" viewBox="0 0 64 64"><path d="M12 16h40v40H12z" fill="#1a1a1a" stroke="#666" stroke-width="2"/><path d="M20 16v-4h24v4" stroke="#666" stroke-width="2" fill="none"/></svg>
-        <span class="icon-label">Recycle Bin</span>
-      </div>
-    </div>
 
     <!-- WHO ARE WE WINDOW -->
-    <div class="retro-window" id="win-who-are-we" style="width:520px;height:420px;top:40px;left:140px">
+    <div class="retro-window" id="win-who-are-we" style="width:600px;height:700px;top:40px;left:140px">
       <div class="win-titlebar" data-window="win-who-are-we">
         <svg class="win-icon" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="#fff" stroke-width="1.5"/><line x1="11" y1="11" x2="14" y2="14" stroke="#fff" stroke-width="2"/><text x="7" y="10" text-anchor="middle" fill="#FFD700" font-size="8" font-weight="bold">?</text></svg>
-        <span class="win-title">Who Are We?</span>
+        <span class="win-title">WHO ARE WE?</span>
         <div class="win-controls">
           <button class="win-btn" onclick="minimizeWindow('who-are-we')" title="Minimize">_</button>
           <button class="win-btn" onclick="maximizeWindow('who-are-we')" title="Maximize">☐</button>
           <button class="win-btn win-btn-close" onclick="closeWindow('who-are-we')" title="Close">✕</button>
         </div>
       </div>
-      <div class="win-menubar"><span>File</span><span>Edit</span><span>View</span><span>Help</span></div>
       <div class="win-content">
         <div class="content-heading">WHO ARE WE?</div>
         <div class="content-section">
-          <p><strong>Pat Gunther</strong> and partners are a production collective with over 9 years of experience in sports and entertainment media.</p>
+          <p style="font-size:15px;font-weight:bold;line-height:1.7;margin-bottom:16px">OVER THE COURSE OF A DECADE, WE'VE CREATED AWARD-WINNING CONTENT FOR THE BIGGEST BRANDS IN MEDIA. JUST ASK THE NEW YORK TIMES, ESPN, DRAYMOND GREEN & MORE...</p>
         </div>
-        <div class="content-section">
-          <h3>Notable Work</h3>
-          <p>Our work has been featured in The New York Times, ESPN, and more. We've collaborated with major personalities including Stephen A. Smith and Draymond Green.</p>
+        <div style="margin-top:12px;margin-bottom:16px">
+          <img src="https://images.squarespace-cdn.com/content/v1/5cb495b90b77bd583a586e67/1b9a2b1d-899e-4fc9-b37a-d9a9b7c8d6d3/PG_RESUME_2024_UPDATED_v1.jpg?format=2500w" alt="Pat Gunther Resume" style="width:100%;border:3px solid #DA020E;box-shadow:3px 3px 8px rgba(0,0,0,0.4)">
         </div>
-        <div style="margin-top:16px;padding:10px;background:#1a1a1a;border:2px solid #DA020E;color:#DA020E;font-family:'Courier New',monospace;font-size:12px">
-          <span class="blink">></span> KNOWPG.exe loaded successfully<br>
-          <span class="blink">></span> 9+ years experience<br>
-          <span class="blink">></span> Ready to create
+        <div style="padding:10px;background:#1a1a1a;border:2px solid #DA020E;color:#DA020E;font-family:'Courier New',monospace;font-size:12px">
+          <span class="blink">></span> KNOWPG.EXE LOADED SUCCESSFULLY<br>
+          <span class="blink">></span> 10+ YEARS EXPERIENCE<br>
+          <span class="blink">></span> READY TO CREATE
         </div>
       </div>
       <div class="win-statusbar">
-        <span class="status-section">Ready</span>
+        <span class="status-section">READY</span>
         <span class="status-section">KNOWPG © 2025</span>
       </div>
     </div>
 
     <!-- PORTFOLIO WINDOW -->
-    <div class="retro-window" id="win-portfolio" style="width:580px;height:520px;top:60px;left:180px">
+    <div class="retro-window" id="win-portfolio" style="width:620px;height:600px;top:60px;left:180px">
       <div class="win-titlebar" data-window="win-portfolio">
         <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#e8b230"/><path d="M1 5h6l1-2h4l1 2h3" fill="#FFD700"/><path d="M6 4c0-2 1-3 2-3s2 2 2 0" fill="#DA020E" opacity="0.8"/></svg>
-        <span class="win-title">Portfolio — Work Examples</span>
+        <span class="win-title">PORTFOLIO — WORK EXAMPLES</span>
         <div class="win-controls">
           <button class="win-btn" onclick="minimizeWindow('portfolio')" title="Minimize">_</button>
           <button class="win-btn" onclick="maximizeWindow('portfolio')" title="Maximize">☐</button>
           <button class="win-btn win-btn-close" onclick="closeWindow('portfolio')" title="Close">✕</button>
         </div>
       </div>
-      <div class="win-menubar"><span>File</span><span>Edit</span><span>View</span><span>Tools</span></div>
       <div class="win-content dark">
         <div class="content-heading yellow">PORTFOLIO</div>
         <div class="portfolio-grid">
           <div class="portfolio-item">
             <div class="pi-header">
-              <span class="pi-title">The New York Times</span>
-              <span class="pi-years">2023 — Present</span>
+              <span class="pi-title">THE NEW YORK TIMES</span>
+              <span class="pi-years">2023 — PRESENT</span>
             </div>
-            <div class="pi-desc">Current work with The New York Times on sports and entertainment content.</div>
+            <div class="pi-desc">
+              <strong style="color:#FFD700">25M VIDEO VIEWS | 60M IMPRESSIONS</strong><br><br>
+              AS ASSOCIATE VIDEO PRODUCER AT THE NEW YORK TIMES, WE WORK ACROSS MULTIPLE SHOWS INCLUDING THE DAILY, MODERN LOVE, THE INTERVIEW, AND POPCAST.<br><br>
+              OUR CONTENT HAS REACHED MILLIONS OF VIEWERS WITH AWARD-WINNING STORYTELLING AND PRODUCTION.
+            </div>
           </div>
           <div class="portfolio-item">
             <div class="pi-header">
-              <span class="pi-title">The Volume</span>
-              <span class="pi-years">2021 — Present</span>
+              <span class="pi-title">THE VOLUME</span>
+              <span class="pi-years">2021 — 2025</span>
             </div>
-            <div class="pi-desc">Ongoing production work with The Volume media network.</div>
+            <div class="pi-desc">
+              <strong style="color:#FFD700">15M LIKES | 90% VIDEO VIEW INCREASE | 60% FOLLOWER INCREASE</strong><br><br>
+              LED SOCIAL VIDEO PRODUCTION FOR THE VOLUME'S NETWORK OF 25M COMBINED FOLLOWERS.<br><br>
+              WORKED WITH TALENT INCLUDING DRAYMOND GREEN, COLIN COWHERD, AND MORE TO CREATE VIRAL CONTENT.
+            </div>
           </div>
           <div class="portfolio-item">
             <div class="pi-header">
               <span class="pi-title">ESPN</span>
               <span class="pi-years">2015 — 2022</span>
             </div>
-            <div class="pi-desc">7 years of production experience at ESPN, working across multiple shows and formats.</div>
+            <div class="pi-desc">
+              <strong style="color:#FFD700">2B IMPRESSIONS | 2 SPORTS EMMY NOMINATIONS | YOUTUBE 9M SUBSCRIBERS</strong><br><br>
+              7 YEARS OF PRODUCTION EXPERIENCE AT ESPN ACROSS MULTIPLE SHOWS.<br><br>
+              KEY PROJECTS: ALWAYS LATE WITH KATIE NOLAN, FIRST TAKE, ESPN DIGITAL VIDEO CONTENT.
+            </div>
           </div>
         </div>
       </div>
       <div class="win-statusbar">
-        <span class="status-section">3 items</span>
-        <span class="status-section">C:\KNOWPG\Portfolio</span>
+        <span class="status-section">3 ITEMS</span>
+        <span class="status-section">C:\KNOWPG\PORTFOLIO</span>
       </div>
     </div>
 
@@ -467,38 +491,37 @@
     <div class="retro-window" id="win-contact" style="width:480px;height:520px;top:80px;left:220px">
       <div class="win-titlebar" data-window="win-contact">
         <svg class="win-icon" viewBox="0 0 16 16"><rect x="3" y="8" width="10" height="6" rx="1" fill="#333" stroke="#DA020E" stroke-width="0.8"/><rect x="2" y="2" width="5" height="4" rx="1" fill="#333" stroke="#DA020E" stroke-width="0.8"/><rect x="9" y="2" width="5" height="4" rx="1" fill="#333" stroke="#DA020E" stroke-width="0.8"/></svg>
-        <span class="win-title">Reach Out</span>
+        <span class="win-title">REACH OUT</span>
         <div class="win-controls">
           <button class="win-btn" onclick="minimizeWindow('contact')" title="Minimize">_</button>
           <button class="win-btn" onclick="maximizeWindow('contact')" title="Maximize">☐</button>
           <button class="win-btn win-btn-close" onclick="closeWindow('contact')" title="Close">✕</button>
         </div>
       </div>
-      <div class="win-menubar"><span>File</span><span>Edit</span><span>Send</span></div>
       <div class="win-content">
         <div class="content-heading">REACH OUT</div>
         <img src="https://images.squarespace-cdn.com/content/v1/5cb495b90b77bd583a586e67/e7c4bfc4-04c5-4a6e-810b-5e81f0693e0a/PG_Cowboy+copy.jpg?format=300w" alt="Pat Gunther" class="profile-photo">
         <div class="contact-info-box">
-          ✉ Email: pat.r.gunther@gmail.com<br>
-          ☎ Phone: 347.260.2952
+          ✉ EMAIL: PAT.R.GUNTHER@GMAIL.COM<br>
+          ☎ PHONE: 347.260.2952
         </div>
-        <p style="font-size:12px;margin-bottom:12px"><strong>Let's connect!</strong> Send me a message below.</p>
+        <p style="font-size:12px;margin-bottom:12px;font-weight:700"><strong>LET'S CONNECT!</strong> SEND ME A MESSAGE BELOW.</p>
         <form class="retro-form" action="https://formspree.io/f/mgolwnel" method="POST">
-          <label>Your Name:</label>
-          <input type="text" name="name" placeholder="Enter your name..." required>
-          <label>Your Email:</label>
-          <input type="email" name="email" placeholder="you@example.com" required>
-          <label>Message:</label>
-          <textarea name="message" placeholder="Type your message here..." required></textarea>
+          <label>YOUR NAME:</label>
+          <input type="text" name="name" placeholder="ENTER YOUR NAME..." required>
+          <label>YOUR EMAIL:</label>
+          <input type="email" name="email" placeholder="YOU@EXAMPLE.COM" required>
+          <label>MESSAGE:</label>
+          <textarea name="message" placeholder="TYPE YOUR MESSAGE HERE..." required></textarea>
           <div style="display:flex;gap:8px;margin-top:4px">
-            <button class="retro-btn red" type="submit">Send Message</button>
-            <button class="retro-btn" type="reset">Clear</button>
+            <button class="retro-btn red" type="submit">SEND MESSAGE</button>
+            <button class="retro-btn" type="reset">CLEAR</button>
           </div>
         </form>
       </div>
       <div class="win-statusbar">
-        <span class="status-section">New Message</span>
-        <span class="status-section">Connected</span>
+        <span class="status-section">NEW MESSAGE</span>
+        <span class="status-section">CONNECTED</span>
       </div>
     </div>
 
@@ -506,20 +529,24 @@
     <div class="retro-window" id="win-videos" style="width:700px;height:550px;top:30px;left:150px">
       <div class="win-titlebar" data-window="win-videos">
         <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#1a1a1a"/><path d="M1 5h6l1-2h4l1 2h3" fill="#2a2a2a"/><path d="M6 7v6l5-3z" fill="#DA020E"/></svg>
-        <span class="win-title">Videos — Work Examples</span>
+        <span class="win-title">VIDEOS — WORK EXAMPLES</span>
         <div class="win-controls">
           <button class="win-btn" onclick="minimizeWindow('videos')" title="Minimize">_</button>
           <button class="win-btn" onclick="maximizeWindow('videos')" title="Maximize">☐</button>
           <button class="win-btn win-btn-close" onclick="closeWindow('videos')" title="Close">✕</button>
         </div>
       </div>
-      <div class="win-menubar"><span>File</span><span>Play</span><span>View</span><span onclick="window.open('https://knowpg.com/work-examples','_blank')">Open in New Tab</span></div>
-      <div class="win-content" style="padding:0;background:#000">
-        <iframe src="https://knowpg.com/work-examples" style="width:100%;height:100%;border:none"></iframe>
+      <div class="win-content dark" style="padding:16px">
+        <div class="content-heading yellow">VIDEO REEL</div>
+        <div style="text-align:center;padding:40px 20px;color:#888;font-size:14px">
+          <div style="font-size:48px;margin-bottom:16px">▶</div>
+          <p style="margin-bottom:12px;color:#FFD700;font-weight:bold">VIMEO VIDEOS COMING SOON</p>
+          <p style="color:#666">CHECK BACK FOR OUR LATEST WORK SAMPLES</p>
+        </div>
       </div>
       <div class="win-statusbar">
-        <span class="status-section">knowpg.com/work-examples</span>
-        <span class="status-section">Loaded</span>
+        <span class="status-section">VIDEOS</span>
+        <span class="status-section">LOADING...</span>
       </div>
     </div>
 
@@ -527,7 +554,7 @@
     <div class="retro-window" id="win-lets-work" style="width:400px;height:280px;top:120px;left:260px">
       <div class="win-titlebar" data-window="win-lets-work">
         <svg class="win-icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#DA020E"/><text x="8" y="11" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">!</text></svg>
-        <span class="win-title">Let's Work Together</span>
+        <span class="win-title">LET'S WORK TOGETHER</span>
         <div class="win-controls">
           <button class="win-btn" onclick="minimizeWindow('lets-work')" title="Minimize">_</button>
           <button class="win-btn" onclick="maximizeWindow('lets-work')" title="Maximize">☐</button>
@@ -535,12 +562,73 @@
         </div>
       </div>
       <div class="win-content" style="text-align:center;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-size:18px;font-weight:bold;color:#DA020E;margin-bottom:16px">Interested in working together?</div>
-        <div style="font-size:14px;margin-bottom:20px">Let's get started...</div>
+        <div style="font-size:18px;font-weight:900;color:#DA020E;margin-bottom:16px">INTERESTED IN WORKING TOGETHER?</div>
+        <div style="font-size:14px;margin-bottom:20px;font-weight:600">LET'S GET STARTED...</div>
         <div class="contact-info-box" style="text-align:left;margin:0 auto;max-width:280px">
-          ✉ pat.r.gunther@gmail.com<br>
+          ✉ PAT.R.GUNTHER@GMAIL.COM<br>
           ☎ 347.260.2952
         </div>
+      </div>
+    </div>
+
+    <!-- POPUP PHOTOS (8-bit pixelated look, auto-close after 6 seconds) -->
+    <div class="photo-popup pixelated" id="popup-photo-1" style="width:220px;top:60px;left:400px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-1">
+        <span class="win-title" style="font-size:10px">PHOTO_01.BMP</span>
+        <div class="win-controls">
+          <button class="win-btn win-btn-close" onclick="closePopup('popup-photo-1')">✕</button>
+        </div>
+      </div>
+      <div class="photo-content">
+        <img src="REPLACE_WITH_PHOTO_1_URL" alt="Photo 1">
+      </div>
+    </div>
+
+    <div class="photo-popup pixelated" id="popup-photo-2" style="width:200px;top:100px;left:650px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-2">
+        <span class="win-title" style="font-size:10px">PHOTO_02.BMP</span>
+        <div class="win-controls">
+          <button class="win-btn win-btn-close" onclick="closePopup('popup-photo-2')">✕</button>
+        </div>
+      </div>
+      <div class="photo-content">
+        <img src="REPLACE_WITH_PHOTO_2_URL" alt="Photo 2">
+      </div>
+    </div>
+
+    <div class="photo-popup pixelated" id="popup-photo-3" style="width:180px;top:200px;left:500px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-3">
+        <span class="win-title" style="font-size:10px">PHOTO_03.BMP</span>
+        <div class="win-controls">
+          <button class="win-btn win-btn-close" onclick="closePopup('popup-photo-3')">✕</button>
+        </div>
+      </div>
+      <div class="photo-content">
+        <img src="REPLACE_WITH_PHOTO_3_URL" alt="Photo 3">
+      </div>
+    </div>
+
+    <div class="photo-popup pixelated" id="popup-photo-4" style="width:200px;top:150px;left:750px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-4">
+        <span class="win-title" style="font-size:10px">PHOTO_04.BMP</span>
+        <div class="win-controls">
+          <button class="win-btn win-btn-close" onclick="closePopup('popup-photo-4')">✕</button>
+        </div>
+      </div>
+      <div class="photo-content">
+        <img src="REPLACE_WITH_PHOTO_4_URL" alt="Photo 4">
+      </div>
+    </div>
+
+    <div class="photo-popup pixelated" id="popup-photo-5" style="width:190px;top:250px;left:600px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-5">
+        <span class="win-title" style="font-size:10px">PHOTO_05.BMP</span>
+        <div class="win-controls">
+          <button class="win-btn win-btn-close" onclick="closePopup('popup-photo-5')">✕</button>
+        </div>
+      </div>
+      <div class="photo-content">
+        <img src="REPLACE_WITH_PHOTO_5_URL" alt="Photo 5">
       </div>
     </div>
 
@@ -848,5 +936,62 @@
       document.querySelectorAll('.retro-window').forEach(function(w){w.classList.remove('active')});
     }
   });
+
+  // Popup photo functions
+  window.closePopup = function(id){
+    var popup = document.getElementById(id);
+    if(popup) popup.style.display = 'none';
+  };
+
+  // Make popup photos draggable
+  var dragPopup = null;
+  document.querySelectorAll('.photo-popup .win-titlebar').forEach(function(tb){
+    tb.addEventListener('mousedown', function(e){
+      if(e.target.closest('.win-controls')) return;
+      var popup = tb.closest('.photo-popup');
+      var rect = popup.getBoundingClientRect();
+      dragPopup = {el: popup, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, titlebar: tb};
+      tb.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+  });
+
+  document.addEventListener('mousemove', function(e){
+    if(dragPopup){
+      var x = e.clientX - dragPopup.offsetX;
+      var y = e.clientY - dragPopup.offsetY;
+      dragPopup.el.style.left = Math.max(0, x) + 'px';
+      dragPopup.el.style.top = Math.max(0, y) + 'px';
+    }
+  });
+
+  document.addEventListener('mouseup', function(){
+    if(dragPopup){
+      dragPopup.titlebar.style.cursor = 'grab';
+      dragPopup = null;
+    }
+  });
+
+  // Show popup photos after boot, then auto-close after 6 seconds
+  function showPopupPhotos(){
+    var popups = ['popup-photo-1', 'popup-photo-2', 'popup-photo-3', 'popup-photo-4', 'popup-photo-5'];
+    var delay = 0;
+    popups.forEach(function(id, index){
+      setTimeout(function(){
+        var popup = document.getElementById(id);
+        if(popup){
+          popup.style.display = 'flex';
+          // Auto-close after 6 seconds
+          setTimeout(function(){
+            closePopup(id);
+          }, 6000);
+        }
+      }, delay);
+      delay += 300; // Stagger the popups
+    });
+  }
+
+  // Trigger popup photos after boot completes (around 2.5 seconds after page load)
+  setTimeout(showPopupPhotos, 2500);
 })();
 </script>
