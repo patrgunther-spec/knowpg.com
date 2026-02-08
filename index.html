@@ -128,12 +128,13 @@
 .win-menubar span:hover{background:#DA020E;color:#fff}
 
 .win-content {
-  flex:1;overflow-y:auto;overflow-x:hidden;background:#fff;
+  flex:1;overflow-y:auto;overflow-x:hidden;background:#0a0a0a;
   border:2px solid;border-color:#808080 #fff #fff #808080;
-  margin:2px;padding:12px;color:#000;font-size:13px;line-height:1.6;
+  margin:2px;padding:12px;color:#FFD700;font-size:13px;line-height:1.6;
+  font-weight:700;
 }
 .win-content.dark {
-  background:#1a1a1a;color:#eee;
+  background:#0a0a0a;color:#FFD700;
 }
 .win-content::-webkit-scrollbar{width:16px}
 .win-content::-webkit-scrollbar-track{background:#c0c0c0;border:1px solid #808080}
@@ -240,15 +241,15 @@
 .content-heading.yellow{color:#FFD700;border-color:#FFD700}
 
 .content-section{margin-bottom:16px}
-.content-section h3{font-size:14px;color:#333;margin-bottom:6px;text-transform:uppercase;font-weight:900}
-.content-section p{margin-bottom:8px;font-size:13px;color:#222;text-transform:uppercase;font-weight:600}
+.content-section h3{font-size:14px;color:#FFD700;margin-bottom:6px;text-transform:uppercase;font-weight:900}
+.content-section p{margin-bottom:8px;font-size:13px;color:#fff;text-transform:uppercase;font-weight:700}
 
 /* Make all window text uppercase and bolder */
 .win-content{text-transform:uppercase;font-weight:600}
 .win-content strong{font-weight:900}
 .win-statusbar{text-transform:uppercase}
 
-/* 8-bit pixelated photo effect */
+/* 8-bit pixelated photo effect - vintage 90s web look */
 .photo-popup {
   position:absolute;
   background:#c0c0c0;
@@ -261,16 +262,16 @@
 }
 .photo-popup .win-titlebar{cursor:grab}
 .photo-popup .photo-content{
-  padding:4px;background:#000;
+  padding:6px;background:#000;
+  border:3px solid #DA020E;
 }
 .photo-popup img {
   width:100%;height:auto;
-  image-rendering:pixelated;
-  filter:contrast(1.1) saturate(1.2);
+  filter:sepia(0.3) contrast(1.2) saturate(0.9) brightness(0.95);
+  border:2px solid #FFD700;
 }
 .photo-popup.pixelated img {
-  image-rendering:pixelated;
-  -ms-interpolation-mode:nearest-neighbor;
+  image-rendering:auto;
 }
 
 .portfolio-grid{display:flex;flex-direction:column;gap:16px;margin-top:12px}
@@ -283,12 +284,13 @@
 .portfolio-item .pi-years{color:#DA020E;font-size:12px;font-weight:bold}
 .portfolio-item .pi-desc{color:#ccc;font-size:12px;line-height:1.5}
 
-.retro-form label{display:block;font-size:12px;font-weight:bold;margin-bottom:3px;color:#000}
+.retro-form label{display:block;font-size:12px;font-weight:900;margin-bottom:3px;color:#FFD700}
 .retro-form input,.retro-form textarea {
-  width:100%;padding:4px 6px;font-size:12px;margin-bottom:10px;
-  background:#fff;color:#000;
-  border:2px solid;border-color:#808080 #fff #fff #808080;
+  width:100%;padding:6px 8px;font-size:12px;margin-bottom:10px;
+  background:#1a1a1a;color:#fff;
+  border:2px solid #DA020E;
   font-family:'MS Sans Serif',Tahoma,sans-serif;
+  font-weight:600;
 }
 .retro-form textarea{height:80px;resize:vertical}
 .retro-btn {
@@ -303,6 +305,12 @@
 .profile-photo{
   width:150px;height:150px;object-fit:cover;
   border:3px solid #DA020E;margin-bottom:12px;
+  filter:sepia(0.2) contrast(1.1) saturate(0.9);
+}
+
+/* Retro 90s effect for all images */
+#desktop-root img {
+  image-rendering:auto;
 }
 
 .contact-info-box{
@@ -453,7 +461,7 @@
             </div>
             <div class="pi-desc">
               <strong style="color:#FFD700">25M VIDEO VIEWS | 60M IMPRESSIONS</strong><br><br>
-              AS ASSOCIATE VIDEO PRODUCER AT THE NEW YORK TIMES, WE WORK ACROSS MULTIPLE SHOWS INCLUDING THE DAILY, MODERN LOVE, THE INTERVIEW, AND POPCAST.<br><br>
+              AS DIGITAL VIDEO EDITOR AND PRODUCER AT THE NEW YORK TIMES, WE WORK ACROSS MULTIPLE SHOWS INCLUDING THE DAILY, MODERN LOVE, THE INTERVIEW, AND POPCAST.<br><br>
               OUR CONTENT HAS REACHED MILLIONS OF VIEWERS WITH AWARD-WINNING STORYTELLING AND PRODUCTION.
             </div>
           </div>
@@ -505,7 +513,7 @@
           ✉ EMAIL: PAT.R.GUNTHER@GMAIL.COM<br>
           ☎ PHONE: 347.260.2952
         </div>
-        <p style="font-size:12px;margin-bottom:12px;font-weight:700"><strong>LET'S CONNECT!</strong> SEND ME A MESSAGE BELOW.</p>
+        <p style="font-size:12px;margin-bottom:12px;font-weight:900;color:#fff"><strong style="color:#FFD700">LET'S CONNECT!</strong> SEND ME A MESSAGE BELOW.</p>
         <form class="retro-form" action="https://formspree.io/f/mgolwnel" method="POST">
           <label>YOUR NAME:</label>
           <input type="text" name="name" placeholder="ENTER YOUR NAME..." required>
@@ -580,7 +588,7 @@
         </div>
       </div>
       <div class="photo-content">
-        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/fdc9c8fb-eff0-47d1-ba6d-ba39f8be100c/IMG_6167.PNG?content-type=image%2Fpng" alt="Photo 1">
+        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/fdc9c8fb-eff0-47d1-ba6d-ba39f8be100c/IMG_6167.PNG" alt="Photo 1">
       </div>
     </div>
 
@@ -592,7 +600,7 @@
         </div>
       </div>
       <div class="photo-content">
-        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/385c19ee-63b7-4832-b847-7670859feb1c/IMG_6319.JPG?content-type=image%2Fjpeg" alt="Photo 2">
+        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/385c19ee-63b7-4832-b847-7670859feb1c/IMG_6319.JPG" alt="Photo 2">
       </div>
     </div>
 
@@ -604,7 +612,7 @@
         </div>
       </div>
       <div class="photo-content">
-        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/d765451d-64cd-4a0f-97ac-703c6d21f65f/IMG_0068.jpg?content-type=image%2Fjpeg" alt="Photo 3">
+        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/d765451d-64cd-4a0f-97ac-703c6d21f65f/IMG_0068.jpg" alt="Photo 3">
       </div>
     </div>
 
@@ -616,7 +624,7 @@
         </div>
       </div>
       <div class="photo-content">
-        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/d315cfb5-d272-4c97-a926-ac76ea49f1dd/IMG_7198.jpg?content-type=image%2Fjpeg" alt="Photo 4">
+        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/d315cfb5-d272-4c97-a926-ac76ea49f1dd/IMG_7198.jpg" alt="Photo 4">
       </div>
     </div>
 
@@ -628,7 +636,7 @@
         </div>
       </div>
       <div class="photo-content">
-        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/e78454c7-778d-4ada-84a0-1f7aff0e4e64/IMG_0395.JPG?content-type=image%2Fjpeg" alt="Photo 5">
+        <img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/e78454c7-778d-4ada-84a0-1f7aff0e4e64/IMG_0395.JPG" alt="Photo 5">
       </div>
     </div>
 
