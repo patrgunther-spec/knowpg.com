@@ -400,6 +400,110 @@
 .pixel-name:hover .name-close{opacity:1}
 .pixel-name .name-close:hover{background:#ff3333}
 
+/* Video Feed Styles - TikTok Style */
+.video-feed {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  max-height:480px;
+  overflow-y:auto;
+  scroll-snap-type:y mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:#DA020E #1a1a1a;
+}
+.video-feed::-webkit-scrollbar{width:8px}
+.video-feed::-webkit-scrollbar-track{background:#1a1a1a}
+.video-feed::-webkit-scrollbar-thumb{background:#DA020E;border-radius:4px}
+
+.video-item {
+  scroll-snap-align:start;
+  background:#0a0a0a;
+  border:2px solid #DA020E;
+  border-radius:4px;
+  overflow:hidden;
+  min-height:400px;
+  position:relative;
+}
+.video-item .video-embed {
+  width:100%;
+  min-height:380px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#000;
+}
+.video-item .video-embed iframe {
+  width:100%;
+  min-height:380px;
+  border:none;
+}
+.video-item .video-embed blockquote {
+  margin:0 !important;
+  max-width:100% !important;
+}
+.video-item .video-info {
+  padding:8px;
+  background:#1a1a1a;
+  border-top:2px solid #FFD700;
+}
+.video-item .video-platform {
+  font-size:9px;
+  color:#DA020E;
+  font-weight:bold;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+.video-item .video-views {
+  font-size:11px;
+  color:#FFD700;
+  font-weight:bold;
+  margin-top:2px;
+}
+.video-item .video-link {
+  display:block;
+  margin-top:4px;
+  font-size:9px;
+  color:#888;
+  text-decoration:none;
+}
+.video-item .video-link:hover{color:#FFD700}
+
+/* Fullscreen mode for mobile */
+.video-fullscreen {
+  position:fixed !important;
+  inset:0 !important;
+  z-index:99999 !important;
+  background:#000 !important;
+  max-height:100vh !important;
+  height:100vh !important;
+}
+.video-fullscreen .video-item {
+  min-height:100vh;
+  height:100vh;
+}
+.video-fullscreen .video-embed {
+  min-height:calc(100vh - 60px);
+}
+.video-fullscreen-btn {
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:32px;
+  height:32px;
+  background:#DA020E;
+  border:2px solid #FFD700;
+  color:#fff;
+  font-size:14px;
+  cursor:pointer;
+  z-index:100;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:4px;
+}
+.video-fullscreen-btn:hover{background:#ff3333}
+
 @media(max-width:768px){
   .desktop-icons{gap:18px}
   .desktop-icon .icon-img{width:48px;height:48px}
@@ -630,7 +734,7 @@
     </div>
 
     <!-- VIDEOS WINDOW -->
-    <div class="retro-window" id="win-videos" style="width:700px;height:550px;top:30px;left:150px">
+    <div class="retro-window" id="win-videos" style="width:420px;height:700px;top:30px;left:150px">
       <div class="win-titlebar" data-window="win-videos">
         <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#1a1a1a"/><path d="M1 5h6l1-2h4l1 2h3" fill="#2a2a2a"/><path d="M6 7v6l5-3z" fill="#DA020E"/></svg>
         <span class="win-title">VIDEOS — WORK EXAMPLES</span>
@@ -640,58 +744,23 @@
           <button class="win-btn win-btn-close" onclick="closeWindow('videos')" title="Close">✕</button>
         </div>
       </div>
-      <div class="win-content dark" style="padding:16px">
-        <div class="content-heading yellow">VIDEO REEL</div>
-        <p style="font-size:11px;color:#888;margin-bottom:16px;text-align:center">NOTE: TO EMBED VIDEOS, UPLOAD TO VIMEO OR YOUTUBE AND REPLACE PLACEHOLDERS BELOW</p>
+      <div class="win-content dark" style="padding:8px;position:relative" id="video-feed-container">
+        <div class="content-heading yellow" style="font-size:16px;margin-bottom:8px">VIDEO REEL</div>
+        <p style="font-size:10px;color:#888;margin-bottom:8px;text-align:center">SWIPE UP FOR NEXT VIDEO (MOBILE) | SCROLL TO BROWSE</p>
 
-        <!-- VIDEO GRID -->
-        <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:12px">
-          <div style="background:#1a1a1a;border:2px solid #DA020E;padding:8px">
-            <div style="position:relative;padding-bottom:56.25%;background:#000;border:1px solid #FFD700">
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#DA020E;font-size:32px">▶</div>
-            </div>
-            <div style="font-size:10px;color:#FFD700;margin-top:6px;font-weight:bold">VIDEO 01</div>
-          </div>
-          <div style="background:#1a1a1a;border:2px solid #DA020E;padding:8px">
-            <div style="position:relative;padding-bottom:56.25%;background:#000;border:1px solid #FFD700">
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#DA020E;font-size:32px">▶</div>
-            </div>
-            <div style="font-size:10px;color:#FFD700;margin-top:6px;font-weight:bold">VIDEO 02</div>
-          </div>
-          <div style="background:#1a1a1a;border:2px solid #DA020E;padding:8px">
-            <div style="position:relative;padding-bottom:56.25%;background:#000;border:1px solid #FFD700">
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#DA020E;font-size:32px">▶</div>
-            </div>
-            <div style="font-size:10px;color:#FFD700;margin-top:6px;font-weight:bold">VIDEO 03</div>
-          </div>
-          <div style="background:#1a1a1a;border:2px solid #DA020E;padding:8px">
-            <div style="position:relative;padding-bottom:56.25%;background:#000;border:1px solid #FFD700">
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#DA020E;font-size:32px">▶</div>
-            </div>
-            <div style="font-size:10px;color:#FFD700;margin-top:6px;font-weight:bold">VIDEO 04</div>
-          </div>
-          <div style="background:#1a1a1a;border:2px solid #DA020E;padding:8px">
-            <div style="position:relative;padding-bottom:56.25%;background:#000;border:1px solid #FFD700">
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#DA020E;font-size:32px">▶</div>
-            </div>
-            <div style="font-size:10px;color:#FFD700;margin-top:6px;font-weight:bold">VIDEO 05</div>
-          </div>
-          <div style="background:#1a1a1a;border:2px solid #DA020E;padding:8px">
-            <div style="position:relative;padding-bottom:56.25%;background:#000;border:1px solid #FFD700">
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#DA020E;font-size:32px">▶</div>
-            </div>
-            <div style="font-size:10px;color:#FFD700;margin-top:6px;font-weight:bold">VIDEO 06</div>
-          </div>
+        <!-- VIDEO FEED - TikTok Style Vertical Scroll -->
+        <div id="video-feed" class="video-feed">
+          <!-- Videos will be injected here by JavaScript in random order -->
         </div>
 
-        <div style="margin-top:16px;padding:10px;background:#1a1a1a;border:2px solid #FFD700;text-align:center">
-          <div style="font-size:12px;color:#FFD700;font-weight:bold">MORE VIDEOS AVAILABLE</div>
-          <div style="font-size:10px;color:#888;margin-top:4px">CONTACT FOR FULL REEL</div>
+        <div style="margin-top:12px;padding:8px;background:#1a1a1a;border:2px solid #FFD700;text-align:center">
+          <div style="font-size:11px;color:#FFD700;font-weight:bold">TAP VIDEO TO PLAY ON PLATFORM</div>
+          <div style="font-size:9px;color:#888;margin-top:4px">VIEW COUNTS SHOWN FROM TIKTOK & INSTAGRAM</div>
         </div>
       </div>
       <div class="win-statusbar">
-        <span class="status-section">VIDEOS</span>
-        <span class="status-section">LOADING...</span>
+        <span class="status-section" id="video-count-status">38 VIDEOS</span>
+        <span class="status-section" id="current-video-status">SCROLL TO BROWSE</span>
       </div>
     </div>
 
@@ -1184,5 +1253,182 @@
       dragNp = null;
     }
   });
+
+  // Video Feed - All videos with platform info
+  var allVideos = [
+    {url:'https://www.tiktok.com/@popcast/video/7595371297673153806', platform:'TikTok', id:'7595371297673153806'},
+    {url:'https://www.tiktok.com/@popcast/video/7509999538720099627', platform:'TikTok', id:'7509999538720099627'},
+    {url:'https://www.tiktok.com/@popcast/video/7566798172014644535', platform:'TikTok', id:'7566798172014644535'},
+    {url:'https://www.tiktok.com/@popcast/video/7556328922527321399', platform:'TikTok', id:'7556328922527321399'},
+    {url:'https://www.tiktok.com/@popcast/video/7539607145906490637', platform:'TikTok', id:'7539607145906490637'},
+    {url:'https://www.tiktok.com/@popcast/video/7517071166184361271', platform:'TikTok', id:'7517071166184361271'},
+    {url:'https://www.tiktok.com/@popcast/video/7569412039257378062', platform:'TikTok', id:'7569412039257378062'},
+    {url:'https://www.tiktok.com/@popcast/video/7457297937832348974', platform:'TikTok', id:'7457297937832348974'},
+    {url:'https://www.tiktok.com/@nytimes/video/7526312764285963575', platform:'TikTok', id:'7526312764285963575'},
+    {url:'https://www.tiktok.com/@nytimes/video/7603802624973966606', platform:'TikTok', id:'7603802624973966606'},
+    {url:'https://www.tiktok.com/@nytimes/video/7602310976595152141', platform:'TikTok', id:'7602310976595152141'},
+    {url:'https://www.tiktok.com/@nytimes/video/7601982956625874231', platform:'TikTok', id:'7601982956625874231'},
+    {url:'https://www.instagram.com/reel/DULtnbGD_pZ/', platform:'Instagram', id:'DULtnbGD_pZ'},
+    {url:'https://www.instagram.com/reel/DSgGB79ARsW/', platform:'Instagram', id:'DSgGB79ARsW'},
+    {url:'https://www.instagram.com/reel/DR-srWSjQsw/', platform:'Instagram', id:'DR-srWSjQsw'},
+    {url:'https://www.instagram.com/reel/DRXxOw-CpXX/', platform:'Instagram', id:'DRXxOw-CpXX'},
+    {url:'https://www.instagram.com/reel/DRFaAmniApw/', platform:'Instagram', id:'DRFaAmniApw'},
+    {url:'https://www.instagram.com/reel/DQzo8eODzgX/', platform:'Instagram', id:'DQzo8eODzgX'},
+    {url:'https://www.instagram.com/reel/DQotp7ejvJi/', platform:'Instagram', id:'DQotp7ejvJi'},
+    {url:'https://www.instagram.com/reel/DQhvxl8Am5b/', platform:'Instagram', id:'DQhvxl8Am5b'},
+    {url:'https://www.instagram.com/reel/DQhMFtwiOSe/', platform:'Instagram', id:'DQhMFtwiOSe'},
+    {url:'https://www.instagram.com/reel/DP9SCauEpmq/', platform:'Instagram', id:'DP9SCauEpmq'},
+    {url:'https://www.instagram.com/reel/DPhVcSYjJdO/', platform:'Instagram', id:'DPhVcSYjJdO'},
+    {url:'https://www.instagram.com/reel/DPeBx8zlKyW/', platform:'Instagram', id:'DPeBx8zlKyW'},
+    {url:'https://www.instagram.com/reel/DO7GxakDVoS/', platform:'Instagram', id:'DO7GxakDVoS'},
+    {url:'https://www.instagram.com/reel/DO1Em5fDQfm/', platform:'Instagram', id:'DO1Em5fDQfm'},
+    {url:'https://www.instagram.com/reel/DORtvy8kSSj/', platform:'Instagram', id:'DORtvy8kSSj'},
+    {url:'https://www.instagram.com/reel/DOMgLULjLPm/', platform:'Instagram', id:'DOMgLULjLPm'},
+    {url:'https://www.instagram.com/reel/DN3nYBb3NEP/', platform:'Instagram', id:'DN3nYBb3NEP'},
+    {url:'https://www.instagram.com/reel/DNg_P9UyyOs/', platform:'Instagram', id:'DNg_P9UyyOs'},
+    {url:'https://www.instagram.com/reel/DNbZhyfsEEn/', platform:'Instagram', id:'DNbZhyfsEEn'},
+    {url:'https://www.instagram.com/reel/DM1PBHuMC1f/', platform:'Instagram', id:'DM1PBHuMC1f'},
+    {url:'https://www.instagram.com/reel/DMD5R7fvkUR/', platform:'Instagram', id:'DMD5R7fvkUR'},
+    {url:'https://www.instagram.com/reel/DK0JebUSW8O/', platform:'Instagram', id:'DK0JebUSW8O'},
+    {url:'https://www.instagram.com/reel/DJe_Z6TPiOX/', platform:'Instagram', id:'DJe_Z6TPiOX'},
+    {url:'https://www.instagram.com/reel/DHtmwSztYLR/', platform:'Instagram', id:'DHtmwSztYLR'}
+  ];
+
+  // Shuffle videos randomly
+  function shuffleArray(arr){
+    for(var i=arr.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var temp=arr[i];arr[i]=arr[j];arr[j]=temp;
+    }
+    return arr;
+  }
+
+  // Create video feed
+  function initVideoFeed(){
+    var feed = document.getElementById('video-feed');
+    if(!feed) return;
+
+    var shuffled = shuffleArray(allVideos.slice());
+    var html = '';
+
+    shuffled.forEach(function(video, index){
+      var embedHtml = '';
+      if(video.platform === 'TikTok'){
+        embedHtml = '<blockquote class="tiktok-embed" cite="'+video.url+'" data-video-id="'+video.id+'" style="max-width:100%;min-width:280px;"><section><a target="_blank" href="'+video.url+'">Loading TikTok...</a></section></blockquote>';
+      } else {
+        embedHtml = '<blockquote class="instagram-media" data-instgrm-permalink="'+video.url+'" data-instgrm-version="14" style="max-width:100%;min-width:280px;"><a href="'+video.url+'" target="_blank">Loading Instagram...</a></blockquote>';
+      }
+
+      html += '<div class="video-item" data-index="'+index+'">';
+      html += '<div class="video-embed">'+embedHtml+'</div>';
+      html += '<div class="video-info">';
+      html += '<span class="video-platform">'+video.platform+' • VIDEO '+(index+1)+'/'+shuffled.length+'</span>';
+      html += '<div class="video-views">▶ VIEWS SHOWN ON EMBED</div>';
+      html += '<a href="'+video.url+'" target="_blank" class="video-link">TAP TO OPEN ON '+video.platform.toUpperCase()+' →</a>';
+      html += '</div></div>';
+    });
+
+    feed.innerHTML = html;
+
+    // Load TikTok embed script
+    if(!document.getElementById('tiktok-embed-script')){
+      var ttScript = document.createElement('script');
+      ttScript.id = 'tiktok-embed-script';
+      ttScript.src = 'https://www.tiktok.com/embed.js';
+      ttScript.async = true;
+      document.body.appendChild(ttScript);
+    } else if(window.tiktok && window.tiktok.embed){
+      window.tiktok.embed.reloadAll();
+    }
+
+    // Load Instagram embed script
+    if(!document.getElementById('instagram-embed-script')){
+      var igScript = document.createElement('script');
+      igScript.id = 'instagram-embed-script';
+      igScript.src = 'https://www.instagram.com/embed.js';
+      igScript.async = true;
+      document.body.appendChild(igScript);
+    } else if(window.instgrm && window.instgrm.Embeds){
+      window.instgrm.Embeds.process();
+    }
+
+    // Update status
+    var countStatus = document.getElementById('video-count-status');
+    if(countStatus) countStatus.textContent = shuffled.length + ' VIDEOS';
+  }
+
+  // Touch swipe handling for TikTok-style navigation
+  var videoFeed = document.getElementById('video-feed');
+  var touchStartY = 0;
+  var touchEndY = 0;
+
+  if(videoFeed){
+    videoFeed.addEventListener('touchstart', function(e){
+      touchStartY = e.changedTouches[0].screenY;
+    }, {passive:true});
+
+    videoFeed.addEventListener('touchend', function(e){
+      touchEndY = e.changedTouches[0].screenY;
+      handleSwipe();
+    }, {passive:true});
+  }
+
+  function handleSwipe(){
+    var diff = touchStartY - touchEndY;
+    var items = document.querySelectorAll('.video-item');
+    if(items.length === 0) return;
+
+    // Find current visible item
+    var feed = document.getElementById('video-feed');
+    var scrollTop = feed.scrollTop;
+    var itemHeight = items[0].offsetHeight + 12; // include gap
+    var currentIndex = Math.round(scrollTop / itemHeight);
+
+    if(diff > 50){ // Swipe up - next video
+      var nextIndex = Math.min(currentIndex + 1, items.length - 1);
+      items[nextIndex].scrollIntoView({behavior:'smooth', block:'start'});
+      updateVideoStatus(nextIndex + 1, items.length);
+    } else if(diff < -50){ // Swipe down - previous video
+      var prevIndex = Math.max(currentIndex - 1, 0);
+      items[prevIndex].scrollIntoView({behavior:'smooth', block:'start'});
+      updateVideoStatus(prevIndex + 1, items.length);
+    }
+  }
+
+  function updateVideoStatus(current, total){
+    var status = document.getElementById('current-video-status');
+    if(status) status.textContent = 'VIDEO ' + current + '/' + total;
+  }
+
+  // Fullscreen toggle for mobile
+  window.toggleVideoFullscreen = function(){
+    var feed = document.getElementById('video-feed');
+    var container = document.getElementById('video-feed-container');
+    if(feed && container){
+      feed.classList.toggle('video-fullscreen');
+      if(feed.classList.contains('video-fullscreen')){
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    }
+  };
+
+  // Initialize video feed when videos window opens
+  var origOpenWindow = window.openWindow;
+  window.openWindow = function(name){
+    origOpenWindow(name);
+    if(name === 'videos'){
+      setTimeout(initVideoFeed, 100);
+    }
+  };
+
+  // Also init if already visible
+  setTimeout(function(){
+    var videosWin = document.getElementById('win-videos');
+    if(videosWin && videosWin.classList.contains('visible')){
+      initVideoFeed();
+    }
+  }, 500);
 })();
 </script>
