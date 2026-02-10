@@ -417,10 +417,10 @@
   font-family:'Courier New', 'IBM Plex Mono', monospace;
   font-size:28px;
   font-weight:bold;
-  color:#00ff00;
+  color:#FFD700;
   text-transform:uppercase;
   letter-spacing:3px;
-  text-shadow:0 0 10px #00ff00, 0 0 20px #00ff00;
+  text-shadow:0 0 10px #FFD700, 0 0 20px #FFD700;
   -webkit-font-smoothing:none;
 }
 .ibm-nameplate.expanded .name-content{padding:20px 32px}
@@ -448,26 +448,39 @@
   border:2px solid #DA020E;
   border-radius:4px;
   overflow:hidden;
-  min-height:400px;
   position:relative;
 }
 .video-item .video-embed {
   width:100%;
-  min-height:380px;
   display:flex;
   align-items:center;
   justify-content:center;
   background:#000;
+  position:relative;
+  padding:8px;
 }
 .video-item .video-embed iframe,
 .video-item .video-embed video {
   width:100%;
-  min-height:380px;
+  height:auto;
+  max-height:70vh;
+  aspect-ratio:9/16;
+  object-fit:contain;
   border:none;
+}
+.video-item .video-embed iframe[src*="youtube"] {
+  aspect-ratio:16/9;
 }
 .video-item .video-embed blockquote {
   margin:0 !important;
   max-width:100% !important;
+  width:100% !important;
+}
+.video-item .video-embed blockquote iframe {
+  max-width:100% !important;
+  width:100% !important;
+  height:auto !important;
+  min-height:400px;
 }
 .video-item .video-info {
   padding:8px;
@@ -508,9 +521,19 @@
 .video-fullscreen .video-item {
   min-height:100vh;
   height:100vh;
+  display:flex;
+  flex-direction:column;
 }
 .video-fullscreen .video-embed {
-  min-height:calc(100vh - 60px);
+  flex:1;
+  height:calc(100vh - 80px);
+}
+.video-fullscreen .video-embed iframe,
+.video-fullscreen .video-embed video {
+  max-height:calc(100vh - 100px);
+  width:100%;
+  height:100%;
+  object-fit:contain;
 }
 .video-fullscreen-btn {
   position:absolute;
