@@ -1,0 +1,1266 @@
+<style>
+*,:after,:before{box-sizing:border-box;margin:0;padding:0}
+
+.header, #header, .site-header, .footer-wrapper, #footer,
+.site-footer, .announcement-bar-wrapper, #siteWrapper > header,
+#siteWrapper > footer { display:none!important }
+
+#desktop-root {
+  font-family:'MS Sans Serif','Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  width:100vw; height:100vh; overflow:hidden;
+  position:fixed; top:0; left:0; z-index:99999;
+  background:#000;
+  user-select:none;
+  -webkit-user-select:none;
+  image-rendering:pixelated;
+  -webkit-font-smoothing:none;
+}
+
+#desktop-root .desktop-bg {
+  position:absolute; inset:0; bottom:42px;
+  background:#000;
+  overflow:hidden;
+}
+
+#desktop-root .desktop-bg::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:radial-gradient(ellipse at center, transparent 30%, rgba(139,0,0,0.15) 70%, rgba(139,0,0,0.35) 100%);
+  pointer-events:none;
+  z-index:1;
+}
+
+#desktop-root .desktop-bg::after {
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.15) 2px,rgba(0,0,0,0.15) 4px);
+  pointer-events:none;
+  z-index:2;
+}
+
+#boot-screen {
+  position:fixed;inset:0;z-index:999999;
+  background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#DA020E;font-family:'Courier New',monospace;font-size:14px;
+  transition:opacity 0.5s;
+  image-rendering:pixelated;
+}
+#boot-screen.hidden{opacity:0;pointer-events:none}
+#boot-text{white-space:pre-wrap;text-align:center;max-width:600px;line-height:1.6;font-size:18px}
+#boot-screen .boot-logo{font-size:28px;font-weight:bold;margin-bottom:24px;letter-spacing:4px;color:#FFD700}
+.boot-bar{width:300px;height:16px;border:2px solid #DA020E;margin-top:20px;padding:2px}
+.boot-bar-inner{height:100%;background:#DA020E;width:0%;transition:width 0.3s}
+
+.desktop-icons {
+  position:absolute;top:20px;left:20px;
+  display:grid;
+  grid-template-columns:100px 100px;
+  grid-template-rows:auto auto;
+  gap:20px 30px;
+  z-index:10;
+}
+.desktop-icon {
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  cursor:grab;width:90px;padding:6px;border:2px solid transparent;
+  border-radius:2px;transition:background 0.1s;
+  position:relative;
+}
+.desktop-icon.dragging{cursor:grabbing;opacity:0.8}
+.desktop-icon:hover{background:rgba(218,2,14,0.2);border-color:rgba(218,2,14,0.4)}
+.desktop-icon:active{background:rgba(218,2,14,0.3)}
+.desktop-icon .icon-img{width:64px;height:64px;pointer-events:none;filter:contrast(1.1) brightness(0.95)}
+
+.desktop-icon .icon-label{
+  color:#fff;
+  font-family:'Arial Black','Helvetica Neue',Arial,sans-serif;
+  font-size:12px;
+  text-align:center;
+  text-shadow:1px 1px 0 #000, 2px 2px 2px rgba(0,0,0,0.8);
+  line-height:1.2;
+  font-weight:700;
+  pointer-events:none;
+  white-space:nowrap;
+  text-transform:lowercase;
+  letter-spacing:0.5px;
+}
+
+.retro-window {
+  position:absolute;
+  background:#c0c0c0;
+  border:2px solid;
+  border-color:#fff #808080 #808080 #fff;
+  box-shadow:inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 #808080, 3px 3px 12px rgba(0,0,0,0.5);
+  display:none;flex-direction:column;
+  min-width:300px;min-height:200px;
+  z-index:100;
+  resize:both;
+  overflow:auto;
+  image-rendering:pixelated;
+}
+.retro-window.active{z-index:200}
+.retro-window.visible{display:flex}
+.retro-window.maximized{
+  top:0!important;left:0!important;
+  width:100%!important;height:calc(100vh - 42px)!important;
+  resize:none;
+}
+.retro-window.minimized{display:none}
+
+.win-titlebar {
+  background:linear-gradient(90deg,#8B0000,#DA020E,#B01010);
+  padding:3px 4px;display:flex;align-items:center;gap:4px;
+  cursor:grab;height:26px;flex-shrink:0;
+}
+.win-titlebar.dragging{cursor:grabbing}
+.win-titlebar .win-icon{width:16px;height:16px;flex-shrink:0}
+.win-titlebar .win-title{
+  flex:1;color:#fff;font-size:12px;font-weight:bold;
+  text-shadow:1px 1px 0 rgba(0,0,0,0.5);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  padding:0 4px;letter-spacing:0.5px;
+}
+.win-controls{display:flex;gap:2px}
+.win-btn {
+  width:18px;height:16px;background:#c0c0c0;
+  border:2px solid;border-color:#fff #808080 #808080 #fff;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:10px;font-weight:bold;color:#000;
+  font-family:'MS Sans Serif',Arial,sans-serif;
+  padding:0;line-height:1;
+}
+.win-btn:hover{background:#d0d0d0}
+.win-btn:active{border-color:#808080 #fff #fff #808080}
+.win-btn-close{font-size:12px}
+.win-btn-close:hover{background:#DA020E;color:#fff}
+
+.win-content {
+  flex:1;overflow-y:auto;overflow-x:hidden;background:#0a0a0a;
+  border:2px solid;border-color:#808080 #fff #fff #808080;
+  margin:2px;padding:12px;color:#FFD700;font-size:13px;line-height:1.6;
+  font-weight:700;
+  text-transform:uppercase;
+}
+.win-content.dark{background:#0a0a0a;color:#FFD700}
+.win-content::-webkit-scrollbar{width:16px}
+.win-content::-webkit-scrollbar-track{background:#c0c0c0;border:1px solid #808080}
+.win-content::-webkit-scrollbar-thumb{background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff}
+
+.win-statusbar {
+  background:#c0c0c0;padding:2px 6px;font-size:10px;
+  border-top:2px solid;border-color:#808080 #fff #fff #808080;
+  color:#000;flex-shrink:0;display:flex;gap:8px;
+  text-transform:uppercase;
+}
+.win-statusbar .status-section{border:1px solid;border-color:#808080 #fff #fff #808080;padding:1px 6px}
+
+#taskbar {
+  position:absolute;bottom:0;left:0;right:0;height:42px;
+  background:#c0c0c0;
+  border-top:2px solid #fff;
+  display:flex;align-items:center;padding:2px 4px;gap:4px;
+  z-index:500;
+}
+#start-btn {
+  height:32px;padding:0 10px;
+  background:#c0c0c0;
+  border:2px solid;border-color:#fff #808080 #808080 #fff;
+  font-family:'MS Sans Serif',Tahoma,sans-serif;
+  font-size:12px;font-weight:bold;cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  color:#000;
+}
+#start-btn:active,#start-btn.active{border-color:#808080 #fff #fff #808080}
+#start-btn .start-logo{font-size:18px;color:#DA020E}
+
+.taskbar-divider{width:2px;height:28px;border-left:1px solid #808080;border-right:1px solid #fff;margin:0 2px}
+
+#taskbar-windows{display:flex;gap:2px;flex:1;overflow:hidden}
+.taskbar-item {
+  height:28px;padding:0 12px;background:#c0c0c0;
+  border:2px solid;border-color:#fff #808080 #808080 #fff;
+  font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;
+  max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  color:#000;
+}
+.taskbar-item.active{border-color:#808080 #fff #fff #808080;background:#b0b0b0}
+.taskbar-item.minimized{background:#a0a0a0}
+
+#taskbar-tray {
+  display:flex;align-items:center;gap:6px;
+  border:2px solid;border-color:#808080 #fff #fff #808080;
+  padding:2px 8px;height:28px;font-size:11px;color:#000;
+}
+#tray-volume{cursor:pointer;padding:2px 4px;border-radius:2px}
+#tray-volume:hover{background:#DA020E;color:#fff}
+#tray-volume.playing{color:#DA020E;font-weight:bold}
+#taskbar-clock{font-weight:bold}
+
+#start-menu {
+  position:absolute;bottom:42px;left:2px;
+  width:220px;background:#c0c0c0;
+  border:2px solid;border-color:#fff #808080 #808080 #fff;
+  display:none;flex-direction:column;z-index:600;
+  box-shadow:3px 3px 8px rgba(0,0,0,0.4);
+}
+#start-menu.visible{display:flex}
+.start-menu-banner {
+  width:28px;background:linear-gradient(0deg,#8B0000,#DA020E,#FFD700);
+  position:absolute;left:0;top:0;bottom:0;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;
+}
+.start-menu-banner span{writing-mode:vertical-rl;transform:rotate(180deg);color:#fff;font-weight:bold;font-size:16px;letter-spacing:3px;text-shadow:1px 1px 0 rgba(0,0,0,0.5)}
+.start-menu-items{margin-left:28px;padding:4px 0}
+.start-menu-item{padding:6px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px;color:#000}
+.start-menu-item:hover{background:#DA020E;color:#fff}
+.start-menu-item .smi-icon{width:24px;height:24px;font-size:20px;text-align:center}
+.start-menu-sep{height:1px;background:#808080;margin:2px 28px 2px 4px;border-bottom:1px solid #fff}
+
+.marquee-bar {
+  position:absolute;bottom:46px;left:0;right:0;height:24px;
+  background:#000;overflow:hidden;z-index:50;
+  border-top:2px solid #FFD700;border-bottom:2px solid #FFD700;
+}
+.marquee-content {
+  display:flex;align-items:center;height:100%;
+  animation:marquee-scroll 30s linear infinite;
+  white-space:nowrap;
+  color:#DA020E;font-size:12px;font-weight:bold;
+  font-family:'Courier New',monospace;letter-spacing:1px;
+}
+@keyframes marquee-scroll{from{transform:translateX(100vw)}to{transform:translateX(-200%)}}
+
+.content-heading{font-size:20px;font-weight:900;color:#DA020E;border-bottom:2px solid #DA020E;padding-bottom:6px;margin-bottom:12px;text-transform:uppercase;letter-spacing:2px}
+.content-heading.yellow{color:#FFD700;border-color:#FFD700}
+
+.photo-popup {
+  position:absolute;
+  background:#c0c0c0;
+  border:2px solid;
+  border-color:#fff #808080 #808080 #fff;
+  box-shadow:3px 3px 12px rgba(0,0,0,0.5);
+  z-index:300;
+  min-width:200px;
+  display:flex;flex-direction:column;
+  image-rendering:pixelated;
+}
+.photo-popup .win-titlebar{cursor:grab}
+.photo-popup .photo-content{padding:6px;background:#000;border:3px solid #DA020E}
+.photo-popup img{width:100%;height:auto;filter:sepia(0.3) contrast(1.2) saturate(0.9) brightness(0.95);border:2px solid #FFD700;image-rendering:pixelated}
+
+.portfolio-grid{display:flex;flex-direction:column;gap:16px;margin-top:12px}
+.portfolio-item{background:#1a1a1a;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:12px}
+.portfolio-item .pi-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.portfolio-item .pi-title{color:#FFD700;font-size:14px;font-weight:bold;text-transform:uppercase}
+.portfolio-item .pi-years{color:#DA020E;font-size:12px;font-weight:bold}
+.portfolio-item .pi-desc{color:#ccc;font-size:12px;line-height:1.5}
+
+.retro-form label{display:block;font-size:12px;font-weight:900;margin-bottom:3px;color:#FFD700}
+.retro-form input,.retro-form textarea{width:100%;padding:6px 8px;font-size:12px;margin-bottom:10px;background:#1a1a1a;color:#fff;border:2px solid #DA020E;font-family:'MS Sans Serif',Tahoma,sans-serif;font-weight:600}
+.retro-form textarea{height:80px;resize:vertical}
+.retro-btn{padding:6px 20px;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;font-size:12px;font-weight:bold;cursor:pointer;font-family:'MS Sans Serif',Tahoma,sans-serif}
+.retro-btn:active{border-color:#808080 #fff #fff #808080}
+.retro-btn.red{background:#DA020E;color:#fff;border-color:#FFD700 #8B0000 #8B0000 #FFD700}
+
+.profile-photo{width:150px;height:150px;object-fit:cover;border:3px solid #DA020E;margin-bottom:12px;filter:sepia(0.2) contrast(1.1) saturate(0.9);image-rendering:pixelated}
+.contact-info-box{background:#1a1a1a;border:2px solid #DA020E;padding:12px;margin-bottom:16px;color:#FFD700;font-family:'Courier New',monospace;font-size:12px;line-height:1.8}
+
+.trash-bin{position:absolute;bottom:74px;right:20px;z-index:10;cursor:pointer}
+.trash-bin .trash-icon{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;border:2px solid transparent;border-radius:2px;transition:background 0.1s}
+.trash-bin:hover .trash-icon{background:rgba(218,2,14,0.2);border-color:rgba(218,2,14,0.4)}
+.trash-bin .trash-icon svg{width:48px;height:48px}
+.trash-bin .trash-label{color:#fff;font-family:'Arial Black',sans-serif;font-size:10px;text-shadow:1px 1px 0 #000;text-transform:lowercase}
+.trash-bin .trash-count{position:absolute;top:-4px;right:-4px;background:#DA020E;color:#fff;font-size:9px;font-weight:bold;padding:2px 5px;border-radius:8px;min-width:16px;text-align:center;display:none}
+.trash-bin.has-items .trash-count{display:block}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.blink{animation:blink 1s step-end infinite}
+
+.ibm-nameplate{position:absolute;top:20px;right:20px;z-index:400;cursor:grab;user-select:none;background:#c0c0c0;border:3px solid;border-color:#fff #808080 #808080 #fff;box-shadow:3px 3px 8px rgba(0,0,0,0.5);image-rendering:pixelated}
+.ibm-nameplate.dragging{cursor:grabbing}
+.ibm-nameplate.hidden{display:none}
+.ibm-nameplate .np-titlebar{background:linear-gradient(90deg,#000080,#1084d0);padding:2px 4px;display:flex;align-items:center;gap:4px;cursor:grab;height:20px}
+.ibm-nameplate .np-title{flex:1;color:#fff;font-size:10px;font-weight:bold;font-family:'MS Sans Serif',Tahoma,sans-serif}
+.ibm-nameplate .np-controls{display:flex;gap:2px}
+.ibm-nameplate .np-btn{width:16px;height:14px;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:bold;color:#000;font-family:'MS Sans Serif',Arial,sans-serif;padding:0;line-height:1}
+.ibm-nameplate .np-btn:hover{background:#d0d0d0}
+.ibm-nameplate .np-btn:active{border-color:#808080 #fff #fff #808080}
+.ibm-nameplate .np-btn-close:hover{background:#DA020E;color:#fff}
+.ibm-nameplate .name-content{padding:12px 20px;background:#000;border:2px solid;border-color:#808080 #fff #fff #808080;margin:2px}
+.ibm-nameplate .name-text{font-family:'Courier New','IBM Plex Mono',monospace;font-size:28px;font-weight:bold;color:#FFD700;text-transform:uppercase;letter-spacing:3px;text-shadow:0 0 10px #FFD700,0 0 20px #FFD700;-webkit-font-smoothing:none}
+.ibm-nameplate.expanded .name-content{padding:20px 32px}
+.ibm-nameplate.expanded .name-text{font-size:42px;letter-spacing:5px}
+
+/* Video Feed - CRITICAL STYLES */
+.video-feed{display:flex;flex-direction:column;gap:16px;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;padding:8px}
+.video-feed::-webkit-scrollbar{width:8px}
+.video-feed::-webkit-scrollbar-track{background:#1a1a1a}
+.video-feed::-webkit-scrollbar-thumb{background:#DA020E;border-radius:4px}
+
+.video-item{scroll-snap-align:start;background:#0a0a0a;border:2px solid #DA020E;border-radius:4px;overflow:hidden;flex-shrink:0}
+.video-item .video-embed{width:100%;background:#000;position:relative;display:flex;align-items:center;justify-content:center}
+.video-item .video-embed iframe{width:100%;border:none;display:block}
+.video-item.youtube-video .video-embed{aspect-ratio:16/9}
+.video-item.youtube-video .video-embed iframe{aspect-ratio:16/9;height:auto}
+.video-item.vertical-video .video-embed{aspect-ratio:9/16;max-height:500px}
+.video-item.vertical-video .video-embed iframe{height:100%;min-height:400px}
+.video-item .video-info{padding:10px;background:#1a1a1a;border-top:2px solid #FFD700}
+.video-item .video-platform{font-size:10px;color:#DA020E;font-weight:bold;text-transform:uppercase;letter-spacing:1px}
+.video-item .video-number{font-size:11px;color:#FFD700;font-weight:bold;margin-top:4px}
+.video-item .video-link{display:inline-block;margin-top:6px;padding:6px 12px;font-size:10px;color:#fff;text-decoration:none;background:#DA020E;border:1px solid #FFD700;text-transform:uppercase;font-weight:bold}
+.video-item .video-link:hover{background:#ff3333}
+
+/* TikTok/Instagram embeds */
+.video-item .tiktok-embed,.video-item blockquote.instagram-media{margin:0!important;max-width:100%!important;width:100%!important}
+
+#win-trash .trash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:12px;padding:8px}
+#win-trash .trash-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;background:#1a1a1a;border:1px solid #333;cursor:pointer;transition:background 0.2s}
+#win-trash .trash-item:hover{background:#2a2a2a;border-color:#DA020E}
+#win-trash .trash-item img,#win-trash .trash-item svg{width:60px;height:60px;object-fit:cover;border:1px solid #FFD700}
+#win-trash .trash-item span{font-size:9px;color:#888;text-align:center}
+
+/* Music Player Popup */
+#music-player-popup{position:absolute;bottom:50px;right:10px;width:320px;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;box-shadow:3px 3px 8px rgba(0,0,0,0.5);z-index:550;display:none}
+#music-player-popup.visible{display:block}
+#music-player-popup .mp-titlebar{background:linear-gradient(90deg,#8B0000,#DA020E);padding:2px 4px;display:flex;align-items:center;cursor:grab;height:20px}
+#music-player-popup .mp-title{flex:1;color:#fff;font-size:10px;font-weight:bold}
+#music-player-popup .mp-close{width:16px;height:14px;background:#c0c0c0;border:1px solid;border-color:#fff #808080 #808080 #fff;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center}
+#music-player-popup .mp-close:hover{background:#DA020E;color:#fff}
+#music-player-popup .mp-content{padding:8px;background:#1a1a1a}
+
+@media(max-width:768px){
+  .desktop-icons{gap:12px 20px;top:15px;left:15px}
+  .desktop-icon .icon-img{width:48px;height:48px}
+  .desktop-icon .icon-label{font-size:10px}
+  .retro-window{min-width:95vw!important;min-height:auto;resize:none}
+  .retro-window.visible{left:2vw!important;top:10px!important;width:96vw!important;height:calc(100vh - 80px)!important}
+  .trash-bin{bottom:70px;right:10px}
+  .marquee-bar{bottom:44px}
+  #taskbar{height:40px}
+  .ibm-nameplate{right:10px;top:10px}
+  .ibm-nameplate .name-text{font-size:20px;letter-spacing:2px}
+  .ibm-nameplate.expanded .name-text{font-size:28px}
+  .video-item.vertical-video .video-embed{max-height:400px}
+  #music-player-popup{width:280px;right:5px}
+}
+</style>
+
+<div id="boot-screen">
+  <div class="boot-logo">KNOWPG</div>
+  <div id="boot-text">booting up ...</div>
+  <div class="boot-bar"><div class="boot-bar-inner" id="boot-bar-fill"></div></div>
+</div>
+
+<div id="desktop-root">
+  <div class="desktop-bg">
+
+    <div class="desktop-icons">
+      <div class="desktop-icon" data-icon="who-are-we">
+        <svg class="icon-img" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="26" cy="26" r="18" fill="#1a1a1a" stroke="#DA020E" stroke-width="3"/>
+          <line x1="39" y1="39" x2="58" y2="58" stroke="#DA020E" stroke-width="5" stroke-linecap="round"/>
+          <text x="26" y="34" text-anchor="middle" fill="#FFD700" font-size="28" font-weight="bold" font-family="Arial">?</text>
+        </svg>
+        <span class="icon-label">who are we</span>
+      </div>
+
+      <div class="desktop-icon" data-icon="videos">
+        <svg class="icon-img" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 20h56v34a2 2 0 01-2 2H6a2 2 0 01-2-2V20z" fill="#1a1a1a"/>
+          <path d="M4 18h20l4-6h14l2 6h16v4H4v-4z" fill="#2a2a2a"/>
+          <path d="M4 20h56v4H4z" fill="#101010" opacity="0.5"/>
+          <path d="M24 30v18l18-9z" fill="#DA020E"/>
+          <rect x="8" y="26" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="8" y="33" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="8" y="40" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="50" y="26" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="50" y="33" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+          <rect x="50" y="40" width="6" height="4" rx="1" fill="#FFD700" opacity="0.7"/>
+        </svg>
+        <span class="icon-label">videos</span>
+      </div>
+
+      <div class="desktop-icon" data-icon="portfolio">
+        <svg class="icon-img" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 20h56v34a2 2 0 01-2 2H6a2 2 0 01-2-2V20z" fill="#e8b230"/>
+          <path d="M4 18h20l4-6h14l2 6h16v4H4v-4z" fill="#FFD700"/>
+          <path d="M4 20h56v4H4z" fill="#d4a020" opacity="0.5"/>
+          <path d="M16 22c0-8 6-16 8-18 1 4 3 6 4 8 1-3 4-8 6-10 2 6 6 14 6 20 0 8-6 10-12 10s-12-2-12-10z" fill="#DA020E" opacity="0.9"/>
+          <path d="M20 24c0-5 4-12 5-13 1 3 2 5 3 6 1-2 3-6 4-7 1 4 4 10 4 14 0 6-4 8-8 8s-8-2-8-8z" fill="#ff3300"/>
+          <path d="M24 26c0-4 2-8 3-9 0 2 1 4 2 4 0-2 2-4 3-5 1 3 2 7 2 10 0 4-2 6-5 6s-5-2-5-6z" fill="#FFD700"/>
+        </svg>
+        <span class="icon-label">portfolio</span>
+      </div>
+
+      <div class="desktop-icon" data-icon="contact">
+        <svg class="icon-img" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="12" y="34" width="40" height="24" rx="4" fill="#222" stroke="#DA020E" stroke-width="2"/>
+          <circle cx="24" cy="44" r="2" fill="#DA020E"/><circle cx="32" cy="44" r="2" fill="#DA020E"/><circle cx="40" cy="44" r="2" fill="#DA020E"/>
+          <circle cx="24" cy="50" r="2" fill="#DA020E"/><circle cx="32" cy="50" r="2" fill="#DA020E"/><circle cx="40" cy="50" r="2" fill="#DA020E"/>
+          <path d="M10 14c0-3 3-6 6-6h4c2 0 3 2 3 4v8c0 2-1 3-3 3h-2c-1 0-2 1-2 2v6c0 1 1 2 2 2h28c1 0 2-1 2-2v-6c0-1-1-2-2-2h-2c-2 0-3-1-3-3v-8c0-2 1-4 3-4h4c3 0 6 3 6 6" stroke="#DA020E" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <rect x="10" y="10" width="14" height="10" rx="3" fill="#333" stroke="#DA020E" stroke-width="2"/>
+          <rect x="40" y="10" width="14" height="10" rx="3" fill="#333" stroke="#DA020E" stroke-width="2"/>
+          <path d="M32 34 Q34 30 32 28 Q30 26 32 24 Q34 22 32 20" stroke="#DA020E" stroke-width="2" fill="none"/>
+        </svg>
+        <span class="icon-label">contact</span>
+      </div>
+    </div>
+
+    <div class="ibm-nameplate" id="nameplate">
+      <div class="np-titlebar">
+        <span class="np-title">nameplate.exe</span>
+        <div class="np-controls">
+          <button class="np-btn" onclick="toggleNameplateSize()" title="Expand">+</button>
+          <button class="np-btn np-btn-close" onclick="hideNameplate()" title="Close">x</button>
+        </div>
+      </div>
+      <div class="name-content">
+        <span class="name-text">PAT GUNTHER</span>
+      </div>
+    </div>
+
+    <div class="retro-window" id="win-who-are-we" style="width:600px;height:700px;top:40px;left:140px">
+      <div class="win-titlebar" data-window="win-who-are-we">
+        <svg class="win-icon" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="#fff" stroke-width="1.5"/><line x1="11" y1="11" x2="14" y2="14" stroke="#fff" stroke-width="2"/><text x="7" y="10" text-anchor="middle" fill="#FFD700" font-size="8" font-weight="bold">?</text></svg>
+        <span class="win-title">WHO ARE WE?</span>
+        <div class="win-controls">
+          <button class="win-btn" onclick="minimizeWindow('who-are-we')">_</button>
+          <button class="win-btn" onclick="maximizeWindow('who-are-we')">[]</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('who-are-we')">x</button>
+        </div>
+      </div>
+      <div class="win-content">
+        <div class="content-heading">WHO ARE WE?</div>
+        <p style="font-size:15px;font-weight:bold;line-height:1.7;margin-bottom:16px">OVER THE COURSE OF A DECADE, WE'VE CREATED AWARD-WINNING CONTENT FOR THE BIGGEST BRANDS IN MEDIA. JUST ASK THE NEW YORK TIMES, ESPN, DRAYMOND GREEN & MORE...</p>
+        <div style="margin-top:12px;margin-bottom:16px">
+          <img src="https://images.squarespace-cdn.com/content/v1/5cb495b90b77bd583a586e67/1b9a2b1d-899e-4fc9-b37a-d9a9b7c8d6d3/PG_RESUME_2024_UPDATED_v1.jpg?format=2500w" alt="Pat Gunther Resume" style="width:100%;border:3px solid #DA020E;box-shadow:3px 3px 8px rgba(0,0,0,0.4)">
+        </div>
+        <div style="padding:10px;background:#1a1a1a;border:2px solid #DA020E;color:#DA020E;font-family:'Courier New',monospace;font-size:12px">
+          <span class="blink">></span> KNOWPG.EXE LOADED SUCCESSFULLY<br>
+          <span class="blink">></span> 10+ YEARS EXPERIENCE<br>
+          <span class="blink">></span> READY TO CREATE
+        </div>
+      </div>
+      <div class="win-statusbar">
+        <span class="status-section">READY</span>
+        <span class="status-section">KNOWPG 2025</span>
+      </div>
+    </div>
+
+    <div class="retro-window" id="win-portfolio" style="width:620px;height:600px;top:60px;left:180px">
+      <div class="win-titlebar" data-window="win-portfolio">
+        <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#e8b230"/><path d="M1 5h6l1-2h4l1 2h3" fill="#FFD700"/></svg>
+        <span class="win-title">PORTFOLIO - WORK EXAMPLES</span>
+        <div class="win-controls">
+          <button class="win-btn" onclick="minimizeWindow('portfolio')">_</button>
+          <button class="win-btn" onclick="maximizeWindow('portfolio')">[]</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('portfolio')">x</button>
+        </div>
+      </div>
+      <div class="win-content dark">
+        <div class="content-heading yellow">PORTFOLIO</div>
+        <div style="margin-bottom:20px;background:#1a1a1a;border:2px solid #DA020E;padding:12px">
+          <div style="font-size:14px;font-weight:900;color:#FFD700;margin-bottom:10px">FEATURED REEL</div>
+          <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;background:#000;border:2px solid #FFD700">
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#888">
+              <div style="font-size:64px;color:#DA020E;margin-bottom:12px">|></div>
+              <div style="font-size:12px;color:#FFD700;font-weight:bold;text-align:center;padding:0 20px">VIDEO REEL COMING SOON</div>
+            </div>
+          </div>
+        </div>
+        <div class="portfolio-grid">
+          <div class="portfolio-item">
+            <div class="pi-header"><span class="pi-title">THE NEW YORK TIMES</span><span class="pi-years">2023 - PRESENT</span></div>
+            <div class="pi-desc"><strong style="color:#FFD700">DIGITAL VIDEO EDITOR & PRODUCER</strong><br><br><strong style="color:#DA020E">25M VIDEO VIEWS | 60M IMPRESSIONS</strong><br><br>DEVELOPED AND OPTIMIZED SOCIAL VIDEO STRATEGY FOR THE NEW YORK TIMES' FLAGSHIP PODCASTS INCLUDING THE DAILY, MODERN LOVE, THE INTERVIEW, AND POPCAST.</div>
+          </div>
+          <div class="portfolio-item">
+            <div class="pi-header"><span class="pi-title">THE VOLUME</span><span class="pi-years">2021 - 2025</span></div>
+            <div class="pi-desc"><strong style="color:#FFD700">SUPERVISING PRODUCER</strong><br><br><strong style="color:#DA020E">15M LIKES | 90% VIDEO VIEW INCREASE | 60% FOLLOWER INCREASE</strong><br><br>LED SOCIAL VIDEO PRODUCTION FOR THE VOLUME'S NETWORK OF 25M COMBINED FOLLOWERS ACROSS ALL PLATFORMS.</div>
+          </div>
+          <div class="portfolio-item">
+            <div class="pi-header"><span class="pi-title">ESPN</span><span class="pi-years">2015 - 2022</span></div>
+            <div class="pi-desc"><strong style="color:#FFD700">ASSOCIATE PRODUCER / EDITOR</strong><br><br><strong style="color:#DA020E">2B IMPRESSIONS | 2 SPORTS EMMY NOMINATIONS | YOUTUBE 9M SUBSCRIBERS</strong><br><br>7 YEARS OF PRODUCTION EXPERIENCE AT ESPN ACROSS MULTIPLE SHOWS AND PLATFORMS.</div>
+          </div>
+        </div>
+      </div>
+      <div class="win-statusbar">
+        <span class="status-section">3 ITEMS</span>
+        <span class="status-section">C:\KNOWPG\PORTFOLIO</span>
+      </div>
+    </div>
+
+    <div class="retro-window" id="win-contact" style="width:480px;height:520px;top:80px;left:220px">
+      <div class="win-titlebar" data-window="win-contact">
+        <svg class="win-icon" viewBox="0 0 16 16"><rect x="3" y="8" width="10" height="6" rx="1" fill="#333" stroke="#DA020E" stroke-width="0.8"/></svg>
+        <span class="win-title">REACH OUT</span>
+        <div class="win-controls">
+          <button class="win-btn" onclick="minimizeWindow('contact')">_</button>
+          <button class="win-btn" onclick="maximizeWindow('contact')">[]</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('contact')">x</button>
+        </div>
+      </div>
+      <div class="win-content">
+        <div class="content-heading">REACH OUT</div>
+        <img src="https://images.squarespace-cdn.com/content/v1/5cb495b90b77bd583a586e67/e7c4bfc4-04c5-4a6e-810b-5e81f0693e0a/PG_Cowboy+copy.jpg?format=300w" alt="Pat Gunther" class="profile-photo">
+        <div class="contact-info-box">EMAIL: PAT.R.GUNTHER@GMAIL.COM<br>PHONE: 347.260.2952</div>
+        <p style="font-size:12px;margin-bottom:12px;font-weight:900;color:#fff"><strong style="color:#FFD700">LET'S CONNECT!</strong> SEND ME A MESSAGE BELOW.</p>
+        <form class="retro-form" action="https://formspree.io/f/mgolwnel" method="POST">
+          <label>YOUR NAME:</label>
+          <input type="text" name="name" placeholder="ENTER YOUR NAME..." required>
+          <label>YOUR EMAIL:</label>
+          <input type="email" name="email" placeholder="YOU@EXAMPLE.COM" required>
+          <label>MESSAGE:</label>
+          <textarea name="message" placeholder="TYPE YOUR MESSAGE HERE..." required></textarea>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="retro-btn red" type="submit">SEND MESSAGE</button>
+            <button class="retro-btn" type="reset">CLEAR</button>
+          </div>
+        </form>
+      </div>
+      <div class="win-statusbar">
+        <span class="status-section">NEW MESSAGE</span>
+        <span class="status-section">CONNECTED</span>
+      </div>
+    </div>
+
+    <div class="retro-window" id="win-videos" style="width:450px;height:700px;top:30px;left:150px">
+      <div class="win-titlebar" data-window="win-videos">
+        <svg class="win-icon" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1" fill="#1a1a1a"/><path d="M6 7v6l5-3z" fill="#DA020E"/></svg>
+        <span class="win-title">VIDEOS - WORK EXAMPLES</span>
+        <div class="win-controls">
+          <button class="win-btn" onclick="minimizeWindow('videos')">_</button>
+          <button class="win-btn" onclick="maximizeWindow('videos')">[]</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('videos')">x</button>
+        </div>
+      </div>
+      <div class="win-content dark" style="padding:8px;position:relative" id="video-feed-container">
+        <div class="content-heading yellow" style="font-size:14px;margin-bottom:8px">VIDEO REEL - 53 VIDEOS</div>
+        <p style="font-size:9px;color:#888;margin-bottom:8px;text-align:center;text-transform:none">Swipe up for next video (mobile) | Scroll to browse</p>
+        <div id="video-feed" class="video-feed"></div>
+      </div>
+      <div class="win-statusbar">
+        <span class="status-section" id="video-count-status">53 VIDEOS</span>
+        <span class="status-section" id="current-video-status">SCROLL TO BROWSE</span>
+      </div>
+    </div>
+
+    <div class="retro-window" id="win-lets-work" style="width:400px;height:280px;top:120px;left:260px">
+      <div class="win-titlebar" data-window="win-lets-work">
+        <svg class="win-icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#DA020E"/><text x="8" y="11" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">!</text></svg>
+        <span class="win-title">LET'S WORK TOGETHER</span>
+        <div class="win-controls">
+          <button class="win-btn" onclick="minimizeWindow('lets-work')">_</button>
+          <button class="win-btn" onclick="maximizeWindow('lets-work')">[]</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('lets-work')">x</button>
+        </div>
+      </div>
+      <div class="win-content" style="text-align:center;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-size:18px;font-weight:900;color:#DA020E;margin-bottom:16px">INTERESTED IN WORKING TOGETHER?</div>
+        <div style="font-size:14px;margin-bottom:20px;font-weight:600">LET'S GET STARTED...</div>
+        <div class="contact-info-box" style="text-align:left;margin:0 auto;max-width:280px">EMAIL: PAT.R.GUNTHER@GMAIL.COM<br>PHONE: 347.260.2952</div>
+      </div>
+    </div>
+
+    <div class="retro-window" id="win-trash" style="width:400px;height:350px;top:100px;left:300px">
+      <div class="win-titlebar" data-window="win-trash">
+        <svg class="win-icon" viewBox="0 0 16 16"><path d="M3 4h10l-1 11H4L3 4z" fill="#808080"/><rect x="2" y="3" width="12" height="2" fill="#666"/><path d="M6 2h4v1H6z" fill="#666"/></svg>
+        <span class="win-title">TRASH BIN</span>
+        <div class="win-controls">
+          <button class="win-btn" onclick="minimizeWindow('trash')">_</button>
+          <button class="win-btn" onclick="maximizeWindow('trash')">[]</button>
+          <button class="win-btn win-btn-close" onclick="closeWindow('trash')">x</button>
+        </div>
+      </div>
+      <div class="win-content dark">
+        <div class="content-heading">TRASH BIN</div>
+        <p style="font-size:11px;color:#888;margin-bottom:12px;text-transform:none">Click an item to restore it</p>
+        <div class="trash-grid" id="trash-contents"></div>
+      </div>
+      <div class="win-statusbar">
+        <span class="status-section" id="trash-count-status">0 ITEMS</span>
+        <span class="status-section">RECYCLE BIN</span>
+      </div>
+    </div>
+
+    <div class="photo-popup" id="popup-photo-1" style="width:220px;top:60px;left:400px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-1">
+        <span class="win-title" style="font-size:10px">PHOTO_01.BMP</span>
+        <div class="win-controls"><button class="win-btn win-btn-close" onclick="closePopupToTrash('popup-photo-1')">x</button></div>
+      </div>
+      <div class="photo-content"><img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/fdc9c8fb-eff0-47d1-ba6d-ba39f8be100c/IMG_6167.PNG" alt="Photo 1"></div>
+    </div>
+
+    <div class="photo-popup" id="popup-photo-2" style="width:200px;top:100px;left:650px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-2">
+        <span class="win-title" style="font-size:10px">PHOTO_02.BMP</span>
+        <div class="win-controls"><button class="win-btn win-btn-close" onclick="closePopupToTrash('popup-photo-2')">x</button></div>
+      </div>
+      <div class="photo-content"><img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/385c19ee-63b7-4832-b847-7670859feb1c/IMG_6319.JPG" alt="Photo 2"></div>
+    </div>
+
+    <div class="photo-popup" id="popup-photo-3" style="width:180px;top:200px;left:500px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-3">
+        <span class="win-title" style="font-size:10px">PHOTO_03.BMP</span>
+        <div class="win-controls"><button class="win-btn win-btn-close" onclick="closePopupToTrash('popup-photo-3')">x</button></div>
+      </div>
+      <div class="photo-content"><img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/d765451d-64cd-4a0f-97ac-703c6d21f65f/IMG_0068.jpg" alt="Photo 3"></div>
+    </div>
+
+    <div class="photo-popup" id="popup-photo-4" style="width:200px;top:150px;left:750px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-4">
+        <span class="win-title" style="font-size:10px">PHOTO_04.BMP</span>
+        <div class="win-controls"><button class="win-btn win-btn-close" onclick="closePopupToTrash('popup-photo-4')">x</button></div>
+      </div>
+      <div class="photo-content"><img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/d315cfb5-d272-4c97-a926-ac76ea49f1dd/IMG_7198.jpg" alt="Photo 4"></div>
+    </div>
+
+    <div class="photo-popup" id="popup-photo-5" style="width:190px;top:250px;left:600px;display:none">
+      <div class="win-titlebar" data-popup="popup-photo-5">
+        <span class="win-title" style="font-size:10px">PHOTO_05.BMP</span>
+        <div class="win-controls"><button class="win-btn win-btn-close" onclick="closePopupToTrash('popup-photo-5')">x</button></div>
+      </div>
+      <div class="photo-content"><img src="https://images.squarespace-cdn.com/content/5cb495b90b77bd583a586e67/e78454c7-778d-4ada-84a0-1f7aff0e4e64/IMG_0395.JPG" alt="Photo 5"></div>
+    </div>
+
+    <div class="trash-bin" id="trash-bin-icon" ondblclick="openWindow('trash')">
+      <div class="trash-icon">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 18h40l-4 42H16L12 18z" fill="#808080" stroke="#333" stroke-width="2"/>
+          <rect x="8" y="14" width="48" height="6" rx="1" fill="#666" stroke="#333" stroke-width="1"/>
+          <path d="M24 10h16v4H24z" fill="#666" stroke="#333" stroke-width="1"/>
+          <line x1="22" y1="24" x2="24" y2="54" stroke="#555" stroke-width="2"/>
+          <line x1="32" y1="24" x2="32" y2="54" stroke="#555" stroke-width="2"/>
+          <line x1="42" y1="24" x2="40" y2="54" stroke="#555" stroke-width="2"/>
+        </svg>
+        <span class="trash-label">trash</span>
+      </div>
+      <span class="trash-count" id="trash-count">0</span>
+    </div>
+
+  </div>
+
+  <div class="marquee-bar">
+    <div class="marquee-content">
+      * BREAKING: KNOWPG AVAILABLE FOR NEW PROJECTS * NYT: 25M VIDEO VIEWS & COUNTING * THE VOLUME: 15M LIKES ACHIEVED * ESPN: 2B IMPRESSIONS | 2 SPORTS EMMY NOMINATIONS * 10+ YEARS EXPERIENCE IN SPORTS & ENTERTAINMENT * CONTACT: PAT.R.GUNTHER@GMAIL.COM * BREAKING: KNOWPG AVAILABLE FOR NEW PROJECTS *
+    </div>
+  </div>
+
+  <div id="taskbar">
+    <button id="start-btn" onclick="openWindow('lets-work')">
+      <span class="start-logo">|></span> Start
+    </button>
+    <div class="taskbar-divider"></div>
+    <div id="taskbar-windows"></div>
+    <div id="taskbar-tray">
+      <span id="tray-volume" onclick="toggleMusicPlayer()" title="Click to play music">VOL</span>
+      <span id="taskbar-clock"></span>
+    </div>
+  </div>
+
+  <div id="music-player-popup">
+    <div class="mp-titlebar">
+      <span class="mp-title">MUSIC PLAYER</span>
+      <button class="mp-close" onclick="toggleMusicPlayer()">x</button>
+    </div>
+    <div class="mp-content">
+      <iframe id="apple-music-embed" allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write" frameborder="0" height="175" style="width:100%;overflow:hidden;border-radius:10px" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/us/playlist/favorite-songs/pl.u-r0U97p4XR?theme=dark"></iframe>
+    </div>
+  </div>
+
+  <div id="start-menu">
+    <div class="start-menu-banner"><span>KNOWPG</span></div>
+    <div class="start-menu-items">
+      <div class="start-menu-item" onclick="openWindow('who-are-we');toggleStartMenu()"><span class="smi-icon">?</span> Who Are We?</div>
+      <div class="start-menu-item" onclick="openWindow('portfolio');toggleStartMenu()"><span class="smi-icon">*</span> Portfolio</div>
+      <div class="start-menu-item" onclick="openWindow('contact');toggleStartMenu()"><span class="smi-icon">#</span> Contact</div>
+      <div class="start-menu-item" onclick="openWindow('videos');toggleStartMenu()"><span class="smi-icon">|></span> Videos</div>
+      <div class="start-menu-sep"></div>
+      <div class="start-menu-item" onclick="openWindow('trash');toggleStartMenu()"><span class="smi-icon">[ ]</span> Trash Bin</div>
+      <div class="start-menu-sep"></div>
+      <div class="start-menu-item" onclick="closeAllWindows();toggleStartMenu()"><span class="smi-icon">X</span> Close All</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var bootEl = document.getElementById('boot-text');
+  var bootFill = document.getElementById('boot-bar-fill');
+  var bootScreen = document.getElementById('boot-screen');
+
+  var progress = 0;
+  var bootInterval = setInterval(function(){
+    progress += Math.random() * 15 + 5;
+    if(progress >= 100){
+      progress = 100;
+      bootFill.style.width = '100%';
+      clearInterval(bootInterval);
+      setTimeout(function(){ bootScreen.classList.add('hidden'); }, 400);
+      setTimeout(function(){ bootScreen.style.display='none'; }, 900);
+    } else {
+      bootFill.style.width = progress + '%';
+    }
+  }, 150);
+
+  function updateClock(){
+    var d=new Date();
+    var h=d.getHours(),m=d.getMinutes();
+    var ampm=h>=12?'PM':'AM';
+    h=h%12||12;
+    document.getElementById('taskbar-clock').textContent=h+':'+(m<10?'0':'')+m+' '+ampm;
+  }
+  updateClock();setInterval(updateClock,30000);
+
+  // Music Player
+  var musicPlayerOpen = false;
+  window.toggleMusicPlayer = function(){
+    var popup = document.getElementById('music-player-popup');
+    var volBtn = document.getElementById('tray-volume');
+    musicPlayerOpen = !musicPlayerOpen;
+    if(musicPlayerOpen){
+      popup.classList.add('visible');
+      volBtn.classList.add('playing');
+    } else {
+      popup.classList.remove('visible');
+      volBtn.classList.remove('playing');
+    }
+  };
+
+  // Trash bin functionality
+  var trashItems = [];
+
+  function updateTrashCount(){
+    var countEl = document.getElementById('trash-count');
+    var statusEl = document.getElementById('trash-count-status');
+    var binEl = document.getElementById('trash-bin-icon');
+    if(countEl) countEl.textContent = trashItems.length;
+    if(statusEl) statusEl.textContent = trashItems.length + ' ITEMS';
+    if(binEl){
+      if(trashItems.length > 0) binEl.classList.add('has-items');
+      else binEl.classList.remove('has-items');
+    }
+    renderTrashContents();
+  }
+
+  function renderTrashContents(){
+    var container = document.getElementById('trash-contents');
+    if(!container) return;
+    container.innerHTML = '';
+    trashItems.forEach(function(item, index){
+      var div = document.createElement('div');
+      div.className = 'trash-item';
+      if(item.type === 'window'){
+        div.innerHTML = '<svg width="60" height="60" viewBox="0 0 64 64"><rect x="4" y="12" width="56" height="44" fill="#1a1a1a" stroke="#DA020E" stroke-width="2"/><rect x="4" y="12" width="56" height="8" fill="#DA020E"/><text x="32" y="42" text-anchor="middle" fill="#FFD700" font-size="8">WINDOW</text></svg><span>'+item.name+'</span>';
+      } else {
+        div.innerHTML = '<img src="'+item.thumb+'" alt="'+item.name+'"><span>'+item.name+'</span>';
+      }
+      div.onclick = function(){ restoreFromTrash(index); };
+      container.appendChild(div);
+    });
+  }
+
+  function restoreFromTrash(index){
+    var item = trashItems[index];
+    if(item && item.id){
+      if(item.type === 'window' && item.windowName){
+        openWindow(item.windowName);
+      } else {
+        var el = document.getElementById(item.id);
+        if(el) el.style.display = 'flex';
+      }
+      trashItems.splice(index, 1);
+      updateTrashCount();
+    }
+  }
+
+  window.closePopupToTrash = function(id){
+    var popup = document.getElementById(id);
+    if(popup){
+      var img = popup.querySelector('img');
+      var title = popup.querySelector('.win-title');
+      trashItems.push({
+        id: id,
+        name: title ? title.textContent : 'Item',
+        thumb: img ? img.src : '',
+        type: 'photo'
+      });
+      popup.style.display = 'none';
+      updateTrashCount();
+    }
+  };
+
+  var openWindows = [];
+  var zCounter = 100;
+  var windowStates = {};
+
+  window.openWindow = function(name){
+    var win = document.getElementById('win-'+name);
+    if(!win)return;
+    win.classList.add('visible');
+    win.classList.remove('minimized');
+    win.classList.remove('maximized');
+    if(windowStates[name] && windowStates[name].maximized){
+      win.classList.add('maximized');
+    }
+    bringToFront(win);
+    if(openWindows.indexOf(name)===-1) openWindows.push(name);
+    updateTaskbar();
+
+    // Initialize videos when videos window opens
+    if(name === 'videos'){
+      setTimeout(initVideoFeed, 100);
+    }
+  };
+
+  window.closeWindow = function(name){
+    var win = document.getElementById('win-'+name);
+    if(win){
+      var titleEl = win.querySelector('.win-title');
+      var windowTitle = titleEl ? titleEl.textContent : name;
+      trashItems.push({
+        id: 'win-'+name,
+        name: windowTitle,
+        thumb: '',
+        type: 'window',
+        windowName: name
+      });
+      updateTrashCount();
+
+      win.classList.remove('visible');
+      win.classList.remove('maximized');
+      win.classList.remove('minimized');
+    }
+    delete windowStates[name];
+    openWindows = openWindows.filter(function(n){return n!==name});
+    updateTaskbar();
+  };
+
+  window.minimizeWindow = function(name){
+    var win=document.getElementById('win-'+name);
+    if(win){
+      win.classList.remove('visible');
+      win.classList.add('minimized');
+      if(!windowStates[name]) windowStates[name] = {};
+      windowStates[name].minimized = true;
+    }
+    updateTaskbar();
+  };
+
+  window.maximizeWindow = function(name){
+    var win=document.getElementById('win-'+name);
+    if(win){
+      win.classList.toggle('maximized');
+      if(!windowStates[name]) windowStates[name] = {};
+      windowStates[name].maximized = win.classList.contains('maximized');
+      bringToFront(win);
+    }
+  };
+
+  window.closeAllWindows = function(){
+    openWindows.slice().forEach(function(n){window.closeWindow(n)});
+  };
+
+  window.restoreWindow = function(name){
+    var win=document.getElementById('win-'+name);
+    if(win){
+      if(win.classList.contains('minimized')){
+        win.classList.remove('minimized');
+        win.classList.add('visible');
+        if(windowStates[name]) windowStates[name].minimized = false;
+      }
+      bringToFront(win);
+    }
+    updateTaskbar();
+  };
+
+  function bringToFront(win){
+    document.querySelectorAll('.retro-window').forEach(function(w){w.classList.remove('active')});
+    zCounter++;
+    win.style.zIndex=zCounter;
+    win.classList.add('active');
+  }
+
+  function updateTaskbar(){
+    var tb=document.getElementById('taskbar-windows');
+    tb.innerHTML='';
+    openWindows.forEach(function(name){
+      var win=document.getElementById('win-'+name);
+      var isVis=win&&win.classList.contains('visible');
+      var isMin=win&&win.classList.contains('minimized');
+      var btn=document.createElement('button');
+      btn.className='taskbar-item';
+      if(isVis && win.classList.contains('active')) btn.className += ' active';
+      if(isMin) btn.className += ' minimized';
+      btn.textContent=name.replace(/-/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase()});
+      btn.onclick=function(){
+        if(isMin){
+          restoreWindow(name);
+        } else if(win.classList.contains('visible')){
+          if(win.classList.contains('active')){
+            minimizeWindow(name);
+          } else {
+            bringToFront(win);
+            updateTaskbar();
+          }
+        } else {
+          win.classList.add('visible');
+          bringToFront(win);
+          updateTaskbar();
+        }
+      };
+      tb.appendChild(btn);
+    });
+  }
+
+  // Window dragging
+  var dragWin=null;
+  document.querySelectorAll('.win-titlebar').forEach(function(tb){
+    tb.addEventListener('mousedown',function(e){
+      if(e.target.closest('.win-controls'))return;
+      var winId=tb.getAttribute('data-window');
+      var win=document.getElementById(winId);
+      if(!win||win.classList.contains('maximized'))return;
+      bringToFront(win);
+      tb.classList.add('dragging');
+      var rect=win.getBoundingClientRect();
+      dragWin={el:win,offsetX:e.clientX-rect.left,offsetY:e.clientY-rect.top,titlebar:tb};
+      e.preventDefault();
+    });
+    tb.addEventListener('dblclick',function(e){
+      if(e.target.closest('.win-controls'))return;
+      var winId=tb.getAttribute('data-window');
+      var name=winId.replace('win-','');
+      maximizeWindow(name);
+    });
+  });
+
+  // Icon dragging
+  var dragIcon=null;
+  document.querySelectorAll('.desktop-icon').forEach(function(icon){
+    var clickTimer=null;
+    var clickCount=0;
+
+    icon.addEventListener('mousedown',function(e){
+      if(e.button!==0)return;
+      var rect=icon.getBoundingClientRect();
+      dragIcon={el:icon,offsetX:e.clientX-rect.left,offsetY:e.clientY-rect.top,startX:e.clientX,startY:e.clientY,moved:false};
+      icon.classList.add('dragging');
+      e.preventDefault();
+    });
+
+    icon.addEventListener('click',function(e){
+      if(dragIcon&&dragIcon.moved)return;
+      clickCount++;
+      if(clickCount===1){
+        clickTimer=setTimeout(function(){clickCount=0},300);
+      } else if(clickCount===2){
+        clearTimeout(clickTimer);
+        clickCount=0;
+        var target=icon.getAttribute('data-icon');
+        if(target)openWindow(target);
+      }
+    });
+  });
+
+  document.addEventListener('mousemove',function(e){
+    if(dragWin){
+      var x=e.clientX-dragWin.offsetX;
+      var y=e.clientY-dragWin.offsetY;
+      dragWin.el.style.left=Math.max(0,x)+'px';
+      dragWin.el.style.top=Math.max(0,y)+'px';
+    }
+    if(dragIcon){
+      var dx=e.clientX-dragIcon.startX;
+      var dy=e.clientY-dragIcon.startY;
+      if(Math.abs(dx)>5||Math.abs(dy)>5)dragIcon.moved=true;
+      if(dragIcon.moved){
+        var icon=dragIcon.el;
+        var parent=icon.parentElement;
+        var parentRect=parent.getBoundingClientRect();
+        var x=e.clientX-dragIcon.offsetX-parentRect.left;
+        var y=e.clientY-dragIcon.offsetY-parentRect.top;
+        icon.style.position='absolute';
+        icon.style.left=Math.max(0,x)+'px';
+        icon.style.top=Math.max(0,y)+'px';
+      }
+    }
+  });
+
+  document.addEventListener('mouseup',function(){
+    if(dragWin&&dragWin.titlebar)dragWin.titlebar.classList.remove('dragging');
+    dragWin=null;
+    if(dragIcon){
+      dragIcon.el.classList.remove('dragging');
+      dragIcon=null;
+    }
+  });
+
+  window.toggleStartMenu=function(){
+    var m=document.getElementById('start-menu');
+    var b=document.getElementById('start-btn');
+    m.classList.toggle('visible');
+    b.classList.toggle('active');
+  };
+
+  document.addEventListener('click',function(e){
+    var m=document.getElementById('start-menu');
+    var b=document.getElementById('start-btn');
+    if(m.classList.contains('visible') && !m.contains(e.target) && !b.contains(e.target)){
+      m.classList.remove('visible');
+      b.classList.remove('active');
+    }
+  });
+
+  document.querySelector('.desktop-bg').addEventListener('click',function(e){
+    if(e.target===this){
+      document.querySelectorAll('.retro-window').forEach(function(w){w.classList.remove('active')});
+    }
+  });
+
+  // Make popup photos draggable
+  var dragPopup = null;
+  document.querySelectorAll('.photo-popup .win-titlebar').forEach(function(tb){
+    tb.addEventListener('mousedown', function(e){
+      if(e.target.closest('.win-controls')) return;
+      var popup = tb.closest('.photo-popup');
+      var rect = popup.getBoundingClientRect();
+      dragPopup = {el: popup, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, titlebar: tb};
+      tb.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+  });
+
+  document.addEventListener('mousemove', function(e){
+    if(dragPopup){
+      var x = e.clientX - dragPopup.offsetX;
+      var y = e.clientY - dragPopup.offsetY;
+      dragPopup.el.style.left = Math.max(0, x) + 'px';
+      dragPopup.el.style.top = Math.max(0, y) + 'px';
+    }
+  });
+
+  document.addEventListener('mouseup', function(){
+    if(dragPopup){
+      dragPopup.titlebar.style.cursor = 'grab';
+      dragPopup = null;
+    }
+  });
+
+  // Show popup photos after boot
+  function showPopupPhotos(){
+    var popups = ['popup-photo-1', 'popup-photo-2', 'popup-photo-3', 'popup-photo-4', 'popup-photo-5'];
+    var delay = 0;
+    popups.forEach(function(id){
+      setTimeout(function(){
+        var popup = document.getElementById(id);
+        if(popup) popup.style.display = 'flex';
+      }, delay);
+      delay += 300;
+    });
+  }
+  setTimeout(showPopupPhotos, 1500);
+
+  // Nameplate functions
+  window.toggleNameplateSize = function(){
+    var np = document.getElementById('nameplate');
+    if(np) np.classList.toggle('expanded');
+  };
+
+  window.hideNameplate = function(){
+    var np = document.getElementById('nameplate');
+    if(np) np.classList.add('hidden');
+  };
+
+  // Make nameplate draggable
+  var dragNp = null;
+  var nameplate = document.getElementById('nameplate');
+  if(nameplate){
+    nameplate.querySelector('.np-titlebar').addEventListener('mousedown', function(e){
+      if(e.target.closest('.np-controls')) return;
+      var rect = nameplate.getBoundingClientRect();
+      dragNp = {el: nameplate, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top};
+      nameplate.classList.add('dragging');
+      e.preventDefault();
+    });
+  }
+
+  document.addEventListener('mousemove', function(e){
+    if(dragNp){
+      var x = e.clientX - dragNp.offsetX;
+      var y = e.clientY - dragNp.offsetY;
+      dragNp.el.style.left = Math.max(0, x) + 'px';
+      dragNp.el.style.top = Math.max(0, y) + 'px';
+      dragNp.el.style.right = 'auto';
+    }
+  });
+
+  document.addEventListener('mouseup', function(){
+    if(dragNp){
+      dragNp.el.classList.remove('dragging');
+      dragNp = null;
+    }
+  });
+
+  // ===== VIDEO FEED - ALL 53 VIDEOS =====
+  var allVideos = [
+    // TikTok Popcast
+    {url:'https://www.tiktok.com/@popcast/video/7595371297673153806', platform:'TikTok', id:'7595371297673153806', vertical:true},
+    {url:'https://www.tiktok.com/@popcast/video/7509999538720099627', platform:'TikTok', id:'7509999538720099627', vertical:true},
+    {url:'https://www.tiktok.com/@popcast/video/7566798172014644535', platform:'TikTok', id:'7566798172014644535', vertical:true},
+    {url:'https://www.tiktok.com/@popcast/video/7556328922527321399', platform:'TikTok', id:'7556328922527321399', vertical:true},
+    {url:'https://www.tiktok.com/@popcast/video/7539607145906490637', platform:'TikTok', id:'7539607145906490637', vertical:true},
+    {url:'https://www.tiktok.com/@popcast/video/7517071166184361271', platform:'TikTok', id:'7517071166184361271', vertical:true},
+    {url:'https://www.tiktok.com/@popcast/video/7569412039257378062', platform:'TikTok', id:'7569412039257378062', vertical:true},
+    {url:'https://www.tiktok.com/@popcast/video/7457297937832348974', platform:'TikTok', id:'7457297937832348974', vertical:true},
+    // TikTok NYTimes
+    {url:'https://www.tiktok.com/@nytimes/video/7526312764285963575', platform:'TikTok', id:'7526312764285963575', vertical:true},
+    {url:'https://www.tiktok.com/@nytimes/video/7603802624973966606', platform:'TikTok', id:'7603802624973966606', vertical:true},
+    {url:'https://www.tiktok.com/@nytimes/video/7602310976595152141', platform:'TikTok', id:'7602310976595152141', vertical:true},
+    {url:'https://www.tiktok.com/@nytimes/video/7601982956625874231', platform:'TikTok', id:'7601982956625874231', vertical:true},
+    {url:'https://www.tiktok.com/@nytimes/video/7457157589844086062', platform:'TikTok', id:'7457157589844086062', vertical:true},
+    // Instagram Reels
+    {url:'https://www.instagram.com/reel/DULtnbGD_pZ/', platform:'Instagram', id:'DULtnbGD_pZ', vertical:true},
+    {url:'https://www.instagram.com/reel/DSgGB79ARsW/', platform:'Instagram', id:'DSgGB79ARsW', vertical:true},
+    {url:'https://www.instagram.com/reel/DR-srWSjQsw/', platform:'Instagram', id:'DR-srWSjQsw', vertical:true},
+    {url:'https://www.instagram.com/reel/DRXxOw-CpXX/', platform:'Instagram', id:'DRXxOw-CpXX', vertical:true},
+    {url:'https://www.instagram.com/reel/DRFaAmniApw/', platform:'Instagram', id:'DRFaAmniApw', vertical:true},
+    {url:'https://www.instagram.com/reel/DQzo8eODzgX/', platform:'Instagram', id:'DQzo8eODzgX', vertical:true},
+    {url:'https://www.instagram.com/reel/DQotp7ejvJi/', platform:'Instagram', id:'DQotp7ejvJi', vertical:true},
+    {url:'https://www.instagram.com/reel/DQhvxl8Am5b/', platform:'Instagram', id:'DQhvxl8Am5b', vertical:true},
+    {url:'https://www.instagram.com/reel/DQhMFtwiOSe/', platform:'Instagram', id:'DQhMFtwiOSe', vertical:true},
+    {url:'https://www.instagram.com/reel/DP9SCauEpmq/', platform:'Instagram', id:'DP9SCauEpmq', vertical:true},
+    {url:'https://www.instagram.com/reel/DPhVcSYjJdO/', platform:'Instagram', id:'DPhVcSYjJdO', vertical:true},
+    {url:'https://www.instagram.com/reel/DPeBx8zlKyW/', platform:'Instagram', id:'DPeBx8zlKyW', vertical:true},
+    {url:'https://www.instagram.com/reel/DO7GxakDVoS/', platform:'Instagram', id:'DO7GxakDVoS', vertical:true},
+    {url:'https://www.instagram.com/reel/DO1Em5fDQfm/', platform:'Instagram', id:'DO1Em5fDQfm', vertical:true},
+    {url:'https://www.instagram.com/reel/DORtvy8kSSj/', platform:'Instagram', id:'DORtvy8kSSj', vertical:true},
+    {url:'https://www.instagram.com/reel/DOMgLULjLPm/', platform:'Instagram', id:'DOMgLULjLPm', vertical:true},
+    {url:'https://www.instagram.com/reel/DN3nYBb3NEP/', platform:'Instagram', id:'DN3nYBb3NEP', vertical:true},
+    {url:'https://www.instagram.com/reel/DNg_P9UyyOs/', platform:'Instagram', id:'DNg_P9UyyOs', vertical:true},
+    {url:'https://www.instagram.com/reel/DNbZhyfsEEn/', platform:'Instagram', id:'DNbZhyfsEEn', vertical:true},
+    {url:'https://www.instagram.com/reel/DM1PBHuMC1f/', platform:'Instagram', id:'DM1PBHuMC1f', vertical:true},
+    {url:'https://www.instagram.com/reel/DMD5R7fvkUR/', platform:'Instagram', id:'DMD5R7fvkUR', vertical:true},
+    {url:'https://www.instagram.com/reel/DK0JebUSW8O/', platform:'Instagram', id:'DK0JebUSW8O', vertical:true},
+    {url:'https://www.instagram.com/reel/DJe_Z6TPiOX/', platform:'Instagram', id:'DJe_Z6TPiOX', vertical:true},
+    {url:'https://www.instagram.com/reel/DHtmwSztYLR/', platform:'Instagram', id:'DHtmwSztYLR', vertical:true},
+    {url:'https://www.instagram.com/reel/DELTYi3ijup/', platform:'Instagram', id:'DELTYi3ijup', vertical:true},
+    {url:'https://www.instagram.com/reel/DCCreIVRWgJ/', platform:'Instagram', id:'DCCreIVRWgJ', vertical:true},
+    {url:'https://www.instagram.com/reel/DBfQ8DpP-vW/', platform:'Instagram', id:'DBfQ8DpP-vW', vertical:true},
+    {url:'https://www.instagram.com/reel/DOntY7CgN3T/', platform:'Instagram', id:'DOntY7CgN3T', vertical:true},
+    {url:'https://www.instagram.com/reel/DLLTEpyPfNm/', platform:'Instagram', id:'DLLTEpyPfNm', vertical:true},
+    {url:'https://www.instagram.com/reel/DKUnvfmPQ_N/', platform:'Instagram', id:'DKUnvfmPQ_N', vertical:true},
+    {url:'https://www.instagram.com/reel/DA_goxSpJ1h/', platform:'Instagram', id:'DA_goxSpJ1h', vertical:true},
+    // YouTube
+    {url:'https://www.youtube.com/watch?v=1GuFJLeUHRI', platform:'YouTube', id:'1GuFJLeUHRI', vertical:false},
+    {url:'https://www.youtube.com/watch?v=IEJ_f17VRoc', platform:'YouTube', id:'IEJ_f17VRoc', vertical:false},
+    {url:'https://www.youtube.com/watch?v=Ul0Ad0_SPT8', platform:'YouTube', id:'Ul0Ad0_SPT8', vertical:false},
+    {url:'https://www.youtube.com/watch?v=fN5rvIvjpnc', platform:'YouTube', id:'fN5rvIvjpnc', vertical:false},
+    {url:'https://www.youtube.com/watch?v=PIfYjKVkxw4', platform:'YouTube', id:'PIfYjKVkxw4', vertical:false},
+    {url:'https://www.youtube.com/shorts/l_SVlOy9Jx0', platform:'YouTube', id:'l_SVlOy9Jx0', vertical:true},
+    {url:'https://www.youtube.com/shorts/xRTHBRdlleA', platform:'YouTube', id:'xRTHBRdlleA', vertical:true}
+  ];
+
+  // Fisher-Yates shuffle
+  function shuffleArray(arr){
+    for(var i=arr.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var temp=arr[i];arr[i]=arr[j];arr[j]=temp;
+    }
+    return arr;
+  }
+
+  var videoFeedInitialized = false;
+
+  function initVideoFeed(){
+    var feed = document.getElementById('video-feed');
+    if(!feed) return;
+    if(videoFeedInitialized && feed.children.length > 0) return;
+    videoFeedInitialized = true;
+
+    var shuffled = shuffleArray(allVideos.slice());
+    var html = '';
+    var total = shuffled.length;
+
+    shuffled.forEach(function(video, index){
+      var embedHtml = '';
+      var videoClass = video.vertical ? 'vertical-video' : 'youtube-video';
+
+      if(video.platform === 'YouTube'){
+        embedHtml = '<iframe src="https://www.youtube.com/embed/'+video.id+'?rel=0&modestbranding=1&playsinline=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>';
+      } else if(video.platform === 'TikTok'){
+        embedHtml = '<blockquote class="tiktok-embed" cite="'+video.url+'" data-video-id="'+video.id+'" style="max-width:605px;min-width:325px;"><section><a target="_blank" href="'+video.url+'"></a></section></blockquote>';
+      } else if(video.platform === 'Instagram'){
+        embedHtml = '<blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="'+video.url+'" data-instgrm-version="14" style="max-width:540px;min-width:326px;width:100%;"><a href="'+video.url+'" target="_blank"></a></blockquote>';
+      }
+
+      html += '<div class="video-item '+videoClass+'" data-index="'+index+'">';
+      html += '<div class="video-embed">'+embedHtml+'</div>';
+      html += '<div class="video-info">';
+      html += '<div class="video-platform">'+video.platform+'</div>';
+      html += '<div class="video-number">VIDEO '+(index+1)+' OF '+total+'</div>';
+      html += '<a href="'+video.url+'" target="_blank" rel="noopener" class="video-link">WATCH ON '+video.platform.toUpperCase()+'</a>';
+      html += '</div></div>';
+    });
+
+    feed.innerHTML = html;
+
+    // Load embed scripts
+    setTimeout(function(){
+      // TikTok
+      if(!document.getElementById('tiktok-script')){
+        var tt = document.createElement('script');
+        tt.id = 'tiktok-script';
+        tt.src = 'https://www.tiktok.com/embed.js';
+        tt.async = true;
+        document.body.appendChild(tt);
+      }
+      // Instagram
+      if(!document.getElementById('instagram-script')){
+        var ig = document.createElement('script');
+        ig.id = 'instagram-script';
+        ig.src = '//www.instagram.com/embed.js';
+        ig.async = true;
+        ig.onload = function(){
+          if(window.instgrm) window.instgrm.Embeds.process();
+        };
+        document.body.appendChild(ig);
+      } else if(window.instgrm){
+        window.instgrm.Embeds.process();
+      }
+    }, 200);
+
+    document.getElementById('video-count-status').textContent = total + ' VIDEOS';
+  }
+
+  // Touch swipe for mobile
+  var videoFeed = document.getElementById('video-feed');
+  var touchStartY = 0;
+
+  if(videoFeed){
+    videoFeed.addEventListener('touchstart', function(e){
+      touchStartY = e.changedTouches[0].screenY;
+    }, {passive:true});
+
+    videoFeed.addEventListener('touchend', function(e){
+      var touchEndY = e.changedTouches[0].screenY;
+      var diff = touchStartY - touchEndY;
+      var items = videoFeed.querySelectorAll('.video-item');
+      if(items.length === 0) return;
+
+      var scrollTop = videoFeed.scrollTop;
+      var itemHeight = items[0].offsetHeight + 16;
+      var currentIndex = Math.round(scrollTop / itemHeight);
+
+      if(diff > 50){
+        var nextIndex = Math.min(currentIndex + 1, items.length - 1);
+        items[nextIndex].scrollIntoView({behavior:'smooth', block:'start'});
+      } else if(diff < -50){
+        var prevIndex = Math.max(currentIndex - 1, 0);
+        items[prevIndex].scrollIntoView({behavior:'smooth', block:'start'});
+      }
+    }, {passive:true});
+  }
+
+})();
+</script>
