@@ -1,0 +1,171 @@
+<!-- ============================================================
+     POPCAST — HEADER CODE INJECTION
+     Copy everything below and paste into:
+     Squarespace > Settings > Advanced > Code Injection > HEADER
+     ============================================================ -->
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Popcast" />
+<meta property="og:title" content="Popcast — Music & Pop Culture" />
+<meta property="og:description" content="Your go-to podcast for music news, pop culture takes, and trending moments. Watch on YouTube, TikTok, and Instagram." />
+<meta property="og:url" content="https://www.knowpg.com" />
+<!-- Replace the image URL below with your actual share image (1200x630 recommended) -->
+<meta property="og:image" content="https://www.knowpg.com/og-image.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+
+<!-- Twitter / X Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Popcast — Music & Pop Culture" />
+<meta name="twitter:description" content="Your go-to podcast for music news, pop culture takes, and trending moments." />
+<!-- Replace with your actual Twitter/X handle -->
+<meta name="twitter:site" content="@popcast" />
+<meta name="twitter:image" content="https://www.knowpg.com/og-image.jpg" />
+
+<!-- Structured Data: Podcast (Schema.org) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "PodcastSeries",
+  "name": "Popcast",
+  "description": "A music and pop culture podcast covering trending topics, hot takes, and the moments everyone is talking about.",
+  "url": "https://www.knowpg.com",
+  "webFeed": "https://www.knowpg.com/podcast?format=rss",
+  "author": {
+    "@type": "Organization",
+    "name": "Popcast",
+    "url": "https://www.knowpg.com",
+    "sameAs": [
+      "https://www.tiktok.com/@popcast",
+      "https://www.instagram.com/popcast",
+      "https://www.youtube.com/@popcast"
+    ]
+  }
+}
+</script>
+
+<!-- Structured Data: Website -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Popcast",
+  "url": "https://www.knowpg.com",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://www.knowpg.com/search?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
+<!-- Preconnect to speed up external resource loading -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+<!-- Custom Styles -->
+<style>
+  /* ── Popcast Brand Overrides ── */
+
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Social links — add hover glow effect */
+  .Header-social .sqs-svg-icon--wrapper:hover svg {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+    transition: filter 0.3s ease;
+  }
+
+  /* Announcement bar styling */
+  .sqs-announcement-bar-dropzone .sqs-announcement-bar {
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* Blog post cards — subtle lift on hover */
+  .Main--blog-list .blog-basic-grid .post {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .Main--blog-list .blog-basic-grid .post:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Video background overlay — improve text readability */
+  .sqs-video-background-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.3) 0%,
+      rgba(0, 0, 0, 0.5) 100%
+    );
+  }
+
+  /* Index section spacing refinement */
+  .Index-page .content-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* Mobile: tighter header on small screens */
+  @media screen and (max-width: 640px) {
+    .Header-inner--bottom {
+      padding-top: 16px;
+      padding-bottom: 16px;
+    }
+    .Header-branding-logo {
+      max-height: 48px;
+    }
+  }
+
+  /* Fade-in animation for page loads */
+  .Content-outer {
+    animation: popcastFadeIn 0.6s ease-out;
+  }
+  @keyframes popcastFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Podcast Episode Embed Styling ── */
+  .sqs-block-embed .embed-block-wrapper {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* ── Social Proof Bar (injected via footer JS) ── */
+  .popcast-social-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 999px;
+    margin: 32px auto;
+    max-width: fit-content;
+    flex-wrap: wrap;
+  }
+  .popcast-social-bar a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: inherit;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+  .popcast-social-bar a:hover {
+    opacity: 1;
+  }
+  .popcast-social-bar svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+  }
+</style>

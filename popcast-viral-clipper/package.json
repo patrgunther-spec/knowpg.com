@@ -1,0 +1,32 @@
+{
+  "name": "popcast-viral-clipper",
+  "version": "1.0.0",
+  "description": "AI-powered viral clip identifier for Popcast — detects high-potential short-form clips from podcast episodes. Adobe Premiere Pro extension.",
+  "main": "src/index.js",
+  "scripts": {
+    "analyze": "node src/cli.js analyze",
+    "score": "node src/cli.js score",
+    "build:cep": "node scripts/build-cep.js",
+    "build:pkg": "node scripts/build-pkg.js",
+    "dev": "node src/cli.js",
+    "test": "node --test src/__tests__/"
+  },
+  "keywords": ["podcast", "viral", "clipper", "premiere-pro", "tiktok", "reels", "shorts"],
+  "author": "Popcast",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "anthropic": "^1.0.0",
+    "commander": "^12.0.0",
+    "natural": "^7.0.0",
+    "sentiment": "^5.0.2",
+    "srt-parser-2": "^1.2.3",
+    "whisper-node": "^1.1.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
