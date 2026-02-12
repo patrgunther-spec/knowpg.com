@@ -1,0 +1,22 @@
+{
+  "name": "popcast-clip-extractor",
+  "version": "1.0.0",
+  "description": "CLI to extract highlight clips from podcast transcripts using Claude API and produce Premiere-ready JSON",
+  "main": "parse-transcript.js",
+  "bin": {
+    "extract-clips": "./parse-transcript.js"
+  },
+  "scripts": {
+    "extract": "node parse-transcript.js",
+    "validate": "node validate-clips.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "ajv": "^8.17.1",
+    "commander": "^12.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}

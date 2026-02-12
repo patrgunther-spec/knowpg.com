@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Clip Importer</title>
+  <style>
+    :root {
+      --bg: #1e1e1e;
+      --surface: #2d2d2d;
+      --border: #404040;
+      --text: #cccccc;
+      --text-muted: #888888;
+      --accent: #0d99ff;
+      --accent-hover: #38acff;
+      --success: #4caf50;
+      --warning: #ff9800;
+      --error: #f44336;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Adobe Clean", "Segoe UI", sans-serif;
+      font-size: 12px;
+      color: var(--text);
+      background: var(--bg);
+      padding: 12px;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #ffffff;
+    }
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    input[type="text"]:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    button {
+      display: inline-block;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      width: 100%;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      margin-right: 8px;
+    }
+    .btn-secondary:hover { background: var(--border); }
+    #status {
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      line-height: 1.5;
+      max-height: 200px;
+      overflow-y: auto;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      white-space: pre-wrap;
+      font-family: "Consolas", "Courier New", monospace;
+    }
+    .status-line { margin-bottom: 2px; }
+    .status-ok { color: var(--success); }
+    .status-warn { color: var(--warning); }
+    .status-err { color: var(--error); }
+    .clip-preview {
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .clip-preview:last-child { border-bottom: none; }
+    .clip-title { font-weight: 600; color: #ffffff; }
+    .clip-meta { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+  </style>
+</head>
+<body>
+  <h2>Clip Importer</h2>
+
+  <div class="section">
+    <label>Clips JSON file</label>
+    <div class="row">
+      <input type="text" id="jsonPath" placeholder="/path/to/clips.json" />
+      <button class="btn-secondary" id="browseBtn" style="flex:0 0 auto; width:auto;">Browse</button>
+    </div>
+
+    <label>Source video (in project bin)</label>
+    <input type="text" id="sourceVideo" placeholder="Leave blank to auto-detect first clip" />
+
+    <label>Export folder</label>
+    <input type="text" id="exportDir" placeholder="/path/to/exports/episode-name/" />
+
+    <div class="row">
+      <div>
+        <label>Episode slug</label>
+        <input type="text" id="episodeSlug" value="episode-01" />
+      </div>
+      <div>
+        <label>Transition (sec)</label>
+        <input type="text" id="transitionDur" value="0.5" />
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="previewSection" style="display:none;">
+    <label>Clip preview</label>
+    <div id="clipList"></div>
+  </div>
+
+  <button class="btn-primary" id="importBtn" disabled>Import Clips & Export</button>
+
+  <div id="status"></div>
+
+  <script src="index.js"></script>
+</body>
+</html>

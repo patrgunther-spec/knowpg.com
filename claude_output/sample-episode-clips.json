@@ -1,0 +1,62 @@
+[
+  {
+    "start": "00:00:15.800",
+    "end": "00:00:53.800",
+    "reason": "Origin story from pawn-shop beat machine to getting discovered at a gas station — surprise twist hooks immediately.",
+    "title": "From a $40 Beat Machine to the Studio",
+    "keywords": "origin,hustle,discovery,beat,pawn shop,A&R",
+    "aspect_ratio": "9:16",
+    "thumb_time": "00:00:39.500",
+    "confidence": 0.95
+  },
+  {
+    "start": "00:00:59.100",
+    "end": "00:01:25.300",
+    "reason": "Album flop and independent comeback with a viral SoundCloud hit — classic underdog arc with punchy punchline about keeping masters.",
+    "title": "They Dropped Me — So I Went Viral",
+    "keywords": "comeback,viral,SoundCloud,independent,masters,label",
+    "aspect_ratio": "9:16",
+    "thumb_time": "00:01:15.500",
+    "confidence": 0.93
+  },
+  {
+    "start": "00:01:38.200",
+    "end": "00:01:59.800",
+    "reason": "Raw vulnerability about feeling empty backstage at a sold-out show — powerful emotional moment rarely heard from artists.",
+    "title": "20,000 Fans Screaming and I Felt Nothing",
+    "keywords": "mental health,vulnerability,fame,therapy,anxiety",
+    "aspect_ratio": "9:16",
+    "thumb_time": "00:01:45.700",
+    "confidence": 0.91
+  },
+  {
+    "start": "00:02:03.100",
+    "end": "00:02:10.200",
+    "reason": "Quotable soundbite about mental health being strength, not weakness — highly shareable standalone moment.",
+    "title": "Not Being Okay Is Strength",
+    "keywords": "mental health,strength,quote,inspiration",
+    "aspect_ratio": "1:1",
+    "thumb_time": "00:02:06.400",
+    "confidence": 0.88
+  },
+  {
+    "start": "00:02:23.600",
+    "end": "00:02:36.100",
+    "reason": "Fun hater-appreciation moment with strong energy and memorable line about doubt being fuel — great short-form content.",
+    "title": "A Letter to My Haters",
+    "keywords": "haters,motivation,fuel,doubt,energy",
+    "aspect_ratio": "9:16",
+    "thumb_time": "00:02:28.300",
+    "confidence": 0.87
+  },
+  {
+    "start": "00:02:38.800",
+    "end": "00:02:48.900",
+    "reason": "Legacy play announcement — free studios for low-income kids. Inspiring and shareable feel-good closer.",
+    "title": "Free Studios for Every Kid",
+    "keywords": "foundation,legacy,kids,music,charity,community",
+    "aspect_ratio": "16:9",
+    "thumb_time": "00:02:42.200",
+    "confidence": 0.84
+  }
+]

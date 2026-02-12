@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClipSuggestions",
+  "description": "JSON schema for Claude-generated clip suggestions from podcast transcripts",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["start", "end", "reason", "title", "keywords", "aspect_ratio", "thumb_time", "confidence"],
+    "properties": {
+      "start": {
+        "type": "string",
+        "pattern": "^\\d{2}:\\d{2}:\\d{2}\\.\\d{3}$",
+        "description": "Clip start timecode in hh:mm:ss.ms format"
+      },
+      "end": {
+        "type": "string",
+        "pattern": "^\\d{2}:\\d{2}:\\d{2}\\.\\d{3}$",
+        "description": "Clip end timecode in hh:mm:ss.ms format"
+      },
+      "reason": {
+        "type": "string",
+        "minLength": 10,
+        "maxLength": 200,
+        "description": "1-2 sentence hook explanation of why this clip is viral-worthy"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 80,
+        "description": "Short headline for the clip"
+      },
+      "keywords": {
+        "type": "string",
+        "description": "Comma-separated list of keywords"
+      },
+      "aspect_ratio": {
+        "type": "string",
+        "enum": ["16:9", "9:16", "1:1"],
+        "description": "Suggested aspect ratio for the clip"
+      },
+      "thumb_time": {
+        "type": "string",
+        "pattern": "^\\d{2}:\\d{2}:\\d{2}\\.\\d{3}$",
+        "description": "Suggested thumbnail frame timecode"
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Confidence score for clip virality (0.0-1.0)"
+      }
+    },
+    "additionalProperties": false
+  },
+  "minItems": 1,
+  "maxItems": 6
+}
