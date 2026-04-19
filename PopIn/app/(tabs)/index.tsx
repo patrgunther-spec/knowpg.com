@@ -1,16 +1,18 @@
 import { useState, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, TextInput,
+  View, Text, TouchableOpacity, TextInput, Image,
   Modal, StyleSheet, Platform,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import { useRouter } from 'expo-router';
 import { useApp } from '../_layout';
 
 const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 const GREEN = '#00ff41';
 
 export default function PopInsTab() {
-  const { userName, userStatus, setUserStatus, userLocation } = useApp();
+  const { userName, userStatus, setUserStatus, userLocation, profile } = useApp();
+  const router = useRouter();
   const [showPopIn, setShowPopIn] = useState(false);
   const [statusInput, setStatusInput] = useState('');
   const mapRef = useRef<MapView>(null);
@@ -24,14 +26,25 @@ export default function PopInsTab() {
 
   return (
     <View style={s.page}>
-      <View style={s.header}>
-        <Text style={s.headerText}>{'> '}{userName.toUpperCase()}</Text>
-        {userStatus ? (
-          <Text style={s.headerStatus} numberOfLines={1}>{'> '}{userStatus}</Text>
-        ) : (
-          <Text style={s.headerOffline}>{'> NO STATUS SET'}</Text>
-        )}
-      </View>
+      <TouchableOpacity style={s.header} onPress={() => router.push('/profile')}>
+        <View style={s.headerLeft}>
+          {profile.avatar ? (
+            <Image source={{ uri: profile.avatar }} style={s.headerAvatar} />
+          ) : (
+            <View style={s.headerAvatarBox}>
+              <Text style={s.headerAvatarLetter}>{userName[0].toUpperCase()}</Text>
+            </View>
+          )}
+          <View>
+            <Text style={s.headerText}>{'> '}{userName.toUpperCase()}</Text>
+            {userStatus ? (
+              <Text style={s.headerStatus} numberOfLines={1}>{'> '}{userStatus}</Text>
+            ) : (
+              <Text style={s.headerOffline}>{'> NO STATUS SET'}</Text>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
 
       {userLocation ? (
         <MapView
@@ -48,9 +61,13 @@ export default function PopInsTab() {
         >
           <Marker coordinate={{ latitude: userLocation.lat, longitude: userLocation.lng }}>
             <View style={s.marker}>
-              <View style={s.markerDot}>
-                <Text style={s.markerLetter}>{userName[0].toUpperCase()}</Text>
-              </View>
+              {profile.avatar ? (
+                <Image source={{ uri: profile.avatar }} style={s.markerDot} />
+              ) : (
+                <View style={s.markerDot}>
+                  <Text style={s.markerLetter}>{userName[0].toUpperCase()}</Text>
+                </View>
+              )}
               {userStatus ? (
                 <View style={s.markerTag}>
                   <Text style={s.markerTagText} numberOfLines={2}>{userStatus}</Text>
@@ -116,6 +133,13 @@ const s = StyleSheet.create({
     paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12,
     backgroundColor: '#0a0a0a', borderBottomWidth: 1, borderBottomColor: '#003300',
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerAvatar: { width: 32, height: 32, borderWidth: 1, borderColor: GREEN },
+  headerAvatarBox: {
+    width: 32, height: 32, borderWidth: 1, borderColor: GREEN,
+    backgroundColor: '#000', justifyContent: 'center', alignItems: 'center',
+  },
+  headerAvatarLetter: { fontFamily: FONT, color: GREEN, fontSize: 16, fontWeight: 'bold' },
   headerText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
   headerStatus: { fontFamily: FONT, color: GREEN, fontSize: 12, marginTop: 4, opacity: 0.7 },
   headerOffline: { fontFamily: FONT, color: '#006620', fontSize: 12, marginTop: 4 },

@@ -11,14 +11,23 @@ const BG = '#0a0a0a';
 type UserLocation = { lat: number; lng: number } | null;
 type Msg = { sender: string; text: string; time: number };
 
+type Profile = {
+  avatar: string;
+  website: string;
+  homeLocation: string;
+};
+
 type Ctx = {
   userName: string;
+  setUserName: (n: string) => void;
   friendCode: string;
   userStatus: string;
   setUserStatus: (s: string) => void;
   userLocation: UserLocation;
   messages: Record<string, Msg[]>;
   addMessage: (convId: string, text: string) => void;
+  profile: Profile;
+  updateProfile: (p: Partial<Profile>) => void;
 };
 
 const AppContext = createContext<Ctx>({} as Ctx);
@@ -32,12 +41,21 @@ export default function RootLayout() {
   const [userStatus, setUserStatus] = useState('');
   const [userLocation, setUserLocation] = useState<UserLocation>(null);
   const [messages, setMessages] = useState<Record<string, Msg[]>>({});
+  const [profile, setProfile] = useState<Profile>({ avatar: '', website: '', homeLocation: '' });
 
   useEffect(() => {
-    AsyncStorage.getItem('userName').then((n) => {
+    Promise.all([
+      AsyncStorage.getItem('userName'),
+      AsyncStorage.getItem('friendCode'),
+      AsyncStorage.getItem('profile'),
+    ]).then(([n, fc, p]) => {
       if (n) {
         setName(n);
-        setCode(makeCode());
+        setCode(fc || makeCode());
+        if (!fc) AsyncStorage.setItem('friendCode', code);
+      }
+      if (p) {
+        try { setProfile(JSON.parse(p)); } catch {}
       }
       setLoading(false);
     });
@@ -63,8 +81,23 @@ export default function RootLayout() {
     const n = nameInput.trim();
     if (!n) return;
     AsyncStorage.setItem('userName', n);
+    const c = makeCode();
+    AsyncStorage.setItem('friendCode', c);
     setName(n);
-    setCode(makeCode());
+    setCode(c);
+  }
+
+  function setUserName(n: string) {
+    setName(n);
+    AsyncStorage.setItem('userName', n);
+  }
+
+  function updateProfile(p: Partial<Profile>) {
+    setProfile((prev) => {
+      const next = { ...prev, ...p };
+      AsyncStorage.setItem('profile', JSON.stringify(next));
+      return next;
+    });
   }
 
   function addMessage(convId: string, text: string) {
@@ -106,7 +139,7 @@ export default function RootLayout() {
 
   return (
     <AppContext.Provider
-      value={{ userName: name, friendCode: code, userStatus, setUserStatus, userLocation, messages, addMessage }}
+      value={{ userName: name, setUserName, friendCode: code, userStatus, setUserStatus, userLocation, messages, addMessage, profile, updateProfile }}
     >
       <Slot />
     </AppContext.Provider>
