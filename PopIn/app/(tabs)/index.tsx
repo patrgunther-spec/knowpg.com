@@ -37,6 +37,7 @@ export default function PopInsTab() {
         <MapView
           ref={mapRef}
           style={s.map}
+          mapType="mutedStandard"
           initialRegion={{
             latitude: userLocation.lat,
             longitude: userLocation.lng,
@@ -123,8 +124,8 @@ const s = StyleSheet.create({
   mapLoadingText: { fontFamily: FONT, color: GREEN, fontSize: 16 },
   marker: { alignItems: 'center' },
   markerDot: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#000', borderWidth: 2, borderColor: GREEN,
+    width: 36, height: 36,
+    backgroundColor: '#000', borderWidth: 1, borderColor: GREEN,
     justifyContent: 'center', alignItems: 'center',
   },
   markerLetter: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },

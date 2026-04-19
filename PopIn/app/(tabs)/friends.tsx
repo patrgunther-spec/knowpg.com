@@ -8,7 +8,7 @@ export default function FriendsTab() {
   const { friendCode } = useApp();
 
   function shareCode() {
-    Share.share({ message: `Add me on Pop In! My code is ${friendCode}` });
+    Share.share({ message: `pop in. my code: ${friendCode}` });
   }
 
   return (
@@ -26,14 +26,10 @@ export default function FriendsTab() {
       </View>
 
       <View style={s.info}>
-        <Text style={s.infoTitle}>{'> COMING SOON'}</Text>
         <Text style={s.infoText}>
-          {'> Add friends with their 6-letter code'}{'\n'}
-          {'> See their location on the map'}{'\n'}
-          {'> Get notified when they pop in'}{'\n'}
-          {'> Chat with them in real time'}{'\n\n'}
-          {'> Share your code now.'}{'\n'}
-          {'> They\'ll be ready when we go live.'}
+          {'> share your code'}{'\n'}
+          {'> they pop in too'}{'\n'}
+          {'> see each other on the map'}
         </Text>
       </View>
     </View>
