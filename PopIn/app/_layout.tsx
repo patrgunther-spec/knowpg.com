@@ -17,6 +17,16 @@ type Profile = {
   homeLocation: string;
 };
 
+export type Plan = {
+  id: string;
+  creator: string;
+  title: string;
+  date: string;
+  time: string;
+  note: string;
+  createdAt: number;
+};
+
 type Ctx = {
   userName: string;
   setUserName: (n: string) => void;
@@ -28,6 +38,9 @@ type Ctx = {
   addMessage: (convId: string, text: string) => void;
   profile: Profile;
   updateProfile: (p: Partial<Profile>) => void;
+  plans: Plan[];
+  addPlan: (p: Omit<Plan, 'id' | 'creator' | 'createdAt'>) => void;
+  deletePlan: (id: string) => void;
 };
 
 const AppContext = createContext<Ctx>({} as Ctx);
@@ -42,13 +55,15 @@ export default function RootLayout() {
   const [userLocation, setUserLocation] = useState<UserLocation>(null);
   const [messages, setMessages] = useState<Record<string, Msg[]>>({});
   const [profile, setProfile] = useState<Profile>({ avatar: '', website: '', homeLocation: '' });
+  const [plans, setPlans] = useState<Plan[]>([]);
 
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem('userName'),
       AsyncStorage.getItem('friendCode'),
       AsyncStorage.getItem('profile'),
-    ]).then(([n, fc, p]) => {
+      AsyncStorage.getItem('plans'),
+    ]).then(([n, fc, p, pl]) => {
       if (n) {
         setName(n);
         setCode(fc || makeCode());
@@ -56,6 +71,9 @@ export default function RootLayout() {
       }
       if (p) {
         try { setProfile(JSON.parse(p)); } catch {}
+      }
+      if (pl) {
+        try { setPlans(JSON.parse(pl)); } catch {}
       }
       setLoading(false);
     });
@@ -107,6 +125,25 @@ export default function RootLayout() {
     }));
   }
 
+  function addPlan(p: Omit<Plan, 'id' | 'creator' | 'createdAt'>) {
+    setPlans((prev) => {
+      const next = [
+        ...prev,
+        { ...p, id: String(Date.now()), creator: name!, createdAt: Date.now() },
+      ];
+      AsyncStorage.setItem('plans', JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function deletePlan(id: string) {
+    setPlans((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      AsyncStorage.setItem('plans', JSON.stringify(next));
+      return next;
+    });
+  }
+
   if (loading) {
     return (
       <View style={s.center}>
@@ -139,7 +176,7 @@ export default function RootLayout() {
 
   return (
     <AppContext.Provider
-      value={{ userName: name, setUserName, friendCode: code, userStatus, setUserStatus, userLocation, messages, addMessage, profile, updateProfile }}
+      value={{ userName: name, setUserName, friendCode: code, userStatus, setUserStatus, userLocation, messages, addMessage, profile, updateProfile, plans, addPlan, deletePlan }}
     >
       <Slot />
     </AppContext.Provider>
