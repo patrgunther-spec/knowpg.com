@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Pop In",
+    "slug": "popin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "popin",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.popin.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Pop In uses your location to show friends where you are when you send a pop."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Pop In uses your location to show friends where you are when you send a pop."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
