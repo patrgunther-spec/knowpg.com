@@ -1,59 +1,103 @@
-# Pop In — Run on Your iPhone
+# Pop In — Beta Setup
 
-**No QR codes. No Chrome. Just sign in once, tap the project.**
-
----
-
-## One-time setup
-
-### 1. Install Node.js on Mac
-Go to **nodejs.org** → click the big green Download button → open the file → click Continue/Install → restart Mac.
-
-### 2. Make a free Expo account
-Go to **expo.dev/signup** → sign up with email (takes 30 seconds). Remember your **username** and **password**.
-
-### 3. Install Expo Go on iPhone
-Open the App Store → search **Expo Go** → install (free). Open it and **sign in with your Expo account** (same one from step 2).
-
-### 4. Download the app code
-Go to **github.com/patrgunther-spec/knowpg.com** → click the branch dropdown → select **claude/location-friend-notifications-i0uaD** → green **Code** button → **Download ZIP** → unzip it → drag the inner **PopIn** folder to your **Downloads**.
+**You're going online. This takes ~10 minutes. All copy/paste. No coding.**
 
 ---
 
-## Every time you want to run the app
+## Step 1 — Create Supabase backend (5 min, one time)
 
-1. Open **Terminal** (Command+Space → type "Terminal" → Enter).
-2. Paste this whole line and hit Enter:
+Supabase is a free hosted database. This powers the chat, map, and bulletin.
+
+1. Go to **supabase.com** → click **Start your project** → sign up with GitHub or email.
+2. Click **New Project**. Fill in:
+   - **Name:** `popin`
+   - **Database password:** make one up, save it somewhere
+   - **Region:** pick the one closest to you
+3. Click **Create Project**. Wait ~2 minutes while it provisions.
+4. When it's ready, in the left sidebar click **SQL Editor** → **New query**.
+5. Open the file `supabase/schema.sql` from your PopIn folder (or from GitHub).
+6. **Copy ALL of it, paste it into the SQL Editor, click RUN** (bottom right).
+7. You should see "Success. No rows returned." Done with the database.
+
+---
+
+## Step 2 — Get your backend keys (1 min)
+
+1. In Supabase, click the **gear icon** (Settings) in the left sidebar → **API**.
+2. You'll see two things you need:
+   - **Project URL** — looks like `https://abcdefgh.supabase.co`
+   - **anon public key** — a long string starting with `eyJ...`
+3. Keep this page open.
+
+---
+
+## Step 3 — Connect the app to your backend (1 min)
+
+1. In **Terminal**, run this to create your .env file:
 
 ```
-cd ~/Downloads/PopIn/PopIn && ulimit -n 65536 && npm install && npx expo login && npm start
+cd ~/Downloads/PopIn/PopIn && cp .env.example .env && open -e .env
 ```
 
-3. The first time, it asks for your **Expo username** and **password** (from step 2 above). Type them in. (Next time it won't ask.)
-4. Wait until you see "Metro waiting on..." in Terminal.
-5. On your iPhone, open **Expo Go**.
-6. You'll see **"Pop In"** listed under **"Development servers"** on the home screen. **Tap it.**
-7. The app loads. Done.
+2. TextEdit opens. Replace the placeholder lines with your real values from Step 2:
+
+```
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR-REAL-URL.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...YOUR-REAL-KEY...
+```
+
+3. Save the file (Command+S), close TextEdit.
 
 ---
 
-## Using Pop In
+## Step 4 — Run the app
 
-- **First time:** Type your name → tap "Let's Go"
-- **Send a pop:** Tap the big blue 📡 Pop In button → type where you're going → Send
-- **View your pop:** Tap it in the feed to see a map + chat
-- **Friends tab:** Shows your unique friend code
+Every time you want to start the app:
+
+1. Open **Terminal**.
+2. Paste this:
+
+```
+cd ~/Downloads/PopIn/PopIn && ulimit -n 65536 && npm install && npx expo start --go --lan --clear
+```
+
+3. Wait ~2 min first time, then ~30 sec thereafter. QR code appears.
+4. On your iPhone, open **Expo Go** → your project **Pop In** appears on the home screen → tap it.
+
+---
+
+## What you can do in beta
+
+- **Share your 6-character friend code** with your friends (from the Friends tab).
+- **Your friends install the app** using this same setup (steps 3-4 only — they use YOUR Supabase URL and key so you're all on the same database).
+- **Add each other** by code.
+- **See each other live on the map** with status messages.
+- **Chat** in the Inbox.
+- **Post plans to the Bulletin** — everyone with the app sees them.
+
+---
+
+## To share with a friend
+
+Send them:
+1. The **SETUP.md** instructions (they skip Step 1 & 2 — just use your existing backend).
+2. Your **`.env` file contents** (the two EXPO_PUBLIC lines).
+3. The GitHub URL for the code (same branch: `claude/location-friend-notifications-i0uaD`).
+
+They follow Step 3 (paste your keys) and Step 4 (run the app). They make their own handle + friend code, then you add each other.
 
 ---
 
 ## Troubleshooting
 
+**"BACKEND NOT CONFIGURED" on app open** → Your `.env` file isn't being read. Make sure it's in `~/Downloads/PopIn/PopIn/` (not a parent folder) and the two lines start with exactly `EXPO_PUBLIC_`.
+
+**Map doesn't show friends** → Friend needs to have opened the app, granted location permission, and set a status at least once.
+
+**Chat doesn't work** → Make sure both you and the friend added each other (it's two-way).
+
 **"command not found: npm"** → Restart your Mac after installing Node.js.
 
-**Project doesn't show up in Expo Go** → Make sure your iPhone and Mac are on the **same Wi-Fi**. Turn off VPN. Make sure you're signed in with the **same Expo account** in Terminal and on Expo Go.
+**"too many open files"** → Already handled by `ulimit -n 65536` in the command above.
 
-**Terminal asks for login every time** → That's fine, just type your username + password. (It should remember after the first time.)
-
-**App shows an error screen** → In Terminal press Ctrl+C to stop, then paste the command again.
-
-**Still broken?** Close Terminal completely, open a fresh window, paste the command again.
+**Stuck?** Ctrl+C in Terminal, close it, open a new Terminal, paste the Step 4 command again.

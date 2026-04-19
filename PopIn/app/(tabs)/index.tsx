@@ -1,44 +1,78 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, Image,
   Modal, StyleSheet, Platform,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useRouter } from 'expo-router';
-import { useApp } from '../_layout';
+import { useApp, Profile } from '../_layout';
 
 const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 const GREEN = '#00ff41';
+const DIM = '#006620';
+
+function UserMarker({ p, self }: { p: Profile; self?: boolean }) {
+  return (
+    <View style={s.marker}>
+      {p.avatar ? (
+        <Image source={{ uri: p.avatar }} style={[s.markerDot, self && s.markerSelf]} />
+      ) : (
+        <View style={[s.markerDot, self && s.markerSelf]}>
+          <Text style={s.markerLetter}>{(p.name[0] || '?').toUpperCase()}</Text>
+        </View>
+      )}
+      {p.status ? (
+        <View style={s.markerTag}>
+          <Text style={s.markerTagText} numberOfLines={2}>{p.status}</Text>
+        </View>
+      ) : null}
+      <Text style={s.markerName} numberOfLines={1}>{p.name}</Text>
+    </View>
+  );
+}
 
 export default function PopInsTab() {
-  const { userName, userStatus, setUserStatus, userLocation, profile } = useApp();
+  const { me, friends, updateMe } = useApp();
   const router = useRouter();
   const [showPopIn, setShowPopIn] = useState(false);
   const [statusInput, setStatusInput] = useState('');
   const mapRef = useRef<MapView>(null);
 
+  const region = useMemo(() => {
+    if (!me.lat || !me.lng) return null;
+    return {
+      latitude: me.lat,
+      longitude: me.lng,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    };
+  }, [me.lat, me.lng]);
+
   function submitPopIn() {
-    if (!statusInput.trim()) return;
-    setUserStatus(statusInput.trim());
+    const v = statusInput.trim();
+    if (!v) return;
+    updateMe({ status: v });
     setStatusInput('');
     setShowPopIn(false);
   }
+
+  const friendsOnMap = friends.filter((f) => f.lat != null && f.lng != null);
 
   return (
     <View style={s.page}>
       <TouchableOpacity style={s.header} onPress={() => router.push('/profile')}>
         <View style={s.headerLeft}>
-          {profile.avatar ? (
-            <Image source={{ uri: profile.avatar }} style={s.headerAvatar} />
+          {me.avatar ? (
+            <Image source={{ uri: me.avatar }} style={s.headerAvatar} />
           ) : (
             <View style={s.headerAvatarBox}>
-              <Text style={s.headerAvatarLetter}>{userName[0].toUpperCase()}</Text>
+              <Text style={s.headerAvatarLetter}>{(me.name[0] || '?').toUpperCase()}</Text>
             </View>
           )}
-          <View>
-            <Text style={s.headerText}>{'> '}{userName.toUpperCase()}</Text>
-            {userStatus ? (
-              <Text style={s.headerStatus} numberOfLines={1}>{'> '}{userStatus}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.headerText}>{'> '}{me.name.toUpperCase()}</Text>
+            {me.status ? (
+              <Text style={s.headerStatus} numberOfLines={1}>{'> '}{me.status}</Text>
             ) : (
               <Text style={s.headerOffline}>{'> NO STATUS SET'}</Text>
             )}
@@ -46,35 +80,24 @@ export default function PopInsTab() {
         </View>
       </TouchableOpacity>
 
-      {userLocation ? (
+      {region ? (
         <MapView
           ref={mapRef}
           style={s.map}
           mapType="mutedStandard"
-          initialRegion={{
-            latitude: userLocation.lat,
-            longitude: userLocation.lng,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
+          initialRegion={region}
           showsUserLocation={false}
         >
-          <Marker coordinate={{ latitude: userLocation.lat, longitude: userLocation.lng }}>
-            <View style={s.marker}>
-              {profile.avatar ? (
-                <Image source={{ uri: profile.avatar }} style={s.markerDot} />
-              ) : (
-                <View style={s.markerDot}>
-                  <Text style={s.markerLetter}>{userName[0].toUpperCase()}</Text>
-                </View>
-              )}
-              {userStatus ? (
-                <View style={s.markerTag}>
-                  <Text style={s.markerTagText} numberOfLines={2}>{userStatus}</Text>
-                </View>
-              ) : null}
-            </View>
-          </Marker>
+          {me.lat != null && me.lng != null && (
+            <Marker coordinate={{ latitude: me.lat, longitude: me.lng }}>
+              <UserMarker p={me} self />
+            </Marker>
+          )}
+          {friendsOnMap.map((f) => (
+            <Marker key={f.id} coordinate={{ latitude: f.lat!, longitude: f.lng! }}>
+              <UserMarker p={f} />
+            </Marker>
+          ))}
         </MapView>
       ) : (
         <View style={s.mapLoading}>
@@ -83,15 +106,15 @@ export default function PopInsTab() {
       )}
 
       <View style={s.bottom}>
-        {userStatus ? (
+        {me.status ? (
           <View>
             <Text style={s.activeLabel}>{'> BROADCASTING:'}</Text>
-            <Text style={s.activeText}>{userStatus}</Text>
+            <Text style={s.activeText}>{me.status}</Text>
             <View style={s.bottomBtns}>
-              <TouchableOpacity style={s.popBtn} onPress={() => { setStatusInput(userStatus); setShowPopIn(true); }}>
+              <TouchableOpacity style={s.popBtn} onPress={() => { setStatusInput(me.status); setShowPopIn(true); }}>
                 <Text style={s.popBtnText}>{'> UPDATE'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.endBtn} onPress={() => setUserStatus('')}>
+              <TouchableOpacity style={s.endBtn} onPress={() => updateMe({ status: '' })}>
                 <Text style={s.endBtnText}>{'> END'}</Text>
               </TouchableOpacity>
             </View>
@@ -109,7 +132,7 @@ export default function PopInsTab() {
           <TextInput
             style={s.modalInput}
             placeholder="Going for a run in Prospect Park..."
-            placeholderTextColor="#006620"
+            placeholderTextColor={DIM}
             value={statusInput}
             onChangeText={setStatusInput}
             autoFocus
@@ -142,27 +165,29 @@ const s = StyleSheet.create({
   headerAvatarLetter: { fontFamily: FONT, color: GREEN, fontSize: 16, fontWeight: 'bold' },
   headerText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
   headerStatus: { fontFamily: FONT, color: GREEN, fontSize: 12, marginTop: 4, opacity: 0.7 },
-  headerOffline: { fontFamily: FONT, color: '#006620', fontSize: 12, marginTop: 4 },
+  headerOffline: { fontFamily: FONT, color: DIM, fontSize: 12, marginTop: 4 },
   map: { flex: 1 },
   mapLoading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' },
   mapLoadingText: { fontFamily: FONT, color: GREEN, fontSize: 16 },
-  marker: { alignItems: 'center' },
+  marker: { alignItems: 'center', maxWidth: 180 },
   markerDot: {
     width: 36, height: 36,
     backgroundColor: '#000', borderWidth: 1, borderColor: GREEN,
     justifyContent: 'center', alignItems: 'center',
   },
+  markerSelf: { borderColor: '#fff', borderWidth: 2 },
   markerLetter: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
   markerTag: {
     marginTop: 4, backgroundColor: '#000', borderWidth: 1, borderColor: GREEN,
     paddingHorizontal: 8, paddingVertical: 4, maxWidth: 160,
   },
   markerTagText: { fontFamily: FONT, color: GREEN, fontSize: 10 },
+  markerName: { fontFamily: FONT, color: GREEN, fontSize: 10, marginTop: 2, fontWeight: 'bold' },
   bottom: {
     padding: 16, paddingBottom: 34, backgroundColor: '#0a0a0a',
     borderTopWidth: 1, borderTopColor: '#003300',
   },
-  activeLabel: { fontFamily: FONT, color: '#006620', fontSize: 11, marginBottom: 4 },
+  activeLabel: { fontFamily: FONT, color: DIM, fontSize: 11, marginBottom: 4 },
   activeText: { fontFamily: FONT, color: GREEN, fontSize: 14, marginBottom: 12 },
   bottomBtns: { flexDirection: 'row', gap: 12 },
   popBtn: {
@@ -189,5 +214,5 @@ const s = StyleSheet.create({
   modalBtn: { borderWidth: 1, borderColor: GREEN, padding: 18, alignItems: 'center', marginBottom: 12 },
   modalBtnText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
   modalCancel: { padding: 18, alignItems: 'center' },
-  modalCancelText: { fontFamily: FONT, color: '#006620', fontSize: 16 },
+  modalCancelText: { fontFamily: FONT, color: DIM, fontSize: 16 },
 });

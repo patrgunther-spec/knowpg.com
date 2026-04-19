@@ -1,162 +1,188 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import { Slot } from 'expo-router';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import type { Session } from '@supabase/supabase-js';
+import { supabase, SUPABASE_CONFIGURED } from '../lib/supabase';
 
 const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 const GREEN = '#00ff41';
+const RED = '#ff3333';
 const BG = '#0a0a0a';
 
-type UserLocation = { lat: number; lng: number } | null;
-type Msg = { sender: string; text: string; time: number };
-
-type Profile = {
+export type Profile = {
+  id: string;
+  name: string;
+  friend_code: string;
   avatar: string;
   website: string;
-  homeLocation: string;
+  home_location: string;
+  status: string;
+  lat: number | null;
+  lng: number | null;
 };
 
 export type Plan = {
   id: string;
-  creator: string;
+  creator_id: string;
   title: string;
   date: string;
   time: string;
   note: string;
-  createdAt: number;
+  created_at: string;
+};
+
+export type Message = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  text: string;
+  created_at: string;
 };
 
 type Ctx = {
-  userName: string;
-  setUserName: (n: string) => void;
-  friendCode: string;
-  userStatus: string;
-  setUserStatus: (s: string) => void;
-  userLocation: UserLocation;
-  messages: Record<string, Msg[]>;
-  addMessage: (convId: string, text: string) => void;
-  profile: Profile;
-  updateProfile: (p: Partial<Profile>) => void;
-  plans: Plan[];
-  addPlan: (p: Omit<Plan, 'id' | 'creator' | 'createdAt'>) => void;
-  deletePlan: (id: string) => void;
+  me: Profile;
+  friends: Profile[];
+  updateMe: (patch: Partial<Profile>) => Promise<void>;
+  refreshFriends: () => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const AppContext = createContext<Ctx>({} as Ctx);
 export const useApp = () => useContext(AppContext);
 
 export default function RootLayout() {
-  const [name, setName] = useState<string | null>(null);
-  const [nameInput, setInput] = useState('');
   const [loading, setLoading] = useState(true);
-  const [code, setCode] = useState('');
-  const [userStatus, setUserStatus] = useState('');
-  const [userLocation, setUserLocation] = useState<UserLocation>(null);
-  const [messages, setMessages] = useState<Record<string, Msg[]>>({});
-  const [profile, setProfile] = useState<Profile>({ avatar: '', website: '', homeLocation: '' });
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [me, setMe] = useState<Profile | null>(null);
+  const [friends, setFriends] = useState<Profile[]>([]);
+  const [nameInput, setInput] = useState('');
+  const [signingIn, setSigningIn] = useState(false);
+  const [err, setErr] = useState('');
 
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem('userName'),
-      AsyncStorage.getItem('friendCode'),
-      AsyncStorage.getItem('profile'),
-      AsyncStorage.getItem('plans'),
-    ]).then(([n, fc, p, pl]) => {
-      if (n) {
-        setName(n);
-        setCode(fc || makeCode());
-        if (!fc) AsyncStorage.setItem('friendCode', code);
-      }
-      if (p) {
-        try { setProfile(JSON.parse(p)); } catch {}
-      }
-      if (pl) {
-        try { setPlans(JSON.parse(pl)); } catch {}
-      }
+    if (!SUPABASE_CONFIGURED) { setLoading(false); return; }
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
       setLoading(false);
     });
+    const { data: sub } = supabase.auth.onAuthStateChange((_, s) => setSession(s));
+    return () => { sub.subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => {
-    if (!name) return;
+    if (!session?.user) { setMe(null); return; }
+    (async () => {
+      const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+      if (data) setMe(data as Profile);
+    })();
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!me) return;
+    const ch = supabase.channel('me-' + me.id)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${me.id}` },
+        (p) => setMe(p.new as Profile))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [me?.id]);
+
+  async function loadFriends() {
+    if (!me) return;
+    const { data: edges } = await supabase.from('friends').select('friend_id').eq('user_id', me.id);
+    const ids = (edges ?? []).map((e: any) => e.friend_id);
+    if (ids.length === 0) { setFriends([]); return; }
+    const { data: profs } = await supabase.from('profiles').select('*').in('id', ids);
+    setFriends((profs ?? []) as Profile[]);
+  }
+
+  useEffect(() => {
+    if (!me) return;
+    loadFriends();
+    const edgeCh = supabase.channel('friend-edges-' + me.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${me.id}` },
+        () => loadFriends())
+      .subscribe();
+    const profCh = supabase.channel('all-profiles')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        (p) => {
+          const u = p.new as Profile;
+          setFriends((prev) => prev.map((f) => (f.id === u.id ? u : f)));
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(edgeCh); supabase.removeChannel(profCh); };
+  }, [me?.id]);
+
+  useEffect(() => {
+    if (!me) return;
     let sub: Location.LocationSubscription | null = null;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
       const loc = await Location.getCurrentPositionAsync({});
-      setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      await supabase.from('profiles').update({ lat: loc.coords.latitude, lng: loc.coords.longitude }).eq('id', me.id);
       sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, distanceInterval: 10, timeInterval: 5000 },
-        (l) => setUserLocation({ lat: l.coords.latitude, lng: l.coords.longitude }),
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 25, timeInterval: 30000 },
+        async (l) => {
+          await supabase.from('profiles').update({ lat: l.coords.latitude, lng: l.coords.longitude }).eq('id', me.id);
+        },
       );
     })();
     return () => { sub?.remove(); };
-  }, [name]);
+  }, [me?.id]);
 
-  function saveName() {
+  async function signUp() {
     const n = nameInput.trim();
     if (!n) return;
-    AsyncStorage.setItem('userName', n);
-    const c = makeCode();
-    AsyncStorage.setItem('friendCode', c);
-    setName(n);
-    setCode(c);
+    setErr('');
+    setSigningIn(true);
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error || !data.user) { setErr(error?.message ?? 'auth failed'); return; }
+      const fc = makeCode();
+      const { data: prof, error: pErr } = await supabase.from('profiles')
+        .insert({ id: data.user.id, name: n, friend_code: fc })
+        .select().single();
+      if (pErr || !prof) { setErr(pErr?.message ?? 'profile failed'); return; }
+      setMe(prof as Profile);
+    } finally {
+      setSigningIn(false);
+    }
   }
 
-  function setUserName(n: string) {
-    setName(n);
-    AsyncStorage.setItem('userName', n);
+  async function updateMe(patch: Partial<Profile>) {
+    if (!me) return;
+    const { data } = await supabase.from('profiles').update(patch).eq('id', me.id).select().single();
+    if (data) setMe(data as Profile);
   }
 
-  function updateProfile(p: Partial<Profile>) {
-    setProfile((prev) => {
-      const next = { ...prev, ...p };
-      AsyncStorage.setItem('profile', JSON.stringify(next));
-      return next;
-    });
+  async function signOut() {
+    await supabase.auth.signOut();
+    setMe(null);
+    setFriends([]);
   }
 
-  function addMessage(convId: string, text: string) {
-    setMessages((prev) => ({
-      ...prev,
-      [convId]: [...(prev[convId] ?? []), { sender: name!, text, time: Date.now() }],
-    }));
-  }
-
-  function addPlan(p: Omit<Plan, 'id' | 'creator' | 'createdAt'>) {
-    setPlans((prev) => {
-      const next = [
-        ...prev,
-        { ...p, id: String(Date.now()), creator: name!, createdAt: Date.now() },
-      ];
-      AsyncStorage.setItem('plans', JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function deletePlan(id: string) {
-    setPlans((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      AsyncStorage.setItem('plans', JSON.stringify(next));
-      return next;
-    });
-  }
-
-  if (loading) {
+  if (!SUPABASE_CONFIGURED) {
     return (
       <View style={s.center}>
-        <Text style={s.loadingText}>{'> INITIALIZING...'}</Text>
+        <Text style={s.errHeader}>{'> BACKEND NOT CONFIGURED'}</Text>
+        <Text style={s.errBody}>
+          {'> create .env file in PopIn folder'}{'\n'}
+          {'> add EXPO_PUBLIC_SUPABASE_URL'}{'\n'}
+          {'> add EXPO_PUBLIC_SUPABASE_ANON_KEY'}{'\n'}
+          {'> see SETUP.md'}
+        </Text>
       </View>
     );
   }
 
-  if (!name) {
+  if (loading) return <View style={s.center}><Text style={s.loadingText}>{'> INITIALIZING...'}</Text></View>;
+
+  if (!session || !me) {
     return (
       <View style={s.welcome}>
         <Text style={s.logo}>{'> POP IN'}</Text>
-        <Text style={s.version}>v1.0.0</Text>
+        <Text style={s.version}>v1.0.0 beta</Text>
         <Text style={s.prompt}>{'> ENTER HANDLE:'}</Text>
         <TextInput
           style={s.input}
@@ -164,20 +190,19 @@ export default function RootLayout() {
           placeholderTextColor="#006620"
           value={nameInput}
           onChangeText={setInput}
-          autoFocus
           autoCapitalize="none"
+          editable={!signingIn}
         />
-        <TouchableOpacity style={s.btn} onPress={saveName}>
-          <Text style={s.btnText}>{'> CONNECT'}</Text>
+        <TouchableOpacity style={s.btn} onPress={signUp} disabled={signingIn}>
+          <Text style={s.btnText}>{signingIn ? '> CONNECTING...' : '> CONNECT'}</Text>
         </TouchableOpacity>
+        {!!err && <Text style={s.errText}>{'> '}{err}</Text>}
       </View>
     );
   }
 
   return (
-    <AppContext.Provider
-      value={{ userName: name, setUserName, friendCode: code, userStatus, setUserStatus, userLocation, messages, addMessage, profile, updateProfile, plans, addPlan, deletePlan }}
-    >
+    <AppContext.Provider value={{ me, friends, updateMe, refreshFriends: loadFriends, signOut }}>
       <Slot />
     </AppContext.Provider>
   );
@@ -189,8 +214,10 @@ function makeCode() {
 }
 
 const s = StyleSheet.create({
-  center: { flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center', padding: 32 },
   loadingText: { fontFamily: FONT, color: GREEN, fontSize: 18 },
+  errHeader: { fontFamily: FONT, color: RED, fontSize: 18, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
+  errBody: { fontFamily: FONT, color: GREEN, fontSize: 13, lineHeight: 22 },
   welcome: { flex: 1, backgroundColor: BG, justifyContent: 'center', padding: 32 },
   logo: { fontFamily: FONT, color: GREEN, fontSize: 42, fontWeight: 'bold', marginBottom: 4 },
   version: { fontFamily: FONT, color: '#006620', fontSize: 14, marginBottom: 48 },
@@ -202,4 +229,5 @@ const s = StyleSheet.create({
   },
   btn: { borderWidth: 1, borderColor: GREEN, padding: 16, alignItems: 'center' },
   btnText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
+  errText: { fontFamily: FONT, color: RED, fontSize: 13, marginTop: 16 },
 });

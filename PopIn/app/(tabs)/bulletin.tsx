@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, Modal,
   StyleSheet, Platform, Alert,
 } from 'react-native';
 import { useApp, Plan } from '../_layout';
+import { supabase } from '../../lib/supabase';
 
 const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 const GREEN = '#00ff41';
@@ -18,7 +19,8 @@ function toISO(y: number, m: number, d: number): string {
 }
 
 export default function BulletinTab() {
-  const { userName, plans, addPlan, deletePlan } = useApp();
+  const { me, friends } = useApp();
+  const [plans, setPlans] = useState<Plan[]>([]);
 
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -30,19 +32,36 @@ export default function BulletinTab() {
   const [postTime, setPostTime] = useState('');
   const [postNote, setPostNote] = useState('');
 
+  async function load() {
+    const { data } = await supabase.from('plans').select('*').order('date', { ascending: true });
+    if (data) setPlans(data as Plan[]);
+  }
+
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('plans-all')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'plans' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  const creatorName = (id: string) => {
+    if (id === me.id) return me.name;
+    const f = friends.find((x) => x.id === id);
+    return f?.name ?? '?';
+  };
+
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
 
   const plansByDate = useMemo(() => {
     const map: Record<string, Plan[]> = {};
-    for (const p of plans) {
-      (map[p.date] ??= []).push(p);
-    }
+    for (const p of plans) (map[p.date] ??= []).push(p);
     return map;
   }, [plans]);
 
   const todayISO = toISO(today.getFullYear(), today.getMonth(), today.getDate());
-  const selectedPlans = (plansByDate[selectedDate] ?? []).sort((a, b) => a.time.localeCompare(b.time));
+  const selectedPlans = (plansByDate[selectedDate] ?? []).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   function prevMonth() {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
@@ -53,9 +72,10 @@ export default function BulletinTab() {
     else setViewMonth(viewMonth + 1);
   }
 
-  function submitPost() {
+  async function submitPost() {
     if (!postTitle.trim()) return Alert.alert('', 'title required');
-    addPlan({
+    await supabase.from('plans').insert({
+      creator_id: me.id,
       title: postTitle.trim(),
       date: selectedDate,
       time: postTime.trim(),
@@ -68,7 +88,7 @@ export default function BulletinTab() {
   function confirmDelete(id: string) {
     Alert.alert('', 'delete plan?', [
       { text: 'cancel' },
-      { text: 'delete', style: 'destructive', onPress: () => deletePlan(id) },
+      { text: 'delete', style: 'destructive', onPress: async () => { await supabase.from('plans').delete().eq('id', id); } },
     ]);
   }
 
@@ -87,7 +107,6 @@ export default function BulletinTab() {
       </View>
 
       <ScrollView>
-        {/* Month navigator */}
         <View style={s.monthBar}>
           <TouchableOpacity onPress={prevMonth} style={s.navBtn}>
             <Text style={s.navText}>{'<'}</Text>
@@ -98,14 +117,10 @@ export default function BulletinTab() {
           </TouchableOpacity>
         </View>
 
-        {/* Day headers */}
         <View style={s.weekRow}>
-          {DAYS.map((d, i) => (
-            <Text key={i} style={s.dayHeader}>{d}</Text>
-          ))}
+          {DAYS.map((d, i) => <Text key={i} style={s.dayHeader}>{d}</Text>)}
         </View>
 
-        {/* Calendar grid */}
         {weeks.map((w, wi) => (
           <View key={wi} style={s.weekRow}>
             {w.map((d, di) => {
@@ -120,9 +135,7 @@ export default function BulletinTab() {
                   style={[s.dayCell, isSelected && s.dayCellSelected]}
                   onPress={() => setSelectedDate(iso)}
                 >
-                  <Text style={[s.dayNum, isToday && s.dayNumToday, isSelected && s.dayNumSelected]}>
-                    {d}
-                  </Text>
+                  <Text style={[s.dayNum, isToday && s.dayNumToday]}>{d}</Text>
                   {hasPlans && <View style={s.dot} />}
                 </TouchableOpacity>
               );
@@ -130,7 +143,6 @@ export default function BulletinTab() {
           </View>
         ))}
 
-        {/* Selected day plans */}
         <View style={s.selectedBar}>
           <Text style={s.selectedLabel}>{'> '}{selectedDate}</Text>
           <TouchableOpacity style={s.postBtn} onPress={() => setShowPost(true)}>
@@ -145,11 +157,11 @@ export default function BulletinTab() {
             <TouchableOpacity
               key={p.id}
               style={s.plan}
-              onLongPress={() => p.creator === userName && confirmDelete(p.id)}
+              onLongPress={() => p.creator_id === me.id && confirmDelete(p.id)}
             >
               <View style={s.planTop}>
                 <Text style={s.planTime}>{p.time || '—'}</Text>
-                <Text style={s.planCreator}>{p.creator}</Text>
+                <Text style={s.planCreator}>{creatorName(p.creator_id)}</Text>
               </View>
               <Text style={s.planTitle}>{p.title}</Text>
               {!!p.note && <Text style={s.planNote}>{p.note}</Text>}
@@ -158,7 +170,6 @@ export default function BulletinTab() {
         )}
       </ScrollView>
 
-      {/* Post modal */}
       <Modal visible={showPost} animationType="slide" presentationStyle="pageSheet">
         <View style={s.modal}>
           <Text style={s.modalTitle}>{'> POST TO BULLETIN'}</Text>
@@ -214,7 +225,6 @@ const s = StyleSheet.create({
     backgroundColor: '#0a0a0a', borderBottomWidth: 1, borderBottomColor: DARK,
   },
   headerText: { fontFamily: FONT, color: GREEN, fontSize: 22, fontWeight: 'bold' },
-
   monthBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 16,
@@ -223,7 +233,6 @@ const s = StyleSheet.create({
   navBtn: { padding: 8, borderWidth: 1, borderColor: GREEN, minWidth: 36, alignItems: 'center' },
   navText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
   monthLabel: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold', letterSpacing: 2 },
-
   weekRow: { flexDirection: 'row' },
   dayHeader: {
     flex: 1, fontFamily: FONT, color: DIM, fontSize: 11,
@@ -235,10 +244,8 @@ const s = StyleSheet.create({
   },
   dayCellSelected: { backgroundColor: '#001a00', borderColor: GREEN },
   dayNum: { fontFamily: FONT, color: GREEN, fontSize: 14 },
-  dayNumToday: { fontWeight: 'bold', color: GREEN, textDecorationLine: 'underline' },
-  dayNumSelected: { fontWeight: 'bold' },
+  dayNumToday: { fontWeight: 'bold', textDecorationLine: 'underline' },
   dot: { width: 4, height: 4, backgroundColor: GREEN, marginTop: 2 },
-
   selectedBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12,
@@ -246,9 +253,7 @@ const s = StyleSheet.create({
   selectedLabel: { fontFamily: FONT, color: GREEN, fontSize: 14, fontWeight: 'bold' },
   postBtn: { borderWidth: 1, borderColor: GREEN, paddingHorizontal: 12, paddingVertical: 6 },
   postBtnText: { fontFamily: FONT, color: GREEN, fontSize: 12, fontWeight: 'bold', letterSpacing: 1 },
-
   empty: { fontFamily: FONT, color: DIM, fontSize: 13, textAlign: 'center', padding: 24 },
-
   plan: {
     marginHorizontal: 16, marginBottom: 10, padding: 14,
     borderWidth: 1, borderColor: DARK, backgroundColor: '#000',
@@ -258,7 +263,6 @@ const s = StyleSheet.create({
   planCreator: { fontFamily: FONT, color: DIM, fontSize: 11 },
   planTitle: { fontFamily: FONT, color: GREEN, fontSize: 15, marginBottom: 4 },
   planNote: { fontFamily: FONT, color: DIM, fontSize: 12, lineHeight: 18 },
-
   modal: { flex: 1, backgroundColor: '#0a0a0a', padding: 24, paddingTop: 40 },
   modalTitle: { fontFamily: FONT, color: GREEN, fontSize: 20, fontWeight: 'bold', marginBottom: 4 },
   modalSub: { fontFamily: FONT, color: DIM, fontSize: 13, marginBottom: 20 },

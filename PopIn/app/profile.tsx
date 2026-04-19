@@ -9,15 +9,18 @@ import { useApp } from './_layout';
 
 const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 const GREEN = '#00ff41';
+const DIM = '#006620';
+const DARK = '#003300';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userName, setUserName, friendCode, userStatus, setUserStatus, profile, updateProfile } = useApp();
+  const { me, updateMe } = useApp();
 
-  const [nameVal, setNameVal] = useState(userName);
-  const [statusVal, setStatusVal] = useState(userStatus);
-  const [websiteVal, setWebsiteVal] = useState(profile.website);
-  const [homeVal, setHomeVal] = useState(profile.homeLocation);
+  const [nameVal, setNameVal] = useState(me.name);
+  const [statusVal, setStatusVal] = useState(me.status);
+  const [websiteVal, setWebsiteVal] = useState(me.website);
+  const [homeVal, setHomeVal] = useState(me.home_location);
+  const [saving, setSaving] = useState(false);
 
   async function pickAvatar() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -27,20 +30,25 @@ export default function ProfileScreen() {
       quality: 0.5,
     });
     if (!result.canceled && result.assets[0]) {
-      updateProfile({ avatar: result.assets[0].uri });
+      await updateMe({ avatar: result.assets[0].uri });
     }
   }
 
-  function save() {
+  async function save() {
     const n = nameVal.trim();
     if (!n) return Alert.alert('', 'name required');
-    setUserName(n);
-    setUserStatus(statusVal.trim());
-    updateProfile({
-      website: websiteVal.trim(),
-      homeLocation: homeVal.trim(),
-    });
-    router.back();
+    setSaving(true);
+    try {
+      await updateMe({
+        name: n,
+        status: statusVal.trim(),
+        website: websiteVal.trim(),
+        home_location: homeVal.trim(),
+      });
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -54,11 +62,11 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={s.content}>
         <TouchableOpacity style={s.avatarBox} onPress={pickAvatar}>
-          {profile.avatar ? (
-            <Image source={{ uri: profile.avatar }} style={s.avatarImg} />
+          {me.avatar ? (
+            <Image source={{ uri: me.avatar }} style={s.avatarImg} />
           ) : (
             <View style={s.avatarPlaceholder}>
-              <Text style={s.avatarLetter}>{userName[0].toUpperCase()}</Text>
+              <Text style={s.avatarLetter}>{(me.name[0] || '?').toUpperCase()}</Text>
             </View>
           )}
           <Text style={s.avatarHint}>{'> TAP TO CHANGE'}</Text>
@@ -69,7 +77,7 @@ export default function ProfileScreen() {
           style={s.input}
           value={nameVal}
           onChangeText={setNameVal}
-          placeholderTextColor="#006620"
+          placeholderTextColor={DIM}
           autoCapitalize="none"
         />
 
@@ -79,7 +87,7 @@ export default function ProfileScreen() {
           value={statusVal}
           onChangeText={setStatusVal}
           placeholder="what are you up to..."
-          placeholderTextColor="#006620"
+          placeholderTextColor={DIM}
           autoCapitalize="none"
         />
 
@@ -89,7 +97,7 @@ export default function ProfileScreen() {
           value={homeVal}
           onChangeText={setHomeVal}
           placeholder="brooklyn, ny..."
-          placeholderTextColor="#006620"
+          placeholderTextColor={DIM}
           autoCapitalize="none"
         />
 
@@ -99,18 +107,18 @@ export default function ProfileScreen() {
           value={websiteVal}
           onChangeText={setWebsiteVal}
           placeholder="yoursite.com..."
-          placeholderTextColor="#006620"
+          placeholderTextColor={DIM}
           autoCapitalize="none"
           keyboardType="url"
         />
 
         <View style={s.codeRow}>
           <Text style={s.codeLabel}>{'> FRIEND CODE'}</Text>
-          <Text style={s.codeValue}>{friendCode}</Text>
+          <Text style={s.codeValue}>{me.friend_code}</Text>
         </View>
 
-        <TouchableOpacity style={s.saveBtn} onPress={save}>
-          <Text style={s.saveBtnText}>{'> SAVE'}</Text>
+        <TouchableOpacity style={s.saveBtn} onPress={save} disabled={saving}>
+          <Text style={s.saveBtnText}>{saving ? '> SAVING...' : '> SAVE'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -121,7 +129,7 @@ const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#0a0a0a' },
   header: {
     paddingTop: 60, paddingHorizontal: 16, paddingBottom: 16,
-    backgroundColor: '#0a0a0a', borderBottomWidth: 1, borderBottomColor: '#003300',
+    backgroundColor: '#0a0a0a', borderBottomWidth: 1, borderBottomColor: DARK,
     flexDirection: 'row', alignItems: 'center', gap: 16,
   },
   back: { fontFamily: FONT, color: GREEN, fontSize: 14 },
@@ -134,18 +142,18 @@ const s = StyleSheet.create({
     backgroundColor: '#000', justifyContent: 'center', alignItems: 'center',
   },
   avatarLetter: { fontFamily: FONT, color: GREEN, fontSize: 36, fontWeight: 'bold' },
-  avatarHint: { fontFamily: FONT, color: '#006620', fontSize: 11, marginTop: 8 },
-  label: { fontFamily: FONT, color: '#006620', fontSize: 12, marginBottom: 6, letterSpacing: 1 },
+  avatarHint: { fontFamily: FONT, color: DIM, fontSize: 11, marginTop: 8 },
+  label: { fontFamily: FONT, color: DIM, fontSize: 12, marginBottom: 6, letterSpacing: 1 },
   input: {
     fontFamily: FONT, color: GREEN, fontSize: 16,
-    borderWidth: 1, borderColor: '#003300', backgroundColor: '#000',
+    borderWidth: 1, borderColor: DARK, backgroundColor: '#000',
     padding: 14, marginBottom: 20,
   },
   codeRow: {
-    borderWidth: 1, borderColor: '#003300', padding: 16, marginBottom: 28,
+    borderWidth: 1, borderColor: DARK, padding: 16, marginBottom: 28,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  codeLabel: { fontFamily: FONT, color: '#006620', fontSize: 12 },
+  codeLabel: { fontFamily: FONT, color: DIM, fontSize: 12 },
   codeValue: { fontFamily: FONT, color: GREEN, fontSize: 20, fontWeight: 'bold', letterSpacing: 4 },
   saveBtn: { borderWidth: 1, borderColor: GREEN, padding: 18, alignItems: 'center' },
   saveBtnText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
