@@ -1,81 +1,53 @@
-# Pop In — How to Run This on Your iPhone
+# Pop In — Run on Your iPhone
 
-**Total time: 10 minutes. No coding. 4 steps.**
-
----
-
-## Step 1 — Install Node.js
-
-This is a one-time install. It lets your Mac run the app.
-
-1. Open your browser, go to **nodejs.org**
-2. Click the big green **Download** button
-3. Open the file and click through the installer (keep hitting Continue / Install)
-4. Done. Restart your Mac.
+**One command. Scan QR. Done.**
 
 ---
 
-## Step 2 — Download the app code
+## One-time setup (only first time)
 
-1. Go to **github.com/patrgunther-spec/knowpg.com**
-2. Click the branch dropdown and switch to: **claude/location-friend-notifications-i0uaD**
-3. Click the green **Code** button → **Download ZIP**
-4. Unzip the file (double-click it)
-5. Drag the **PopIn** folder to your **Desktop**
+1. Install **Node.js** from **nodejs.org** (big green Download button → open the file → click Continue/Install → restart Mac)
+2. Download the app: go to **github.com/patrgunther-spec/knowpg.com**, switch to branch **claude/location-friend-notifications-i0uaD**, click green **Code** button → **Download ZIP**, unzip, drag the inner **PopIn** folder to your **Downloads**
+3. On your iPhone, install **Expo Go** from the App Store (free)
 
 ---
 
-## Step 3 — Start the app
+## Every time you want to run the app
 
-1. Open **Terminal** (press Command+Space, type "Terminal", hit Enter)
-2. Copy and paste this whole line, then hit Enter:
+1. Open **Terminal** (Command+Space → type "Terminal" → Enter)
+2. Copy and paste this whole line and hit Enter:
 
 ```
-cd ~/Desktop/PopIn && npm install && npm start
+cd ~/Downloads/PopIn && ulimit -n 65536 && npm install && npm start
 ```
 
-3. Wait 1-2 minutes. A **QR code** will appear in Terminal.
-
----
-
-## Step 4 — Open it on your iPhone
-
-1. On your iPhone, go to the **App Store** and download **Expo Go** (free)
-2. Open Expo Go
-3. Tap **Scan QR Code**
-4. Point your phone at the QR code on your Mac screen
-5. The app loads on your phone. Done!
+3. Wait ~60 seconds. A **QR code** appears in Terminal.
+4. On your iPhone, open the **Camera app** (not Expo Go).
+5. Point it at the QR code on your Mac screen.
+6. Tap the yellow **"Open in Expo Go"** banner that pops up.
+7. Wait 30-60 seconds. The app loads. Done.
 
 ---
 
 ## Using Pop In
 
-**First time:** Type your name and tap "Let's Go"
-
-**Send a pop:** Tap the big blue 📡 Pop In button → type where you're going → Send
-
-**View your pop:** Tap it in the feed to see a map with your location + a chat
-
-**Friends tab:** Shows your unique friend code — share it with friends so they're ready when we connect everyone
-
----
-
-## Every time after the first time
-
-Just open Terminal and run:
-
-```
-cd ~/Desktop/PopIn && npm start
-```
-
-Then scan the QR code with Expo Go. That's it.
+- **First time:** Type your name → tap "Let's Go"
+- **Send a pop:** Tap the big blue 📡 Pop In button → type where you're going → Send
+- **View your pop:** Tap it in the feed to see a map + chat
+- **Friends tab:** Shows your unique friend code — share it with friends
 
 ---
 
 ## Troubleshooting
 
-**"command not found: npm"** → Restart your Mac after installing Node.js
+**"command not found: npm"** → Restart your Mac after installing Node.js.
 
-**QR code doesn't work** → Make sure your phone and Mac are on the same Wi-Fi
+**QR code doesn't work / iPhone can't connect** → Make sure your iPhone and Mac are on the **same Wi-Fi network**. Turn off any VPN.
 
-**App shows an error screen** → In Terminal, press Ctrl+C to stop, then run the command again
+**"Development build: Unable to get the default URI scheme"** → You're running the wrong command. Use the exact command above — `npm start` now forces Expo Go mode automatically.
+
+**"EMFILE: too many open files"** → Already handled by `ulimit -n 65536` in the command above.
+
+**App shows an error screen** → In Terminal press Ctrl+C to stop, then paste the command again.
+
+**Still broken?** Close Terminal completely, open a fresh Terminal window, and paste the command again.
