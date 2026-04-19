@@ -1,5 +1,8 @@
-import { View, Text, TouchableOpacity, StyleSheet, Share } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Share, Platform } from 'react-native';
 import { useApp } from '../_layout';
+
+const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+const GREEN = '#00ff41';
 
 export default function FriendsTab() {
   const { friendCode } = useApp();
@@ -10,31 +13,27 @@ export default function FriendsTab() {
 
   return (
     <View style={s.page}>
-      {/* Header */}
       <View style={s.header}>
-        <Text style={s.headerTitle}>Friends</Text>
+        <Text style={s.headerText}>{'> FRIENDS'}</Text>
       </View>
 
-      {/* Your code */}
       <View style={s.codeCard}>
-        <Text style={s.codeLabel}>YOUR FRIEND CODE</Text>
+        <Text style={s.codeLabel}>{'> YOUR FRIEND CODE'}</Text>
         <Text style={s.code}>{friendCode}</Text>
         <TouchableOpacity style={s.shareBtn} onPress={shareCode}>
-          <Text style={s.shareBtnText}>📤  Share Code</Text>
+          <Text style={s.shareBtnText}>{'> SHARE CODE'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Coming soon */}
       <View style={s.info}>
-        <Text style={s.infoTitle}>Coming Soon</Text>
+        <Text style={s.infoTitle}>{'> COMING SOON'}</Text>
         <Text style={s.infoText}>
-          Right now Pop In works on your phone as a demo.{'\n\n'}
-          When we add the online backend, you'll be able to:{'\n\n'}
-          • Add friends with their 6-letter code{'\n'}
-          • See their pops in your feed{'\n'}
-          • Get notified when they pop in{'\n'}
-          • Chat with them in real time{'\n\n'}
-          Share your code with friends so they're ready when we go live! 🚀
+          {'> Add friends with their 6-letter code'}{'\n'}
+          {'> See their location on the map'}{'\n'}
+          {'> Get notified when they pop in'}{'\n'}
+          {'> Chat with them in real time'}{'\n\n'}
+          {'> Share your code now.'}{'\n'}
+          {'> They\'ll be ready when we go live.'}
         </Text>
       </View>
     </View>
@@ -42,15 +41,23 @@ export default function FriendsTab() {
 }
 
 const s = StyleSheet.create({
-  page:        { flex: 1, backgroundColor: '#f5f5f5' },
-  header:      { padding: 16, paddingTop: 60, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  headerTitle: { fontSize: 22, fontWeight: 'bold' },
-  codeCard:    { margin: 16, backgroundColor: '#007AFF', borderRadius: 20, padding: 28, alignItems: 'center' },
-  codeLabel:   { color: 'rgba(255,255,255,0.7)', fontSize: 12, letterSpacing: 2, marginBottom: 10 },
-  code:        { color: '#fff', fontSize: 44, fontWeight: 'bold', letterSpacing: 8, marginBottom: 20 },
-  shareBtn:    { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  shareBtnText:{ color: '#fff', fontSize: 16, fontWeight: '600' },
-  info:        { margin: 16, backgroundColor: '#fff', borderRadius: 16, padding: 24 },
-  infoTitle:   { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
-  infoText:    { fontSize: 15, color: '#555', lineHeight: 24 },
+  page: { flex: 1, backgroundColor: '#0a0a0a' },
+  header: {
+    paddingTop: 60, paddingHorizontal: 16, paddingBottom: 16,
+    backgroundColor: '#0a0a0a', borderBottomWidth: 1, borderBottomColor: '#003300',
+  },
+  headerText: { fontFamily: FONT, color: GREEN, fontSize: 22, fontWeight: 'bold' },
+  codeCard: {
+    margin: 16, backgroundColor: '#000', borderWidth: 1, borderColor: GREEN,
+    padding: 28, alignItems: 'center',
+  },
+  codeLabel: { fontFamily: FONT, color: '#006620', fontSize: 11, letterSpacing: 2, marginBottom: 12 },
+  code: { fontFamily: FONT, color: GREEN, fontSize: 42, fontWeight: 'bold', letterSpacing: 8, marginBottom: 20 },
+  shareBtn: { borderWidth: 1, borderColor: GREEN, paddingHorizontal: 24, paddingVertical: 12 },
+  shareBtnText: { fontFamily: FONT, color: GREEN, fontSize: 14, fontWeight: '600' },
+  info: {
+    margin: 16, backgroundColor: '#000', borderWidth: 1, borderColor: '#003300', padding: 24,
+  },
+  infoTitle: { fontFamily: FONT, color: GREEN, fontSize: 16, fontWeight: 'bold', marginBottom: 16 },
+  infoText: { fontFamily: FONT, color: '#006620', fontSize: 13, lineHeight: 22 },
 });

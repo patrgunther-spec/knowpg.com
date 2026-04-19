@@ -1,46 +1,38 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import { Slot } from 'expo-router';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 
-// ── App Data (lives in memory, name saved to phone) ──
+const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+const GREEN = '#00ff41';
+const BG = '#0a0a0a';
 
-type Pop = {
-  id: string;
-  destination: string;
-  note: string;
-  lat: number;
-  lng: number;
-  createdAt: number;
-};
-type Msg = { name: string; text: string; time: number };
+type UserLocation = { lat: number; lng: number } | null;
+type Msg = { sender: string; text: string; time: number };
 
 type Ctx = {
   userName: string;
   friendCode: string;
-  pops: Pop[];
-  addPop: (p: Omit<Pop, 'id' | 'createdAt'>) => void;
-  endPop: (id: string) => void;
+  userStatus: string;
+  setUserStatus: (s: string) => void;
+  userLocation: UserLocation;
   messages: Record<string, Msg[]>;
-  addMessage: (popId: string, text: string) => void;
+  addMessage: (convId: string, text: string) => void;
 };
 
 const AppContext = createContext<Ctx>({} as Ctx);
 export const useApp = () => useContext(AppContext);
 
-// ── Root Layout ──
-
 export default function RootLayout() {
-  const [name, setName]         = useState<string | null>(null);
-  const [nameInput, setInput]   = useState('');
-  const [loading, setLoading]   = useState(true);
-  const [pops, setPops]         = useState<Pop[]>([]);
+  const [name, setName] = useState<string | null>(null);
+  const [nameInput, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [code, setCode] = useState('');
+  const [userStatus, setUserStatus] = useState('');
+  const [userLocation, setUserLocation] = useState<UserLocation>(null);
   const [messages, setMessages] = useState<Record<string, Msg[]>>({});
-  const [code, setCode]         = useState('');
 
-  // Load saved name on startup
   useEffect(() => {
     AsyncStorage.getItem('userName').then((n) => {
       if (n) {
@@ -51,6 +43,22 @@ export default function RootLayout() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!name) return;
+    let sub: Location.LocationSubscription | null = null;
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const loc = await Location.getCurrentPositionAsync({});
+      setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 10, timeInterval: 5000 },
+        (l) => setUserLocation({ lat: l.coords.latitude, lng: l.coords.longitude }),
+      );
+    })();
+    return () => { sub?.remove(); };
+  }, [name]);
+
   function saveName() {
     const n = nameInput.trim();
     if (!n) return;
@@ -59,48 +67,38 @@ export default function RootLayout() {
     setCode(makeCode());
   }
 
-  function addPop(p: Omit<Pop, 'id' | 'createdAt'>) {
-    setPops((prev) => [
-      { ...p, id: String(Date.now()), createdAt: Date.now() },
-      ...prev,
-    ]);
-  }
-
-  function endPop(id: string) {
-    setPops((prev) => prev.filter((p) => p.id !== id));
-  }
-
-  function addMessage(popId: string, text: string) {
+  function addMessage(convId: string, text: string) {
     setMessages((prev) => ({
       ...prev,
-      [popId]: [...(prev[popId] ?? []), { name: name!, text, time: Date.now() }],
+      [convId]: [...(prev[convId] ?? []), { sender: name!, text, time: Date.now() }],
     }));
   }
 
   if (loading) {
     return (
       <View style={s.center}>
-        <Text style={s.loading}>Loading...</Text>
+        <Text style={s.loadingText}>{'> INITIALIZING...'}</Text>
       </View>
     );
   }
 
-  // First time: ask for name
   if (!name) {
     return (
       <View style={s.welcome}>
-        <Text style={s.emoji}>👋</Text>
-        <Text style={s.title}>Pop In</Text>
-        <Text style={s.sub}>Let your friends know{'\n'}where you're at.</Text>
+        <Text style={s.logo}>{'> POP IN'}</Text>
+        <Text style={s.version}>v1.0.0</Text>
+        <Text style={s.prompt}>{'> ENTER HANDLE:'}</Text>
         <TextInput
           style={s.input}
-          placeholder="What's your name?"
+          placeholder="your name..."
+          placeholderTextColor="#006620"
           value={nameInput}
           onChangeText={setInput}
           autoFocus
+          autoCapitalize="none"
         />
         <TouchableOpacity style={s.btn} onPress={saveName}>
-          <Text style={s.btnText}>Let's Go</Text>
+          <Text style={s.btnText}>{'> CONNECT'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -108,7 +106,7 @@ export default function RootLayout() {
 
   return (
     <AppContext.Provider
-      value={{ userName: name, friendCode: code, pops, addPop, endPop, messages, addMessage }}
+      value={{ userName: name, friendCode: code, userStatus, setUserStatus, userLocation, messages, addMessage }}
     >
       <Slot />
     </AppContext.Provider>
@@ -121,13 +119,17 @@ function makeCode() {
 }
 
 const s = StyleSheet.create({
-  center:  { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loading: { fontSize: 18, color: '#888' },
-  welcome: { flex: 1, justifyContent: 'center', padding: 32, backgroundColor: '#fff' },
-  emoji:   { fontSize: 72, textAlign: 'center', marginBottom: 8 },
-  title:   { fontSize: 48, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
-  sub:     { fontSize: 18, color: '#888', textAlign: 'center', marginBottom: 48, lineHeight: 26 },
-  input:   { borderWidth: 1, borderColor: '#ddd', borderRadius: 14, padding: 16, fontSize: 18, marginBottom: 16, backgroundColor: '#f9f9f9', textAlign: 'center' },
-  btn:     { backgroundColor: '#007AFF', borderRadius: 14, padding: 18, alignItems: 'center' },
-  btnText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  center: { flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { fontFamily: FONT, color: GREEN, fontSize: 18 },
+  welcome: { flex: 1, backgroundColor: BG, justifyContent: 'center', padding: 32 },
+  logo: { fontFamily: FONT, color: GREEN, fontSize: 42, fontWeight: 'bold', marginBottom: 4 },
+  version: { fontFamily: FONT, color: '#006620', fontSize: 14, marginBottom: 48 },
+  prompt: { fontFamily: FONT, color: GREEN, fontSize: 16, marginBottom: 12 },
+  input: {
+    fontFamily: FONT, color: GREEN, fontSize: 18,
+    borderWidth: 1, borderColor: GREEN, backgroundColor: '#000',
+    padding: 14, marginBottom: 20,
+  },
+  btn: { borderWidth: 1, borderColor: GREEN, padding: 16, alignItems: 'center' },
+  btnText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
 });

@@ -1,123 +1,107 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, TextInput, FlatList,
-  Modal, Alert, StyleSheet,
+  View, Text, TouchableOpacity, TextInput,
+  Modal, StyleSheet, Platform,
 } from 'react-native';
-import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
+import MapView, { Marker } from 'react-native-maps';
 import { useApp } from '../_layout';
 
-export default function PopsTab() {
-  const { userName, pops, addPop, endPop } = useApp();
-  const router = useRouter();
+const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+const GREEN = '#00ff41';
 
-  const [showCreate, setShowCreate]   = useState(false);
-  const [destination, setDestination] = useState('');
-  const [note, setNote]               = useState('');
-  const [sending, setSending]         = useState(false);
+export default function PopInsTab() {
+  const { userName, userStatus, setUserStatus, userLocation } = useApp();
+  const [showPopIn, setShowPopIn] = useState(false);
+  const [statusInput, setStatusInput] = useState('');
+  const mapRef = useRef<MapView>(null);
 
-  async function sendPop() {
-    if (!destination.trim()) return Alert.alert('Where you headed?');
-    setSending(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Location needed', 'Pop In needs your location to work. Enable it in Settings.');
-        setSending(false);
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      addPop({
-        destination: destination.trim(),
-        note: note.trim(),
-        lat: loc.coords.latitude,
-        lng: loc.coords.longitude,
-      });
-      setDestination('');
-      setNote('');
-      setShowCreate(false);
-    } catch (e: any) {
-      Alert.alert('Error', e.message);
-    }
-    setSending(false);
-  }
-
-  function timeAgo(ts: number) {
-    const mins = Math.floor((Date.now() - ts) / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    return `${Math.floor(mins / 60)}h ago`;
+  function submitPopIn() {
+    if (!statusInput.trim()) return;
+    setUserStatus(statusInput.trim());
+    setStatusInput('');
+    setShowPopIn(false);
   }
 
   return (
     <View style={s.page}>
-      {/* Header */}
       <View style={s.header}>
-        <Text style={s.hi}>Hey, {userName} 👋</Text>
+        <Text style={s.headerText}>{'> '}{userName.toUpperCase()}</Text>
+        {userStatus ? (
+          <Text style={s.headerStatus} numberOfLines={1}>{'> '}{userStatus}</Text>
+        ) : (
+          <Text style={s.headerOffline}>{'> NO STATUS SET'}</Text>
+        )}
       </View>
 
-      {/* Big button */}
-      <TouchableOpacity style={s.bigBtn} onPress={() => setShowCreate(true)}>
-        <Text style={s.bigBtnText}>📡  Pop In</Text>
-        <Text style={s.bigBtnSub}>Tell your friends where you're headed</Text>
-      </TouchableOpacity>
-
-      {/* Feed */}
-      {pops.length === 0 ? (
-        <View style={s.empty}>
-          <Text style={s.emptyTitle}>No pops yet</Text>
-          <Text style={s.emptySub}>Tap the button above to send your first pop!</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={pops}
-          keyExtractor={(p) => p.id}
-          contentContainerStyle={{ padding: 16 }}
-          renderItem={({ item: pop }) => (
-            <TouchableOpacity
-              style={s.card}
-              onPress={() => router.push(`/pop/${pop.id}`)}
-            >
-              <View style={s.cardTop}>
-                <Text style={s.cardName}>{userName}</Text>
-                <Text style={s.cardTime}>{timeAgo(pop.createdAt)}</Text>
+      {userLocation ? (
+        <MapView
+          ref={mapRef}
+          style={s.map}
+          initialRegion={{
+            latitude: userLocation.lat,
+            longitude: userLocation.lng,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+          showsUserLocation={false}
+        >
+          <Marker coordinate={{ latitude: userLocation.lat, longitude: userLocation.lng }}>
+            <View style={s.marker}>
+              <View style={s.markerDot}>
+                <Text style={s.markerLetter}>{userName[0].toUpperCase()}</Text>
               </View>
-              <Text style={s.cardDest}>📍 {pop.destination}</Text>
-              {!!pop.note && <Text style={s.cardNote}>{pop.note}</Text>}
-              <TouchableOpacity style={s.endBtn} onPress={() => endPop(pop.id)}>
-                <Text style={s.endBtnText}>End Pop</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          )}
-        />
+              {userStatus ? (
+                <View style={s.markerTag}>
+                  <Text style={s.markerTagText} numberOfLines={2}>{userStatus}</Text>
+                </View>
+              ) : null}
+            </View>
+          </Marker>
+        </MapView>
+      ) : (
+        <View style={s.mapLoading}>
+          <Text style={s.mapLoadingText}>{'> ACQUIRING SIGNAL...'}</Text>
+        </View>
       )}
 
-      {/* Create sheet */}
-      <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet">
-        <View style={s.sheet}>
-          <Text style={s.sheetTitle}>Where you headed?</Text>
-
-          <TextInput
-            style={s.input}
-            placeholder="Central Park, Joe's Pizza…"
-            value={destination}
-            onChangeText={setDestination}
-            autoFocus
-          />
-
-          <TextInput
-            style={s.input}
-            placeholder="Any details? (optional)"
-            value={note}
-            onChangeText={setNote}
-          />
-
-          <TouchableOpacity style={s.sendBtn} onPress={sendPop} disabled={sending}>
-            <Text style={s.sendBtnText}>{sending ? 'Getting location…' : '📡  Send Pop'}</Text>
+      <View style={s.bottom}>
+        {userStatus ? (
+          <View>
+            <Text style={s.activeLabel}>{'> BROADCASTING:'}</Text>
+            <Text style={s.activeText}>{userStatus}</Text>
+            <View style={s.bottomBtns}>
+              <TouchableOpacity style={s.popBtn} onPress={() => { setStatusInput(userStatus); setShowPopIn(true); }}>
+                <Text style={s.popBtnText}>{'> UPDATE'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.endBtn} onPress={() => setUserStatus('')}>
+                <Text style={s.endBtnText}>{'> END'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={s.popBtnFull} onPress={() => setShowPopIn(true)}>
+            <Text style={s.popBtnText}>{'> POP IN'}</Text>
           </TouchableOpacity>
+        )}
+      </View>
 
-          <TouchableOpacity style={s.cancelBtn} onPress={() => setShowCreate(false)}>
-            <Text style={s.cancelText}>Cancel</Text>
+      <Modal visible={showPopIn} animationType="slide" presentationStyle="pageSheet">
+        <View style={s.modal}>
+          <Text style={s.modalTitle}>{'> WHAT ARE YOU UP TO?'}</Text>
+          <TextInput
+            style={s.modalInput}
+            placeholder="Going for a run in Prospect Park..."
+            placeholderTextColor="#006620"
+            value={statusInput}
+            onChangeText={setStatusInput}
+            autoFocus
+            multiline
+          />
+          <TouchableOpacity style={s.modalBtn} onPress={submitPopIn}>
+            <Text style={s.modalBtnText}>{'> BROADCAST'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.modalCancel} onPress={() => setShowPopIn(false)}>
+            <Text style={s.modalCancelText}>{'> CANCEL'}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -126,28 +110,59 @@ export default function PopsTab() {
 }
 
 const s = StyleSheet.create({
-  page:        { flex: 1, backgroundColor: '#f5f5f5' },
-  header:      { padding: 16, paddingTop: 60, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  hi:          { fontSize: 22, fontWeight: 'bold' },
-  bigBtn:      { margin: 16, backgroundColor: '#007AFF', borderRadius: 18, padding: 24, alignItems: 'center' },
-  bigBtnText:  { color: '#fff', fontSize: 26, fontWeight: 'bold' },
-  bigBtnSub:   { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginTop: 6 },
-  empty:       { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyTitle:  { fontSize: 20, fontWeight: '600', marginBottom: 8 },
-  emptySub:    { fontSize: 15, color: '#888', textAlign: 'center' },
-  card:        { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  cardTop:     { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  cardName:    { fontSize: 16, fontWeight: '600' },
-  cardTime:    { fontSize: 13, color: '#999' },
-  cardDest:    { fontSize: 18, fontWeight: '500', marginBottom: 4 },
-  cardNote:    { fontSize: 14, color: '#666' },
-  endBtn:      { marginTop: 12, borderWidth: 1, borderColor: '#ff3b30', borderRadius: 8, padding: 8, alignItems: 'center' },
-  endBtnText:  { color: '#ff3b30', fontSize: 14 },
-  sheet:       { flex: 1, padding: 28, paddingTop: 48 },
-  sheetTitle:  { fontSize: 28, fontWeight: 'bold', marginBottom: 32 },
-  input:       { borderWidth: 1, borderColor: '#ddd', borderRadius: 14, padding: 16, fontSize: 17, marginBottom: 16, backgroundColor: '#f9f9f9' },
-  sendBtn:     { backgroundColor: '#007AFF', borderRadius: 14, padding: 20, alignItems: 'center', marginTop: 12 },
-  sendBtnText: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  cancelBtn:   { padding: 18, alignItems: 'center' },
-  cancelText:  { color: '#888', fontSize: 16 },
+  page: { flex: 1, backgroundColor: '#000' },
+  header: {
+    paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12,
+    backgroundColor: '#0a0a0a', borderBottomWidth: 1, borderBottomColor: '#003300',
+  },
+  headerText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
+  headerStatus: { fontFamily: FONT, color: GREEN, fontSize: 12, marginTop: 4, opacity: 0.7 },
+  headerOffline: { fontFamily: FONT, color: '#006620', fontSize: 12, marginTop: 4 },
+  map: { flex: 1 },
+  mapLoading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' },
+  mapLoadingText: { fontFamily: FONT, color: GREEN, fontSize: 16 },
+  marker: { alignItems: 'center' },
+  markerDot: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#000', borderWidth: 2, borderColor: GREEN,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  markerLetter: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
+  markerTag: {
+    marginTop: 4, backgroundColor: '#000', borderWidth: 1, borderColor: GREEN,
+    paddingHorizontal: 8, paddingVertical: 4, maxWidth: 160,
+  },
+  markerTagText: { fontFamily: FONT, color: GREEN, fontSize: 10 },
+  bottom: {
+    padding: 16, paddingBottom: 34, backgroundColor: '#0a0a0a',
+    borderTopWidth: 1, borderTopColor: '#003300',
+  },
+  activeLabel: { fontFamily: FONT, color: '#006620', fontSize: 11, marginBottom: 4 },
+  activeText: { fontFamily: FONT, color: GREEN, fontSize: 14, marginBottom: 12 },
+  bottomBtns: { flexDirection: 'row', gap: 12 },
+  popBtn: {
+    flex: 1, borderWidth: 1, borderColor: GREEN,
+    padding: 16, justifyContent: 'center', alignItems: 'center',
+  },
+  popBtnFull: {
+    borderWidth: 1, borderColor: GREEN,
+    padding: 18, justifyContent: 'center', alignItems: 'center',
+  },
+  popBtnText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
+  endBtn: {
+    flex: 1, borderWidth: 1, borderColor: '#ff3333',
+    padding: 16, justifyContent: 'center', alignItems: 'center',
+  },
+  endBtnText: { fontFamily: FONT, color: '#ff3333', fontSize: 18, fontWeight: 'bold' },
+  modal: { flex: 1, backgroundColor: '#0a0a0a', padding: 28, paddingTop: 60 },
+  modalTitle: { fontFamily: FONT, color: GREEN, fontSize: 20, fontWeight: 'bold', marginBottom: 24 },
+  modalInput: {
+    fontFamily: FONT, color: GREEN, fontSize: 16,
+    borderWidth: 1, borderColor: GREEN, backgroundColor: '#000',
+    padding: 16, minHeight: 80, textAlignVertical: 'top', marginBottom: 20,
+  },
+  modalBtn: { borderWidth: 1, borderColor: GREEN, padding: 18, alignItems: 'center', marginBottom: 12 },
+  modalBtnText: { fontFamily: FONT, color: GREEN, fontSize: 18, fontWeight: 'bold' },
+  modalCancel: { padding: 18, alignItems: 'center' },
+  modalCancelText: { fontFamily: FONT, color: '#006620', fontSize: 16 },
 });
