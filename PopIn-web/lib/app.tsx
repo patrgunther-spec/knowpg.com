@@ -57,8 +57,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   async function loadFriends() {
     if (!me) return;
-    const { data: edges } = await supabase.from('friends').select('friend_id').eq('user_id', me.id);
-    const ids = (edges ?? []).map((e: any) => e.friend_id);
+    const { data: edges } = await supabase
+      .from('friends')
+      .select('user_id, friend_id')
+      .or(`user_id.eq.${me.id},friend_id.eq.${me.id}`);
+    const ids = Array.from(new Set(
+      (edges ?? []).map((e: any) => (e.user_id === me.id ? e.friend_id : e.user_id))
+    ));
     if (ids.length === 0) { setFriends([]); return; }
     const { data: profs } = await supabase.from('profiles').select('*').in('id', ids);
     setFriends((profs ?? []) as Profile[]);
@@ -69,6 +74,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadFriends();
     const edgeCh = supabase.channel('friend-edges-' + me.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${me.id}` },
+        () => loadFriends())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `friend_id=eq.${me.id}` },
         () => loadFriends())
       .subscribe();
     const profCh = supabase.channel('all-profiles-' + me.id)

@@ -7,28 +7,80 @@ export default function FriendsTab() {
   const { me, friends } = useApp();
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!me) return;
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const add = params.get('add');
+    if (add && add.length === 6) {
+      setCode(add.toUpperCase());
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [me?.id]);
 
   async function add() {
     if (!me) return;
     const c = code.trim().toUpperCase();
+    setErr('');
+    setMsg('');
     if (c.length !== 6) return setErr('code must be 6 chars');
     if (c === me.friend_code) return setErr('cannot add yourself');
     setBusy(true);
-    setErr('');
-    const { data: other } = await supabase.from('profiles').select('*').eq('friend_code', c).maybeSingle();
+    const { data: other, error: fetchErr } = await supabase
+      .from('profiles').select('*').eq('friend_code', c).maybeSingle();
+    if (fetchErr) { setErr(fetchErr.message); setBusy(false); return; }
     if (!other) { setErr('no user found with that code'); setBusy(false); return; }
-    await supabase.from('friends').insert([
-      { user_id: me.id, friend_id: (other as Profile).id },
-      { user_id: (other as Profile).id, friend_id: me.id },
-    ]);
+
+    const otherId = (other as Profile).id;
+    const { data: existing } = await supabase
+      .from('friends').select('user_id, friend_id')
+      .or(`and(user_id.eq.${me.id},friend_id.eq.${otherId}),and(user_id.eq.${otherId},friend_id.eq.${me.id})`)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      setMsg(`already friends with ${(other as Profile).name}`);
+      setCode('');
+      setBusy(false);
+      return;
+    }
+
+    const { error: insErr } = await supabase
+      .from('friends').insert({ user_id: me.id, friend_id: otherId });
+    if (insErr) { setErr(insErr.message); setBusy(false); return; }
+    setMsg(`added ${(other as Profile).name}`);
     setCode('');
     setBusy(false);
   }
 
   async function copyCode() {
     if (!me) return;
-    try { await navigator.clipboard.writeText(me.friend_code); } catch {}
+    try {
+      await navigator.clipboard.writeText(me.friend_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  }
+
+  async function shareCode() {
+    if (!me) return;
+    const url = typeof window !== 'undefined'
+      ? `${window.location.origin}/?add=${me.friend_code}`
+      : '';
+    const text = `add me on pop in — code ${me.friend_code}\n${url}`;
+    if (typeof navigator !== 'undefined' && (navigator as any).share) {
+      try {
+        await (navigator as any).share({ title: 'Pop In', text, url });
+        return;
+      } catch {}
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
   }
 
   async function remove(id: string) {
@@ -46,7 +98,12 @@ export default function FriendsTab() {
         <div style={{ padding: 16, borderBottom: '1px solid var(--dark)' }}>
           <div className="label">{'> YOUR CODE'}</div>
           <div onClick={copyCode} style={{ fontSize: 28, letterSpacing: 6, fontWeight: 'bold', cursor: 'pointer', padding: '12px 0' }}>{me.friend_code}</div>
-          <div style={{ color: 'var(--dim)', fontSize: 11 }}>{'> tap to copy — share with friends'}</div>
+          <button onClick={shareCode} className="btn" style={{ marginTop: 8 }}>
+            {copied ? '> COPIED!' : '> SHARE CODE'}
+          </button>
+          <div style={{ color: 'var(--dim)', fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>
+            {'> tap SHARE to text a link. friend taps it → their code field auto-fills'}
+          </div>
         </div>
 
         <div style={{ padding: 16, borderBottom: '1px solid var(--dark)' }}>
@@ -63,12 +120,13 @@ export default function FriendsTab() {
             <button onClick={add} disabled={busy} style={{ borderLeft: '1px solid var(--green)', padding: '0 20px', color: 'var(--green)', fontSize: 20 }}>{'>'}</button>
           </div>
           {err && <div className="err">{'> '}{err}</div>}
+          {msg && <div style={{ color: 'var(--green)', fontSize: 13, marginTop: 12 }}>{'> '}{msg}</div>}
         </div>
 
         {friends.length === 0 ? (
           <div className="empty">
             <div className="empty-title">{'> NO FRIENDS YET'}</div>
-            <div className="empty-body">{'> share your code above to add friends'}</div>
+            <div className="empty-body">{'> tap SHARE CODE above and text it to a friend'}</div>
           </div>
         ) : (
           <div>
