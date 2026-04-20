@@ -6,6 +6,11 @@ import { AppProvider } from '@/lib/app';
 export const metadata: Metadata = {
   title: 'Pop In',
   description: 'pop in on your friends',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Pop In',
+  },
 };
 
 export const viewport: Viewport = {
