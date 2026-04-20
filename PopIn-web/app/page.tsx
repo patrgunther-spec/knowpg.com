@@ -25,7 +25,6 @@ export default function Page() {
         <div className="center" style={{ flexDirection: 'column', textAlign: 'center' }}>
           <div style={{ color: 'var(--red)', fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>{'> BACKEND NOT CONFIGURED'}</div>
           <div style={{ color: 'var(--green)', fontSize: 13, lineHeight: 1.8 }}>
-            {'> set NEXT_PUBLIC_SUPABASE_URL'}<br />
             {'> set NEXT_PUBLIC_SUPABASE_ANON_KEY'}<br />
             {'> in Vercel env vars or .env.local'}
           </div>

@@ -1,14 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const url = 'https://uzcjjgziqotacqimedcp.supabase.co';
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-export const supabase = createClient(
-  url || 'https://placeholder.supabase.co',
-  key || 'placeholder',
-);
+export const supabase = createClient(url, key || 'placeholder');
 
-export const SUPABASE_CONFIGURED = !!url && !!key;
+export const SUPABASE_CONFIGURED = !!key;
 
 export type Profile = {
   id: string;

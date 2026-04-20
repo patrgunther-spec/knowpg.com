@@ -2,26 +2,21 @@
 
 Browser version of Pop In. Same Supabase backend as the native app.
 
-## Deploy to Vercel (5 min, one time)
+## Deploy (2 clicks + 1 paste)
 
-1. Push this repo to GitHub.
-2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import this repo.
-3. **Root Directory:** `PopIn-web`
-4. **Environment Variables:**
-   - `NEXT_PUBLIC_SUPABASE_URL` → your Supabase project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → your publishable key
-5. **Deploy.** You'll get a URL like `popin-xxxxx.vercel.app`.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fpatrgunther-spec%2Fknowpg.com&root-directory=PopIn-web&env=NEXT_PUBLIC_SUPABASE_ANON_KEY&envDescription=Your%20Supabase%20publishable%20key%20(sb_publishable_...)&project-name=popin&framework-preset=nextjs)
 
-That's it. Share the URL with friends — they open it in Safari and use it immediately.
+1. Click the button above → sign in with GitHub
+2. Paste your `sb_publishable_...` key when prompted
+3. Click **Deploy**
+
+Share the URL with friends. Done.
 
 ## Develop locally
 
 ```
 cd PopIn-web
 npm install
-cp .env.example .env.local
-# edit .env.local with your Supabase values
+echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_..." > .env.local
 npm run dev
 ```
-
-Open http://localhost:3000.
