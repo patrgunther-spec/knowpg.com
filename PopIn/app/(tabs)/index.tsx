@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, Image,
   Modal, StyleSheet, Platform,
@@ -38,14 +38,22 @@ export default function PopInsTab() {
   const [statusInput, setStatusInput] = useState('');
   const mapRef = useRef<MapView>(null);
 
-  const region = useMemo(() => {
-    if (!me.lat || !me.lng) return null;
-    return {
-      latitude: me.lat,
-      longitude: me.lng,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
-    };
+  const initialRegion = useMemo(() => ({
+    latitude: me.lat ?? 39.5,
+    longitude: me.lng ?? -98.35,
+    latitudeDelta: me.lat ? 0.05 : 50,
+    longitudeDelta: me.lng ? 0.05 : 50,
+  }), []);
+
+  useEffect(() => {
+    if (me.lat != null && me.lng != null && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: me.lat,
+        longitude: me.lng,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }, 600);
+    }
   }, [me.lat, me.lng]);
 
   function submitPopIn() {
@@ -80,12 +88,12 @@ export default function PopInsTab() {
         </View>
       </TouchableOpacity>
 
-      {region ? (
+      <View style={s.map}>
         <MapView
           ref={mapRef}
           style={s.map}
           mapType="mutedStandard"
-          initialRegion={region}
+          initialRegion={initialRegion}
           showsUserLocation={false}
         >
           {me.lat != null && me.lng != null && (
@@ -99,11 +107,12 @@ export default function PopInsTab() {
             </Marker>
           ))}
         </MapView>
-      ) : (
-        <View style={s.mapLoading}>
-          <Text style={s.mapLoadingText}>{'> ACQUIRING SIGNAL...'}</Text>
-        </View>
-      )}
+        {(me.lat == null || me.lng == null) && (
+          <View style={s.mapOverlay} pointerEvents="none">
+            <Text style={s.mapOverlayText}>{'> ACQUIRING SIGNAL...'}</Text>
+          </View>
+        )}
+      </View>
 
       <View style={s.bottom}>
         {me.status ? (
@@ -167,8 +176,12 @@ const s = StyleSheet.create({
   headerStatus: { fontFamily: FONT, color: GREEN, fontSize: 12, marginTop: 4, opacity: 0.7 },
   headerOffline: { fontFamily: FONT, color: DIM, fontSize: 12, marginTop: 4 },
   map: { flex: 1 },
-  mapLoading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' },
-  mapLoadingText: { fontFamily: FONT, color: GREEN, fontSize: 16 },
+  mapOverlay: {
+    position: 'absolute', top: 12, alignSelf: 'center',
+    backgroundColor: '#000', borderWidth: 1, borderColor: GREEN,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  mapOverlayText: { fontFamily: FONT, color: GREEN, fontSize: 11 },
   marker: { alignItems: 'center', maxWidth: 180 },
   markerDot: {
     width: 36, height: 36,

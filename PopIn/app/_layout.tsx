@@ -116,19 +116,35 @@ export default function RootLayout() {
   useEffect(() => {
     if (!me) return;
     let sub: Location.LocationSubscription | null = null;
+    let cancelled = false;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      const loc = await Location.getCurrentPositionAsync({});
-      await supabase.from('profiles').update({ lat: loc.coords.latitude, lng: loc.coords.longitude }).eq('id', me.id);
+      if (status !== 'granted' || cancelled) return;
+
+      const last = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
+      if (last && !cancelled) {
+        await supabase.from('profiles')
+          .update({ lat: last.coords.latitude, lng: last.coords.longitude })
+          .eq('id', me.id);
+      }
+
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then((loc) => {
+        if (cancelled) return;
+        supabase.from('profiles')
+          .update({ lat: loc.coords.latitude, lng: loc.coords.longitude })
+          .eq('id', me.id);
+      }).catch(() => {});
+
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 25, timeInterval: 30000 },
         async (l) => {
-          await supabase.from('profiles').update({ lat: l.coords.latitude, lng: l.coords.longitude }).eq('id', me.id);
+          await supabase.from('profiles')
+            .update({ lat: l.coords.latitude, lng: l.coords.longitude })
+            .eq('id', me.id);
         },
       );
     })();
-    return () => { sub?.remove(); };
+    return () => { cancelled = true; sub?.remove(); };
   }, [me?.id]);
 
   async function signUp() {
