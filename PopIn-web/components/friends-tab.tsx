@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useApp } from '@/lib/app';
 import { supabase, Profile } from '@/lib/supabase';
 
@@ -10,17 +10,6 @@ export default function FriendsTab() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!me) return;
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const add = params.get('add');
-    if (add && add.length === 6) {
-      setCode(add.toUpperCase());
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, [me?.id]);
 
   async function add() {
     if (!me) return;

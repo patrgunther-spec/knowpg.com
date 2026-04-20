@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, SUPABASE_CONFIGURED, Profile } from './supabase';
 
@@ -8,7 +8,9 @@ type Ctx = {
   friends: Profile[];
   session: Session | null;
   loading: boolean;
-  signUp: (name: string) => Promise<string | null>;
+  toast: string;
+  signUp: (email: string, password: string, name: string) => Promise<string | null>;
+  signIn: (email: string, password: string) => Promise<string | null>;
   updateMe: (patch: Partial<Profile>) => Promise<void>;
   signOut: () => Promise<void>;
   configured: boolean;
@@ -22,11 +24,56 @@ function makeCode() {
   return Array.from({ length: 6 }, () => c[Math.floor(Math.random() * c.length)]).join('');
 }
 
+const PENDING_KEY = 'popin.pendingFriendCode';
+
+function readPendingFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('add');
+  if (!code) return null;
+  const c = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (c.length !== 6) return null;
+  return c;
+}
+
+function stashPending(code: string) {
+  try { sessionStorage.setItem(PENDING_KEY, code); } catch {}
+}
+
+function consumePending(): string | null {
+  try {
+    const v = sessionStorage.getItem(PENDING_KEY);
+    sessionStorage.removeItem(PENDING_KEY);
+    return v;
+  } catch { return null; }
+}
+
+function clearUrlParam() {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete('add');
+  window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [me, setMe] = useState<Profile | null>(null);
   const [friends, setFriends] = useState<Profile[]>([]);
+  const [toast, setToast] = useState('');
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2500);
+  }, []);
+
+  useEffect(() => {
+    const code = readPendingFromUrl();
+    if (code) {
+      stashPending(code);
+      clearUrlParam();
+    }
+  }, []);
 
   useEffect(() => {
     if (!SUPABASE_CONFIGURED) { setLoading(false); return; }
@@ -55,7 +102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { supabase.removeChannel(ch); };
   }, [me?.id]);
 
-  async function loadFriends() {
+  const loadFriends = useCallback(async () => {
     if (!me) return;
     const { data: edges } = await supabase
       .from('friends')
@@ -67,7 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (ids.length === 0) { setFriends([]); return; }
     const { data: profs } = await supabase.from('profiles').select('*').in('id', ids);
     setFriends((profs ?? []) as Profile[]);
-  }
+  }, [me?.id]);
 
   useEffect(() => {
     if (!me) return;
@@ -86,7 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
       .subscribe();
     return () => { supabase.removeChannel(edgeCh); supabase.removeChannel(profCh); };
-  }, [me?.id]);
+  }, [me?.id, loadFriends]);
 
   useEffect(() => {
     if (!me || typeof navigator === 'undefined' || !navigator.geolocation) return;
@@ -106,17 +153,62 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [me?.id]);
 
-  async function signUp(name: string): Promise<string | null> {
+  useEffect(() => {
+    if (!me) return;
+    const code = consumePending();
+    if (!code) return;
+    (async () => {
+      if (code === me.friend_code) return;
+      const { data: other } = await supabase
+        .from('profiles').select('*').eq('friend_code', code).maybeSingle();
+      if (!other) { showToast('friend code not found'); return; }
+      const otherId = (other as Profile).id;
+      const { data: existing } = await supabase
+        .from('friends').select('user_id')
+        .or(`and(user_id.eq.${me.id},friend_id.eq.${otherId}),and(user_id.eq.${otherId},friend_id.eq.${me.id})`)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        showToast(`already friends with ${(other as Profile).name}`);
+        return;
+      }
+      const { error } = await supabase.from('friends').insert({ user_id: me.id, friend_id: otherId });
+      if (error) { showToast(error.message); return; }
+      showToast(`added ${(other as Profile).name}`);
+      loadFriends();
+    })();
+  }, [me?.id, loadFriends, showToast]);
+
+  async function signUp(email: string, password: string, name: string): Promise<string | null> {
+    const e = email.trim().toLowerCase();
     const n = name.trim();
-    if (!n) return 'name required';
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error || !data.user) return error?.message ?? 'auth failed';
+    if (!e || !e.includes('@')) return 'enter a valid email';
+    if (password.length < 6) return 'password needs 6+ chars';
+    if (!n) return 'enter a name';
+
+    const { data, error } = await supabase.auth.signUp({ email: e, password });
+    if (error) return error.message;
+    if (!data.user) return 'signup failed';
+
+    if (!data.session) {
+      const { error: sErr } = await supabase.auth.signInWithPassword({ email: e, password });
+      if (sErr) return 'account created — now log in';
+    }
+
     const fc = makeCode();
     const { data: prof, error: pErr } = await supabase.from('profiles')
       .insert({ id: data.user.id, name: n, friend_code: fc })
       .select().single();
-    if (pErr || !prof) return pErr?.message ?? 'profile failed';
+    if (pErr || !prof) return pErr?.message ?? 'profile creation failed';
     setMe(prof as Profile);
+    return null;
+  }
+
+  async function signIn(email: string, password: string): Promise<string | null> {
+    const e = email.trim().toLowerCase();
+    if (!e || !e.includes('@')) return 'enter a valid email';
+    if (!password) return 'enter a password';
+    const { error } = await supabase.auth.signInWithPassword({ email: e, password });
+    if (error) return error.message;
     return null;
   }
 
@@ -133,8 +225,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppContext.Provider value={{ me, friends, session, loading, signUp, updateMe, signOut, configured: SUPABASE_CONFIGURED }}>
+    <AppContext.Provider value={{ me, friends, session, loading, toast, signUp, signIn, updateMe, signOut, configured: SUPABASE_CONFIGURED }}>
       {children}
+      {toast && (
+        <div style={{
+          position: 'fixed', left: '50%', transform: 'translateX(-50%)',
+          bottom: 96, zIndex: 9999, background: '#000',
+          border: '1px solid var(--green)', color: 'var(--green)',
+          padding: '10px 18px', fontSize: 13, fontWeight: 'bold',
+          letterSpacing: 1, maxWidth: '90vw', textAlign: 'center',
+        }}>
+          {'> '}{toast.toUpperCase()}
+        </div>
+      )}
     </AppContext.Provider>
   );
 }
