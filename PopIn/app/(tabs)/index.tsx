@@ -195,7 +195,10 @@ const s = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 4, maxWidth: 160,
   },
   markerTagText: { fontFamily: FONT, color: GREEN, fontSize: 10 },
-  markerName: { fontFamily: FONT, color: GREEN, fontSize: 10, marginTop: 2, fontWeight: 'bold' },
+  markerName: {
+    fontFamily: FONT, color: '#000', fontSize: 10, marginTop: 2, fontWeight: 'bold',
+    backgroundColor: '#fff', paddingHorizontal: 4, paddingVertical: 1,
+  },
   bottom: {
     padding: 16, paddingBottom: 34, backgroundColor: '#0a0a0a',
     borderTopWidth: 1, borderTopColor: '#003300',
