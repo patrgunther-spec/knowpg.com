@@ -16,6 +16,7 @@ create table if not exists profiles (
 create table if not exists friends (
   user_id uuid references profiles(id) on delete cascade,
   friend_id uuid references profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted')),
   created_at timestamptz default now(),
   primary key (user_id, friend_id)
 );
@@ -52,10 +53,12 @@ create policy "profiles_update" on profiles for update to authenticated using (i
 
 drop policy if exists "friends_select" on friends;
 drop policy if exists "friends_insert" on friends;
+drop policy if exists "friends_update" on friends;
 drop policy if exists "friends_delete" on friends;
 create policy "friends_select" on friends for select to authenticated using (user_id = auth.uid() or friend_id = auth.uid());
 create policy "friends_insert" on friends for insert to authenticated with check (user_id = auth.uid());
-create policy "friends_delete" on friends for delete to authenticated using (user_id = auth.uid());
+create policy "friends_update" on friends for update to authenticated using (friend_id = auth.uid()) with check (friend_id = auth.uid());
+create policy "friends_delete" on friends for delete to authenticated using (user_id = auth.uid() or friend_id = auth.uid());
 
 drop policy if exists "messages_select" on messages;
 drop policy if exists "messages_insert" on messages;

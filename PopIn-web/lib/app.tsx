@@ -6,6 +6,8 @@ import { supabase, SUPABASE_CONFIGURED, Profile } from './supabase';
 type Ctx = {
   me: Profile | null;
   friends: Profile[];
+  incoming: Profile[];
+  outgoing: Profile[];
   session: Session | null;
   loading: boolean;
   toast: string;
@@ -13,6 +15,11 @@ type Ctx = {
   signIn: (email: string, password: string) => Promise<string | null>;
   updateMe: (patch: Partial<Profile>) => Promise<void>;
   signOut: () => Promise<void>;
+  sendRequest: (code: string) => Promise<{ error?: string; ok?: string }>;
+  acceptRequest: (otherId: string) => Promise<string | null>;
+  declineRequest: (otherId: string) => Promise<string | null>;
+  removeFriend: (otherId: string) => Promise<void>;
+  cancelRequest: (otherId: string) => Promise<void>;
   configured: boolean;
 };
 
@@ -60,6 +67,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [me, setMe] = useState<Profile | null>(null);
   const [friends, setFriends] = useState<Profile[]>([]);
+  const [incoming, setIncoming] = useState<Profile[]>([]);
+  const [outgoing, setOutgoing] = useState<Profile[]>([]);
   const [toast, setToast] = useState('');
 
   const showToast = useCallback((msg: string) => {
@@ -102,38 +111,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { supabase.removeChannel(ch); };
   }, [me?.id]);
 
-  const loadFriends = useCallback(async () => {
+  const reload = useCallback(async () => {
     if (!me) return;
     const { data: edges } = await supabase
       .from('friends')
-      .select('user_id, friend_id')
+      .select('user_id, friend_id, status')
       .or(`user_id.eq.${me.id},friend_id.eq.${me.id}`);
-    const ids = Array.from(new Set(
-      (edges ?? []).map((e: any) => (e.user_id === me.id ? e.friend_id : e.user_id))
-    ));
-    if (ids.length === 0) { setFriends([]); return; }
-    const { data: profs } = await supabase.from('profiles').select('*').in('id', ids);
-    setFriends((profs ?? []) as Profile[]);
+    const rows = (edges ?? []) as { user_id: string; friend_id: string; status: string }[];
+
+    const friendIds = new Set<string>();
+    const incomingIds = new Set<string>();
+    const outgoingIds = new Set<string>();
+
+    for (const r of rows) {
+      const other = r.user_id === me.id ? r.friend_id : r.user_id;
+      if (r.status === 'accepted') friendIds.add(other);
+      else if (r.status === 'pending') {
+        if (r.friend_id === me.id) incomingIds.add(r.user_id);
+        else outgoingIds.add(r.friend_id);
+      }
+    }
+
+    const allIds = [...friendIds, ...incomingIds, ...outgoingIds];
+    if (allIds.length === 0) {
+      setFriends([]); setIncoming([]); setOutgoing([]);
+      return;
+    }
+    const { data: profs } = await supabase.from('profiles').select('*').in('id', allIds);
+    const byId = new Map((profs ?? []).map((p: any) => [p.id, p as Profile]));
+    setFriends([...friendIds].map((id) => byId.get(id)).filter(Boolean) as Profile[]);
+    setIncoming([...incomingIds].map((id) => byId.get(id)).filter(Boolean) as Profile[]);
+    setOutgoing([...outgoingIds].map((id) => byId.get(id)).filter(Boolean) as Profile[]);
   }, [me?.id]);
 
   useEffect(() => {
-    if (!me) return;
-    loadFriends();
+    if (!me) { setFriends([]); setIncoming([]); setOutgoing([]); return; }
+    reload();
     const edgeCh = supabase.channel('friend-edges-' + me.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${me.id}` },
-        () => loadFriends())
+        () => reload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `friend_id=eq.${me.id}` },
-        () => loadFriends())
+        () => reload())
       .subscribe();
     const profCh = supabase.channel('all-profiles-' + me.id)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' },
         (p) => {
           const u = p.new as Profile;
           setFriends((prev) => prev.map((f) => (f.id === u.id ? u : f)));
+          setIncoming((prev) => prev.map((f) => (f.id === u.id ? u : f)));
+          setOutgoing((prev) => prev.map((f) => (f.id === u.id ? u : f)));
         })
       .subscribe();
     return () => { supabase.removeChannel(edgeCh); supabase.removeChannel(profCh); };
-  }, [me?.id, loadFriends]);
+  }, [me?.id, reload]);
 
   useEffect(() => {
     if (!me || typeof navigator === 'undefined' || !navigator.geolocation) return;
@@ -153,30 +183,84 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [me?.id]);
 
+  async function sendRequest(code: string): Promise<{ error?: string; ok?: string }> {
+    if (!me) return { error: 'not logged in' };
+    const c = code.trim().toUpperCase();
+    if (c.length !== 6) return { error: 'code must be 6 chars' };
+    if (c === me.friend_code) return { error: 'cannot add yourself' };
+
+    const { data: other, error: fErr } = await supabase
+      .from('profiles').select('*').eq('friend_code', c).maybeSingle();
+    if (fErr) return { error: fErr.message };
+    if (!other) return { error: 'no user found with that code' };
+    const o = other as Profile;
+
+    const { data: existing } = await supabase
+      .from('friends')
+      .select('user_id, friend_id, status')
+      .or(`and(user_id.eq.${me.id},friend_id.eq.${o.id}),and(user_id.eq.${o.id},friend_id.eq.${me.id})`);
+
+    const rows = (existing ?? []) as { user_id: string; friend_id: string; status: string }[];
+
+    const reversePending = rows.find((r) => r.user_id === o.id && r.friend_id === me.id && r.status === 'pending');
+    if (reversePending) {
+      const { error: uErr } = await supabase
+        .from('friends').update({ status: 'accepted' })
+        .eq('user_id', o.id).eq('friend_id', me.id);
+      if (uErr) return { error: uErr.message };
+      return { ok: `accepted request from ${o.name}` };
+    }
+
+    if (rows.some((r) => r.status === 'accepted')) return { ok: `already friends with ${o.name}` };
+    if (rows.find((r) => r.user_id === me.id && r.friend_id === o.id && r.status === 'pending')) {
+      return { ok: `request already sent to ${o.name}` };
+    }
+
+    const { error: iErr } = await supabase.from('friends').insert({ user_id: me.id, friend_id: o.id });
+    if (iErr) return { error: iErr.message };
+    return { ok: `request sent to ${o.name}` };
+  }
+
+  async function acceptRequest(otherId: string): Promise<string | null> {
+    if (!me) return 'not logged in';
+    const { error } = await supabase
+      .from('friends').update({ status: 'accepted' })
+      .eq('user_id', otherId).eq('friend_id', me.id);
+    if (error) return error.message;
+    return null;
+  }
+
+  async function declineRequest(otherId: string): Promise<string | null> {
+    if (!me) return 'not logged in';
+    const { error } = await supabase
+      .from('friends').delete()
+      .eq('user_id', otherId).eq('friend_id', me.id);
+    if (error) return error.message;
+    return null;
+  }
+
+  async function removeFriend(otherId: string) {
+    if (!me) return;
+    await supabase.from('friends').delete()
+      .or(`and(user_id.eq.${me.id},friend_id.eq.${otherId}),and(user_id.eq.${otherId},friend_id.eq.${me.id})`);
+  }
+
+  async function cancelRequest(otherId: string) {
+    if (!me) return;
+    await supabase.from('friends').delete()
+      .eq('user_id', me.id).eq('friend_id', otherId);
+  }
+
   useEffect(() => {
     if (!me) return;
     const code = consumePending();
     if (!code) return;
     (async () => {
-      if (code === me.friend_code) return;
-      const { data: other } = await supabase
-        .from('profiles').select('*').eq('friend_code', code).maybeSingle();
-      if (!other) { showToast('friend code not found'); return; }
-      const otherId = (other as Profile).id;
-      const { data: existing } = await supabase
-        .from('friends').select('user_id')
-        .or(`and(user_id.eq.${me.id},friend_id.eq.${otherId}),and(user_id.eq.${otherId},friend_id.eq.${me.id})`)
-        .limit(1);
-      if (existing && existing.length > 0) {
-        showToast(`already friends with ${(other as Profile).name}`);
-        return;
-      }
-      const { error } = await supabase.from('friends').insert({ user_id: me.id, friend_id: otherId });
-      if (error) { showToast(error.message); return; }
-      showToast(`added ${(other as Profile).name}`);
-      loadFriends();
+      const res = await sendRequest(code);
+      if (res.error) showToast(res.error);
+      else if (res.ok) showToast(res.ok);
     })();
-  }, [me?.id, loadFriends, showToast]);
+  }, [me?.id]);
 
   async function signUp(email: string, password: string, name: string): Promise<string | null> {
     const e = email.trim().toLowerCase();
@@ -222,10 +306,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setMe(null);
     setFriends([]);
+    setIncoming([]);
+    setOutgoing([]);
   }
 
   return (
-    <AppContext.Provider value={{ me, friends, session, loading, toast, signUp, signIn, updateMe, signOut, configured: SUPABASE_CONFIGURED }}>
+    <AppContext.Provider value={{
+      me, friends, incoming, outgoing, session, loading, toast,
+      signUp, signIn, updateMe, signOut,
+      sendRequest, acceptRequest, declineRequest, removeFriend, cancelRequest,
+      configured: SUPABASE_CONFIGURED,
+    }}>
       {children}
       {toast && (
         <div style={{
