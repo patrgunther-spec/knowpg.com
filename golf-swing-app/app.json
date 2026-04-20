@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Golf Swing Coach",
+    "slug": "golf-swing-coach",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.example.golfswingcoach",
+      "infoPlist": {
+        "NSCameraUsageDescription": "We need the camera so you can record your golf swing.",
+        "NSPhotoLibraryUsageDescription": "We need your photo library so you can pick a swing video to analyze.",
+        "NSMicrophoneUsageDescription": "Needed to record video with sound."
+      }
+    },
+    "android": {
+      "package": "com.example.golfswingcoach"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Let the app pick a golf swing video to analyze.",
+          "cameraPermission": "Let the app record your golf swing."
+        }
+      ]
+    ]
+  }
+}
