@@ -58,7 +58,7 @@ export default function FriendsTab() {
     const url = typeof window !== 'undefined'
       ? `${window.location.origin}/?add=${me.friend_code}`
       : '';
-    const text = `add me on pop in — code ${me.friend_code}\n${url}`;
+    const text = `join me on pop in: ${url}`;
     if (typeof navigator !== 'undefined' && (navigator as any).share) {
       try {
         await (navigator as any).share({ title: 'Pop In', text, url });
@@ -66,7 +66,7 @@ export default function FriendsTab() {
       } catch {}
     }
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {}
@@ -85,14 +85,20 @@ export default function FriendsTab() {
       <div className="header"><div className="header-title">{'> FRIENDS'}</div></div>
       <div className="content">
         <div style={{ padding: 16, borderBottom: '1px solid var(--dark)' }}>
-          <div className="label">{'> YOUR CODE'}</div>
-          <div onClick={copyCode} style={{ fontSize: 28, letterSpacing: 6, fontWeight: 'bold', cursor: 'pointer', padding: '12px 0' }}>{me.friend_code}</div>
-          <button onClick={shareCode} className="btn" style={{ marginTop: 8 }}>
-            {copied ? '> COPIED!' : '> SHARE CODE'}
+          <button onClick={shareCode} className="btn" style={{ padding: 18, fontSize: 18 }}>
+            {copied ? '> LINK COPIED!' : '> INVITE A FRIEND'}
           </button>
-          <div style={{ color: 'var(--dim)', fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>
-            {'> tap SHARE to text a link. friend taps it → their code field auto-fills'}
+          <div style={{ color: 'var(--dim)', fontSize: 11, marginTop: 10, lineHeight: 1.5, textAlign: 'center' }}>
+            {'> sends them a link. the second they tap it, you\'re friends.'}
           </div>
+        </div>
+
+        <div style={{ padding: 16, borderBottom: '1px solid var(--dark)' }}>
+          <div className="label">{'> YOUR CODE'}</div>
+          <div onClick={copyCode} style={{ fontSize: 28, letterSpacing: 6, fontWeight: 'bold', cursor: 'pointer', padding: '8px 0' }}>
+            {copied ? 'COPIED' : me.friend_code}
+          </div>
+          <div style={{ color: 'var(--dim)', fontSize: 11 }}>{'> tap to copy'}</div>
         </div>
 
         <div style={{ padding: 16, borderBottom: '1px solid var(--dark)' }}>
@@ -115,7 +121,7 @@ export default function FriendsTab() {
         {friends.length === 0 ? (
           <div className="empty">
             <div className="empty-title">{'> NO FRIENDS YET'}</div>
-            <div className="empty-body">{'> tap SHARE CODE above and text it to a friend'}</div>
+            <div className="empty-body">{'> tap INVITE A FRIEND above to send a link'}</div>
           </div>
         ) : (
           <div>

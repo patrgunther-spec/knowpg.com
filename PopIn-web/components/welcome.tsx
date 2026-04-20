@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '@/lib/app';
 
 export default function Welcome() {
@@ -10,6 +10,13 @@ export default function Welcome() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [invited, setInvited] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('popin.pendingFriendCode')) setInvited(true);
+    } catch {}
+  }, []);
 
   async function go() {
     if (busy) return;
@@ -25,7 +32,19 @@ export default function Welcome() {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 32 }}>
       <div style={{ fontSize: 42, fontWeight: 'bold', marginBottom: 4 }}>{'> POP IN'}</div>
-      <div style={{ color: 'var(--dim)', fontSize: 14, marginBottom: 40 }}>v1.0.0 beta</div>
+      <div style={{ color: 'var(--dim)', fontSize: 14, marginBottom: invited ? 24 : 40 }}>v1.0.0 beta</div>
+
+      {invited && (
+        <div style={{
+          border: '1px solid var(--green)', padding: 14, marginBottom: 24,
+          background: '#001a00', color: 'var(--green)', fontSize: 13, lineHeight: 1.5,
+        }}>
+          {'> A FRIEND INVITED YOU'}
+          <div style={{ color: 'var(--dim)', fontSize: 11, marginTop: 6, letterSpacing: 0.5 }}>
+            sign up and they'll be added to your friends list automatically
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 0, marginBottom: 24, border: '1px solid var(--dark)' }}>
         <button

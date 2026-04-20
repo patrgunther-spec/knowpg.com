@@ -5,11 +5,21 @@ import { AppProvider } from '@/lib/app';
 
 export const metadata: Metadata = {
   title: 'Pop In',
-  description: 'pop in on your friends',
+  description: 'pop in on your friends — see where they are, join their plans',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Pop In',
+  },
+  openGraph: {
+    title: 'Pop In',
+    description: 'your friend invited you — tap to join',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Pop In',
+    description: 'your friend invited you — tap to join',
   },
 };
 
