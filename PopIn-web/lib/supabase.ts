@@ -3,7 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 const url = 'https://uzcjjgziqotacqimedcp.supabase.co';
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-export const supabase = createClient(url, key || 'placeholder');
+export const supabase = createClient(url, key || 'placeholder', {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storageKey: 'popin.auth',
+  },
+});
 
 export const SUPABASE_CONFIGURED = !!key;
 
