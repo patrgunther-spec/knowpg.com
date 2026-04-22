@@ -13,6 +13,7 @@ export default function HomeTab({ onOpenProfile }: { onOpenProfile: () => void }
   const { me, friends, updateMe } = useApp();
   const [modal, setModal] = useState(false);
   const [status, setStatus] = useState('');
+  const [focusId, setFocusId] = useState<string | null>(null);
 
   if (!me) return null;
 
@@ -25,27 +26,74 @@ export default function HomeTab({ onOpenProfile }: { onOpenProfile: () => void }
           </div>
           <div style={{ flex: 1 }}>
             <div className="header-title">{'> '}{me.name.toUpperCase()}</div>
-            <div className={me.status ? 'header-sub' : ''} style={{ color: me.status ? 'var(--green)' : 'var(--dim)', fontSize: 12, marginTop: 4, opacity: me.status ? 0.7 : 1 }}>
-              {me.status ? `> ${me.status}` : '> NO STATUS SET'}
+            <div style={{ color: me.status ? 'var(--green)' : 'var(--dim)', fontSize: 12, marginTop: 4, opacity: 0.7 }}>
+              {me.status ? `> ${me.status}` : '> tap to edit profile'}
             </div>
           </div>
+          <div style={{ color: 'var(--dim)', fontSize: 16 }}>{'>'}</div>
         </div>
       </div>
 
-      <Map me={me} friends={friends} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Map me={me} friends={friends} focusId={focusId} onFocused={() => setFocusId(null)} />
+      </div>
 
-      <div style={{ padding: 16, borderTop: '1px solid var(--dark)', background: 'var(--bg)' }}>
+      {friends.length > 0 && (
+        <div style={{ maxHeight: '28vh', overflowY: 'auto', borderTop: '1px solid var(--dark)', background: 'var(--bg)' }}>
+          <div style={{
+            padding: '8px 16px', color: 'var(--dim)', fontSize: 11, letterSpacing: 1, fontWeight: 'bold',
+            borderBottom: '1px solid var(--dark)', display: 'flex', justifyContent: 'space-between',
+          }}>
+            <span>{'> PEOPLE'}</span>
+            <span>{friends.length}</span>
+          </div>
+          {friends.map((f) => {
+            const hasLoc = f.lat != null && f.lng != null;
+            return (
+              <div key={f.id} onClick={() => hasLoc && setFocusId(f.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px',
+                  borderBottom: '1px solid var(--dark)', cursor: hasLoc ? 'pointer' : 'default' }}>
+                <div style={{ position: 'relative', width: 32, height: 32 }}>
+                  <div className="avatar-sm">
+                    {f.avatar ? <img src={f.avatar} alt="" /> : (f.name[0] || '?').toUpperCase()}
+                  </div>
+                  {hasLoc && (
+                    <div style={{
+                      position: 'absolute', bottom: -1, right: -1, width: 8, height: 8,
+                      borderRadius: '50%', background: 'var(--green)', border: '1px solid #000',
+                    }} />
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: 13 }}>{f.name}</div>
+                  <div style={{ color: 'var(--dim)', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {f.status ? `> ${f.status}` : hasLoc ? '> location available' : '> no location'}
+                  </div>
+                </div>
+                {hasLoc && <div style={{ color: 'var(--dim)', fontSize: 14 }}>{'>'}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ padding: 12, borderTop: '1px solid var(--dark)', background: 'var(--bg)' }}>
         {me.status ? (
-          <>
-            <div className="label">{'> BROADCASTING:'}</div>
-            <div style={{ fontSize: 14, marginBottom: 12 }}>{me.status}</div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn" onClick={() => { setStatus(me.status); setModal(true); }}>{'> UPDATE'}</button>
-              <button className="btn btn-danger" onClick={() => updateMe({ status: '' })}>{'> END'}</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ flex: 1, fontSize: 12, color: 'var(--dim)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+              {'> '}{me.status}
             </div>
-          </>
+            <button onClick={() => { setStatus(me.status); setModal(true); }}
+              style={{ border: '1px solid var(--green)', color: 'var(--green)', padding: '8px 12px', fontSize: 11, fontWeight: 'bold', letterSpacing: 1 }}>
+              EDIT
+            </button>
+            <button onClick={() => updateMe({ status: '' })}
+              style={{ border: '1px solid var(--red)', color: 'var(--red)', padding: '8px 12px', fontSize: 11, fontWeight: 'bold', letterSpacing: 1 }}>
+              END
+            </button>
+          </div>
         ) : (
-          <button className="btn" onClick={() => setModal(true)} style={{ padding: 18, fontSize: 18 }}>{'> POP IN'}</button>
+          <button className="btn" onClick={() => setModal(true)} style={{ padding: 14, fontSize: 16 }}>{'> POP IN'}</button>
         )}
       </div>
 

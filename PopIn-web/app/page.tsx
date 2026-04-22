@@ -34,7 +34,7 @@ export default function Page() {
   }
 
   if (loading) {
-    return <div className="page"><div className="center">{'> INITIALIZING...'}</div></div>;
+    return <div className="page"><div className="center">{'> LOADING...'}</div></div>;
   }
 
   if (!session || !me) {

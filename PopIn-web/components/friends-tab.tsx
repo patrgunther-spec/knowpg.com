@@ -9,6 +9,10 @@ export default function FriendsTab() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
+
+  function markBusy(id: string) { setBusyIds((prev) => new Set(prev).add(id)); }
+  function clearBusy(id: string) { setBusyIds((prev) => { const n = new Set(prev); n.delete(id); return n; }); }
 
   async function submit() {
     if (!me || busy) return;
@@ -19,14 +23,8 @@ export default function FriendsTab() {
     setBusy(false);
   }
 
-  async function copyCode() {
-    if (!me) return;
-    try {
-      await navigator.clipboard.writeText(me.friend_code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {}
-  }
+  async function doAccept(id: string) { markBusy(id); await acceptRequest(id); clearBusy(id); }
+  async function doDecline(id: string) { markBusy(id); await declineRequest(id); clearBusy(id); }
 
   async function shareCode() {
     if (!me) return;
@@ -35,11 +33,7 @@ export default function FriendsTab() {
     if (typeof navigator !== 'undefined' && (navigator as any).share) {
       try { await (navigator as any).share({ title: 'Pop In', text, url }); return; } catch {}
     }
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   }
 
   if (!me) return null;
@@ -53,13 +47,14 @@ export default function FriendsTab() {
             {copied ? '> LINK COPIED!' : '> INVITE A FRIEND'}
           </button>
           <div style={{ color: 'var(--dim)', fontSize: 11, marginTop: 10, lineHeight: 1.5, textAlign: 'center' }}>
-            {'> sends them a link. they tap it → request sent → you approve each other.'}
+            {'> sends them a link. they tap it → instant add.'}
           </div>
         </div>
 
         <div style={{ padding: 16, borderBottom: '1px solid var(--dark)' }}>
           <div className="label">{'> YOUR CODE'}</div>
-          <div onClick={copyCode} style={{ fontSize: 28, letterSpacing: 6, fontWeight: 'bold', cursor: 'pointer', padding: '8px 0' }}>
+          <div onClick={() => { if (!me) return; try { navigator.clipboard.writeText(me.friend_code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} }}
+            style={{ fontSize: 28, letterSpacing: 6, fontWeight: 'bold', cursor: 'pointer', padding: '8px 0' }}>
             {me.friend_code}
           </div>
           <div style={{ color: 'var(--dim)', fontSize: 11 }}>{'> tap to copy'}</div>
@@ -69,14 +64,16 @@ export default function FriendsTab() {
           <div className="label">{'> ADD BY CODE'}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
-              placeholder="ABC123"
-              value={code}
+              placeholder="ABC123" value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
               autoCapitalize="characters"
               style={{ flex: 1, letterSpacing: 4, textAlign: 'center', fontSize: 20 }}
               onKeyDown={(e) => e.key === 'Enter' && submit()}
             />
-            <button onClick={submit} disabled={busy} style={{ borderLeft: '1px solid var(--green)', padding: '0 20px', color: 'var(--green)', fontSize: 20 }}>{'>'}</button>
+            <button onClick={submit} disabled={busy}
+              style={{ borderLeft: '1px solid var(--green)', padding: '0 20px', color: 'var(--green)', fontSize: 20 }}>
+              {busy ? '...' : '>'}
+            </button>
           </div>
           {err && <div className="err">{'> '}{err}</div>}
           {msg && <div style={{ color: 'var(--green)', fontSize: 13, marginTop: 12 }}>{'> '}{msg}</div>}
@@ -99,8 +96,12 @@ export default function FriendsTab() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn" onClick={() => acceptRequest(f.id)} style={{ padding: 12, fontSize: 14 }}>{'> APPROVE'}</button>
-                  <button className="btn btn-danger" onClick={() => declineRequest(f.id)} style={{ padding: 12, fontSize: 14 }}>{'> DECLINE'}</button>
+                  <button className="btn" onClick={() => doAccept(f.id)} disabled={busyIds.has(f.id)} style={{ padding: 12, fontSize: 14 }}>
+                    {busyIds.has(f.id) ? '> ...' : '> APPROVE'}
+                  </button>
+                  <button className="btn btn-danger" onClick={() => doDecline(f.id)} disabled={busyIds.has(f.id)} style={{ padding: 12, fontSize: 14 }}>
+                    {'> DECLINE'}
+                  </button>
                 </div>
               </div>
             ))}
@@ -127,28 +128,40 @@ export default function FriendsTab() {
           </div>
         )}
 
-        {friends.length === 0 && incoming.length === 0 && outgoing.length === 0 ? (
-          <div className="empty">
-            <div className="empty-title">{'> NO FRIENDS YET'}</div>
-            <div className="empty-body">{'> tap INVITE A FRIEND above or enter their code'}</div>
-          </div>
-        ) : friends.length > 0 ? (
+        {friends.length > 0 && (
           <div>
-            <div style={{ padding: '16px 16px 8px', color: 'var(--dim)', fontSize: 11, letterSpacing: 1 }}>{'> '}{friends.length}{' FRIEND'}{friends.length !== 1 ? 'S' : ''}</div>
+            <div style={{ padding: '16px 16px 8px', color: 'var(--dim)', fontSize: 11, letterSpacing: 1 }}>
+              {'> '}{friends.length}{' FRIEND'}{friends.length !== 1 ? 'S' : ''}
+            </div>
             {friends.map((f) => (
               <div key={f.id} className="row">
-                <div className="avatar-md">
+                <div className="avatar-md" style={{ position: 'relative' }}>
                   {f.avatar ? <img src={f.avatar} alt="" /> : (f.name[0] || '?').toUpperCase()}
+                  {f.lat != null && f.lng != null && (
+                    <div style={{
+                      position: 'absolute', bottom: -1, right: -1, width: 10, height: 10,
+                      borderRadius: '50%', background: 'var(--green)', border: '2px solid #000',
+                    }} />
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div className="row-name">{f.name}</div>
-                  {f.status ? <div className="row-sub">{'> '}{f.status}</div> : null}
+                  <div className="row-sub">
+                    {f.status ? `> ${f.status}` : f.lat != null ? '> sharing location' : '> no location'}
+                  </div>
                 </div>
                 <button onClick={() => removeFriend(f.id)} style={{ color: 'var(--red)', fontSize: 20, padding: 8 }}>×</button>
               </div>
             ))}
           </div>
-        ) : null}
+        )}
+
+        {friends.length === 0 && incoming.length === 0 && outgoing.length === 0 && (
+          <div className="empty">
+            <div className="empty-title">{'> NO FRIENDS YET'}</div>
+            <div className="empty-body">{'> tap INVITE A FRIEND above or enter their code'}</div>
+          </div>
+        )}
       </div>
     </>
   );
