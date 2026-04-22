@@ -9,17 +9,26 @@ Developer account.
 ## 🚀 One step to run it
 
 **On your iPhone:** install **Expo Go** from the App Store.
-**On your computer:** open Terminal in this folder and run:
+
+**On your Mac (one time only):**
 
 ```bash
-cd golf-swing-app && npm run go
+brew install node watchman
+```
+
+*(Watchman stops the "EMFILE: too many open files" error Metro can hit on
+macOS. Skip it and you'll get that crash.)*
+
+**Then, every time you want to run the app:**
+
+```bash
+cd ~/knowpg.com/golf-swing-app && npx expo start --go --lan
 ```
 
 That's it. A QR code appears. Open your iPhone camera, point it at the QR,
 tap the pop-up. The app opens in Expo Go.
 
-*(First time only: the command installs stuff and starts the server. After
-that, just `npm run go` again.)*
+*(Your iPhone and Mac must be on the **same Wi-Fi**.)*
 
 ---
 
@@ -40,16 +49,19 @@ that, just `npm run go` again.)*
 
 ---
 
-## 🛠️ Don't have Node.js yet?
+## 🛠️ Troubleshooting
 
-Install it once, then come back:
+**`EMFILE: too many open files, watch`** — Install Watchman:
+`brew install watchman`. Then re-run the start command.
 
-```bash
-# Mac
-brew install node
-```
+**Tunnel fails / "remote gone away"** — Ngrok is flaky. The default
+`--lan` mode does not use ngrok. Stay on LAN.
 
-Or download from https://nodejs.org.
+**"Switching to --dev-client"** — Force Expo Go with the `--go` flag,
+which the start command already includes.
+
+**Don't have Homebrew?** Install it once at https://brew.sh, then run
+`brew install node watchman`.
 
 ---
 
