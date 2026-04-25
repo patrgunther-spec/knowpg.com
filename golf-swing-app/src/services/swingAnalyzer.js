@@ -1,6 +1,5 @@
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system';
-import { Video } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY_STORAGE = 'CLAUDE_API_KEY';
@@ -27,29 +26,13 @@ export async function setApiKey(key) {
   return AsyncStorage.setItem(KEY_STORAGE, key.trim());
 }
 
-async function getVideoDurationMs(videoUri) {
-  return new Promise((resolve) => {
-    const ref = { current: null };
-    const probe = async () => {
-      try {
-        const { sound, status } = await Video.createAsync(
-          { uri: videoUri },
-          { shouldPlay: false }
-        );
-        ref.current = sound;
-        const info = await sound.getStatusAsync();
-        await sound.unloadAsync();
-        resolve(info.durationMillis || 5000);
-      } catch (e) {
-        resolve(5000);
-      }
-    };
-    probe();
-  });
-}
+const DEFAULT_DURATION_MS = 5000;
 
-export async function extractFrames(videoUri, onProgress) {
-  const duration = await getVideoDurationMs(videoUri);
+export async function extractFrames(videoUri, durationMs, onProgress) {
+  const duration =
+    typeof durationMs === 'number' && durationMs > 0
+      ? durationMs
+      : DEFAULT_DURATION_MS;
   const frames = [];
   for (let i = 0; i < FRAME_COUNT; i++) {
     const fraction = (i + 0.5) / FRAME_COUNT;
@@ -167,7 +150,6 @@ export async function analyzeSwing(frames) {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify(body),
   });

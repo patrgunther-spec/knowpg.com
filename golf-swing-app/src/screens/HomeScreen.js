@@ -45,7 +45,8 @@ export default function HomeScreen({ navigation }) {
       quality: 1,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      navigation.navigate('Analyze', { videoUri: result.assets[0].uri });
+      const a = result.assets[0];
+      navigation.navigate('Analyze', { videoUri: a.uri, durationMs: a.duration });
     }
   }
 
@@ -68,7 +69,8 @@ export default function HomeScreen({ navigation }) {
       quality: 1,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      navigation.navigate('Analyze', { videoUri: result.assets[0].uri });
+      const a = result.assets[0];
+      navigation.navigate('Analyze', { videoUri: a.uri, durationMs: a.duration });
     }
   }
 

@@ -7,14 +7,13 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { extractFrames, analyzeSwing } from '../services/swingAnalyzer';
 import { colors } from '../theme/colors';
 
 export default function AnalyzeScreen({ route, navigation }) {
-  const { videoUri } = route.params;
+  const { videoUri, durationMs } = route.params;
   const [frames, setFrames] = useState([]);
   const [stage, setStage] = useState('extracting');
   const [progress, setProgress] = useState(0);
@@ -31,7 +30,7 @@ export default function AnalyzeScreen({ route, navigation }) {
   async function run() {
     try {
       setStage('extracting');
-      const got = await extractFrames(videoUri, (p) => {
+      const got = await extractFrames(videoUri, durationMs, (p) => {
         if (!cancelled.current) setProgress(p);
       });
       if (cancelled.current) return;
