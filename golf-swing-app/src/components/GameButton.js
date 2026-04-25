@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { colors } from '../theme/colors';
 
 export default function GameButton({
@@ -10,6 +11,10 @@ export default function GameButton({
   onPress,
   variant = 'primary',
 }) {
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    onPress?.();
+  };
   const palette =
     variant === 'gold'
       ? [colors.gold, colors.goldDeep]
@@ -21,7 +26,7 @@ export default function GameButton({
     variant === 'gold' ? '#241A00' : variant === 'ghost' ? colors.silver : colors.white;
 
   return (
-    <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={styles.wrap}>
+    <TouchableOpacity activeOpacity={0.78} onPress={handlePress} style={styles.wrap}>
       <View
         style={[
           styles.borderFrame,

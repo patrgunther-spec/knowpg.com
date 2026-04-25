@@ -30,20 +30,27 @@ fi
 
 # 4. Sync JS dependencies. Always runs - fast no-op when nothing new,
 # and catches new deps added by `git pull`.
-echo "[setup] Syncing JavaScript packages…"
-npm install --no-audit --no-fund
+echo "[setup] Syncing JavaScript packages (this may take ~30s first time)…"
+npm install --no-audit --no-fund --loglevel=error
 
-# 5. Sanity check: confirm critical dep is present, force reinstall if not.
-if [ ! -d node_modules/expo-linear-gradient ]; then
-  echo "[setup] expo-linear-gradient missing. Forcing clean reinstall…"
+# 5. Sanity check: confirm critical deps are present, force reinstall if not.
+MISSING=""
+for pkg in expo-linear-gradient expo-haptics expo-video-thumbnails; do
+  [ -d "node_modules/$pkg" ] || MISSING="$MISSING $pkg"
+done
+if [ -n "$MISSING" ]; then
+  echo "[setup] Missing:$MISSING. Forcing clean reinstall…"
   rm -rf node_modules package-lock.json
-  npm install --no-audit --no-fund
+  npm install --no-audit --no-fund --loglevel=error
 fi
 
-# 6. Wipe stale Metro/Expo cache so the QR always prints.
+# 6. Apply non-breaking security fixes (silent, best-effort).
+npm audit fix --no-audit --no-fund --loglevel=error >/dev/null 2>&1 || true
+
+# 7. Wipe stale Metro/Expo cache so the QR always prints.
 rm -rf .expo node_modules/.cache /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
 
-# 7. Launch in Expo Go + LAN mode and print the QR.
+# 8. Launch in Expo Go + LAN mode and print the QR.
 echo ""
 echo "═══════════════════════════════════════════════════════"
 echo "  GOLF SWING COACH · STARTING"

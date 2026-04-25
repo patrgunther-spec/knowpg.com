@@ -7,11 +7,25 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
+  Animated,
+  Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
+import * as Haptics from 'expo-haptics';
 import { extractFrames, analyzeSwing } from '../services/swingAnalyzer';
 import { colors } from '../theme/colors';
+
+const COACH_QUOTES = [
+  'Studying your tempo…',
+  'Checking your spine angle…',
+  'Tracing the club path…',
+  'Reading your weight transfer…',
+  'Looking at impact position…',
+  'Comparing to tour pros…',
+  'Spotting the strokes you can save…',
+  'Drafting your custom drills…',
+];
 
 export default function AnalyzeScreen({ route, navigation }) {
   const { videoUri, durationMs } = route.params;
@@ -19,14 +33,51 @@ export default function AnalyzeScreen({ route, navigation }) {
   const [stage, setStage] = useState('extracting');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
+  const [quoteIdx, setQuoteIdx] = useState(0);
   const cancelled = useRef(false);
+  const pulse = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     run();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
     return () => {
       cancelled.current = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (stage !== 'analyzing') return;
+    const id = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(fade, { toValue: 0, duration: 220, useNativeDriver: true }),
+        Animated.timing(fade, { toValue: 1, duration: 220, useNativeDriver: true }),
+      ]).start();
+      setQuoteIdx((i) => (i + 1) % COACH_QUOTES.length);
+    }, 1800);
+    return () => clearInterval(id);
+  }, [stage]);
+
+  useEffect(() => {
+    if (stage === 'error') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    }
+  }, [stage]);
 
   async function run() {
     try {
@@ -90,6 +141,25 @@ export default function AnalyzeScreen({ route, navigation }) {
       {/* HUD status */}
       <View style={styles.hud}>
         <View style={styles.hudRow}>
+          <Animated.View
+            style={[
+              styles.statusDot,
+              {
+                opacity: pulse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.3, 1],
+                }),
+                transform: [
+                  {
+                    scale: pulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.85, 1.15],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
           <Text style={styles.hudLabel}>STATUS</Text>
           <Text style={styles.hudValue}>{stageText}</Text>
           {stage !== 'error' && <ActivityIndicator color={colors.fairwayHi} />}
@@ -103,15 +173,19 @@ export default function AnalyzeScreen({ route, navigation }) {
           />
         </View>
         <View style={styles.hudRow}>
-          <Text style={styles.hudSmall}>
-            {stage === 'extracting'
-              ? `Frame ${Math.min(8, Math.round(progress * 8))} / 8`
-              : stage === 'analyzing'
-              ? 'Sending frames to coach…'
-              : stage === 'error'
-              ? '—'
-              : 'Loading'}
-          </Text>
+          {stage === 'analyzing' ? (
+            <Animated.Text style={[styles.hudSmall, { opacity: fade, flex: 1 }]}>
+              {COACH_QUOTES[quoteIdx]}
+            </Animated.Text>
+          ) : (
+            <Text style={[styles.hudSmall, { flex: 1 }]}>
+              {stage === 'extracting'
+                ? `Frame ${Math.min(8, Math.round(progress * 8))} / 8`
+                : stage === 'error'
+                ? '—'
+                : 'Loading'}
+            </Text>
+          )}
           <Text style={styles.hudSmall}>{pct}%</Text>
         </View>
       </View>
@@ -217,6 +291,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.fairwayHi,
+    marginRight: 10,
+    shadowColor: colors.fairwayHi,
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
   },
   hudLabel: {
     color: colors.silverDim,

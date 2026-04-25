@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { colors } from '../theme/colors';
 import GameButton from '../components/GameButton';
 
@@ -22,6 +23,17 @@ export default function ResultsScreen({ route, navigation }) {
   const { report, frames } = route.params;
   const [openFrame, setOpenFrame] = useState(null);
   const takeaways = report.takeaways || [];
+
+  useEffect(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {}
+    );
+  }, []);
+
+  const toggleFrame = (i) => {
+    Haptics.selectionAsync().catch(() => {});
+    setOpenFrame((cur) => (cur === i ? null : i));
+  };
 
   return (
     <ScrollView
@@ -110,7 +122,7 @@ export default function ResultsScreen({ route, navigation }) {
               key={i}
               style={[styles.frameRow, isLast && { borderBottomWidth: 0 }]}
               activeOpacity={0.85}
-              onPress={() => setOpenFrame(isOpen ? null : i)}
+              onPress={() => toggleFrame(i)}
             >
               <View style={styles.frameRowTop}>
                 {frame?.uri ? (
