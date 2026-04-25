@@ -1,43 +1,54 @@
 # ⛳ Golf Swing Coach
 
-An iPhone app that watches your golf swing and tells you how to fix it — in
-words a 10-year-old understands. Runs in **Expo Go**. No App Store, no Apple
-Developer account.
+An iPhone app that analyzes your golf swing and gives you **3–5 actionable
+takeaways to lower your handicap** — just like 18Birdies / SkillEst, but
+running in Expo Go with a Tiger Woods 2004-inspired UI.
+
+It records or imports a swing video, extracts 8 key frames, sends them to
+Claude vision, and returns:
+
+- A swing summary + one thing you did well
+- A frame-by-frame breakdown (tap any frame for a coach tip)
+- Ball-flight forecast (slice / hook / thin / fat / etc.) with the WHY
+- **3–5 prioritized takeaways**, each with: what's wrong, why it costs you
+  strokes, the fix, reps to do, and estimated handicap impact
 
 ---
 
-## 🚀 One step to run it
+## 🚀 Launch in one command
 
-**On your iPhone:** install **Expo Go** from the App Store.
-
-**On your Mac (one time only):**
+**One time on your Mac (if you don't already have these):**
 
 ```bash
 brew install node watchman
 ```
 
-*(Watchman stops the "EMFILE: too many open files" error Metro can hit on
-macOS. Skip it and you'll get that crash.)*
-
-**Then, every time you want to run the app:**
+**Every time you want to run the app:**
 
 ```bash
-cd ~/knowpg.com/golf-swing-app && npx expo start --go --lan
+bash ~/knowpg.com/golf-swing-app/start.sh
 ```
 
-That's it. A QR code appears. Open your iPhone camera, point it at the QR,
-tap the pop-up. The app opens in Expo Go.
+That single command pulls the latest code, installs anything missing, clears
+stale caches, and prints a QR. Open your iPhone Camera, point at the QR,
+tap the notification — Expo Go opens the app.
 
 *(Your iPhone and Mac must be on the **same Wi-Fi**.)*
+
+If you've never cloned the repo, do this once first:
+
+```bash
+git clone https://github.com/patrgunther-spec/knowpg.com.git ~/knowpg.com
+```
 
 ---
 
 ## 🔑 Inside the app
 
-1. Tap **⚙️ Setup** → paste your Claude API key → **Save**.
-   (Get a key at https://console.anthropic.com — takes 2 minutes.)
-2. Tap **📹 Record a Swing** (or **📁 Pick a Swing Video**).
-3. Wait ~15 seconds. Read your report.
+1. Tap **TOURNAMENT SETUP** → paste your Claude API key → save.
+   Get a key at https://console.anthropic.com (about 2 minutes).
+2. Tap **QUICK ROUND** to record, or **LOAD SWING** to pick a video.
+3. Wait ~15 seconds. Read your takeaways.
 
 ---
 
@@ -51,21 +62,21 @@ tap the pop-up. The app opens in Expo Go.
 
 ## 🛠️ Troubleshooting
 
-**`EMFILE: too many open files, watch`** — Install Watchman:
-`brew install watchman`. Then re-run the start command.
+**`EMFILE: too many open files, watch`** — `brew install watchman`, then
+re-run `start.sh`.
 
-**Tunnel fails / "remote gone away"** — Ngrok is flaky. The default
-`--lan` mode does not use ngrok. Stay on LAN.
+**No QR code prints** — Re-run `start.sh`. It clears stale caches that
+sometimes wedge Metro before the QR shows up.
 
-**"Switching to --dev-client"** — Force Expo Go with the `--go` flag,
-which the start command already includes.
+**"Coach is busy (HTTP 401)"** — Your API key is wrong or expired. Make a
+new one at console.anthropic.com.
 
-**Don't have Homebrew?** Install it once at https://brew.sh, then run
-`brew install node watchman`.
+**Can't reach the dev server from iPhone** — Same Wi-Fi check. Or fall
+back: `cd ~/knowpg.com/golf-swing-app && npx expo start --go --tunnel`.
 
 ---
 
 ## 🔒 Privacy
 
-Your API key stays on your phone. Swing frames go straight from your phone
-to Claude. No middleman, no accounts.
+API key stays on your phone. Swing frames go directly from your phone to
+Anthropic. No middleman, no accounts, no analytics.

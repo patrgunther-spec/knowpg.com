@@ -7,34 +7,109 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
+import GameButton from '../components/GameButton';
+
+function priorityTone(p) {
+  const v = String(p || '').toLowerCase();
+  if (v === 'high') return colors.danger;
+  if (v === 'medium') return colors.gold;
+  return colors.fairwayHi;
+}
 
 export default function ResultsScreen({ route, navigation }) {
   const { report, frames } = route.params;
   const [openFrame, setOpenFrame] = useState(null);
+  const takeaways = report.takeaways || [];
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.heroCard}>
-        <Text style={styles.heroTitle}>Here's what Coach saw</Text>
-        <Text style={styles.heroSummary}>{report.summary}</Text>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
+      <LinearGradient
+        colors={[colors.bgGradTop, colors.bg, colors.bgGradBottom]}
+        style={StyleSheet.absoluteFill}
+      />
 
-        <View style={styles.goodBox}>
-          <Text style={styles.goodLabel}>⭐ One thing you did well</Text>
-          <Text style={styles.goodText}>{report.oneThingYouDidWell}</Text>
-        </View>
+      {/* Header card */}
+      <View style={styles.cardFrame}>
+        <LinearGradient colors={['#0E2418', '#04100A']} style={styles.headerCard}>
+          <Text style={styles.eyebrow}>SWING REPORT</Text>
+          <Text style={styles.handle} numberOfLines={2}>
+            {report.playerHandle || 'The Player'}
+          </Text>
+          <Text style={styles.summary}>{report.summary}</Text>
+          <View style={styles.goodBox}>
+            <Text style={styles.goodLabel}>★  ONE THING YOU DID WELL</Text>
+            <Text style={styles.goodText}>{report.oneThingYouDidWell}</Text>
+          </View>
+        </LinearGradient>
       </View>
 
-      <SectionTitle emoji="🏌️" text="Your Swing, Moment by Moment" />
-      <View style={styles.card}>
+      {/* Takeaways: the main event */}
+      <SectionTitle text={`${takeaways.length} Fixes To Lower Your Handicap`} />
+      {takeaways.map((t, i) => {
+        const tone = priorityTone(t.priority);
+        return (
+          <View key={i} style={styles.takeawayFrame}>
+            <View style={styles.takeawayCard}>
+              <View style={styles.takeawayHeader}>
+                <View style={[styles.takeawayNum, { borderColor: tone }]}>
+                  <Text style={[styles.takeawayNumText, { color: tone }]}>
+                    {String(i + 1).padStart(2, '0')}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.priorityRow}>
+                    <View style={[styles.priorityPill, { borderColor: tone }]}>
+                      <Text style={[styles.priorityPillText, { color: tone }]}>
+                        {String(t.priority || 'Medium').toUpperCase()} PRIORITY
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.takeawayTitle}>{t.title}</Text>
+                </View>
+              </View>
+
+              <Block label="WHAT'S WRONG" body={t.whatToFix} accent={colors.gold} />
+              <Block label="WHY IT'S COSTING YOU STROKES" body={t.whyItMatters} accent={colors.danger} />
+              <Block label="HOW TO FIX IT" body={t.howToFix} accent={colors.fairwayHi} />
+
+              <View style={styles.metaRow}>
+                <MetaChip icon="⏱" label="DO IT" text={t.reps} />
+                <MetaChip
+                  icon="📉"
+                  label="HANDICAP IMPACT"
+                  text={t.estimatedHandicapImpact}
+                  tone="gold"
+                />
+              </View>
+            </View>
+          </View>
+        );
+      })}
+
+      {/* Ball flight */}
+      <SectionTitle text="Ball Flight Forecast" />
+      <View style={styles.panel}>
+        <Text style={styles.paragraph}>{report.ballFlightExplanation}</Text>
+      </View>
+
+      {/* Frame breakdown */}
+      <SectionTitle text="Swing Path · Frame By Frame" />
+      <View style={styles.panel}>
         {report.frameBreakdown?.map((fb, i) => {
           const frame = frames.find((f) => f.label === fb.label) || frames[i];
           const isOpen = openFrame === i;
+          const isLast = i === report.frameBreakdown.length - 1;
           return (
             <TouchableOpacity
               key={i}
-              style={styles.frameRow}
-              activeOpacity={0.8}
+              style={[styles.frameRow, isLast && { borderBottomWidth: 0 }]}
+              activeOpacity={0.85}
               onPress={() => setOpenFrame(isOpen ? null : i)}
             >
               <View style={styles.frameRowTop}>
@@ -44,16 +119,21 @@ export default function ResultsScreen({ route, navigation }) {
                   <View style={[styles.frameThumb, styles.frameThumbEmpty]} />
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.frameTitle}>{fb.label}</Text>
+                  <Text style={styles.frameTag}>F{i + 1}</Text>
+                  <Text style={styles.frameTitle} numberOfLines={1}>
+                    {fb.label}
+                  </Text>
                   <Text style={styles.frameWhat} numberOfLines={isOpen ? 0 : 2}>
                     {fb.whatISee}
                   </Text>
                 </View>
-                <Text style={styles.chev}>{isOpen ? '▾' : '▸'}</Text>
+                <Text style={[styles.chev, isOpen && { color: colors.fairwayHi }]}>
+                  {isOpen ? '▾' : '▸'}
+                </Text>
               </View>
               {isOpen && (
                 <View style={styles.tipBox}>
-                  <Text style={styles.tipLabel}>💡 Try this:</Text>
+                  <Text style={styles.tipLabel}>► COACH TIP</Text>
                   <Text style={styles.tipText}>{fb.tip}</Text>
                 </View>
               )}
@@ -62,311 +142,341 @@ export default function ResultsScreen({ route, navigation }) {
         })}
       </View>
 
-      <SectionTitle emoji="🎯" text="Why The Ball Goes That Way" />
-      <View style={styles.card}>
-        <Text style={styles.paragraph}>{report.ballFlightExplanation}</Text>
-      </View>
-
-      <SectionTitle emoji="🔧" text="Biggest Things To Fix" />
-      <View style={styles.card}>
-        {report.biggestIssues?.map((issue, i) => (
-          <View key={i} style={styles.issueRow}>
-            <View style={styles.issueBadge}>
-              <Text style={styles.issueBadgeText}>{i + 1}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.issueName}>{issue.name}</Text>
-              <Text style={styles.issueWhy}>
-                <Text style={styles.issueLabel}>Why: </Text>
-                {issue.why}
-              </Text>
-              <Text style={styles.issueWhy}>
-                <Text style={styles.issueLabel}>What it does: </Text>
-                {issue.howItHurts}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <SectionTitle emoji="🏃" text="Drills To Make You Better" />
-      {report.drills?.map((drill, i) => (
-        <View key={i} style={[styles.card, styles.drillCard]}>
-          <View style={styles.drillHeader}>
-            <View style={styles.drillNum}>
-              <Text style={styles.drillNumText}>{i + 1}</Text>
-            </View>
-            <Text style={styles.drillName}>{drill.name}</Text>
-          </View>
-          <Text style={styles.drillLabel}>How to do it</Text>
-          <Text style={styles.drillText}>{drill.howToDo}</Text>
-          <Text style={styles.drillLabel}>Why it helps</Text>
-          <Text style={styles.drillText}>{drill.whyItHelps}</Text>
-          <View style={styles.repsPill}>
-            <Text style={styles.repsText}>🔁 {drill.reps}</Text>
-          </View>
-        </View>
-      ))}
-
       {report.nextVideoTip && (
-        <View style={[styles.card, styles.nextTipCard]}>
-          <Text style={styles.nextTipLabel}>📸 For your next video</Text>
-          <Text style={styles.nextTipText}>{report.nextVideoTip}</Text>
+        <View style={styles.nextTipFrame}>
+          <View style={styles.nextTipCard}>
+            <Text style={styles.nextTipLabel}>📡  TIP FOR YOUR NEXT VIDEO</Text>
+            <Text style={styles.nextTipText}>{report.nextVideoTip}</Text>
+          </View>
         </View>
       )}
 
-      <TouchableOpacity
-        style={styles.primaryBtn}
+      <GameButton
+        icon="↻"
+        label="Analyze Another Swing"
+        caption="Run it back"
         onPress={() => navigation.popToTop()}
-      >
-        <Text style={styles.primaryBtnText}>Try Another Swing</Text>
-      </TouchableOpacity>
+      />
     </ScrollView>
   );
 }
 
-function SectionTitle({ emoji, text }) {
+function SectionTitle({ text }) {
   return (
-    <View style={styles.sectionTitleRow}>
-      <Text style={styles.sectionEmoji}>{emoji}</Text>
-      <Text style={styles.sectionTitle}>{text}</Text>
+    <View style={styles.sectionLabelWrap}>
+      <View style={styles.sectionLine} />
+      <Text style={styles.sectionLabel}>{text}</Text>
+      <View style={styles.sectionLine} />
+    </View>
+  );
+}
+
+function Block({ label, body, accent }) {
+  return (
+    <View style={[styles.block, { borderLeftColor: accent }]}>
+      <Text style={[styles.blockLabel, { color: accent }]}>► {label}</Text>
+      <Text style={styles.blockBody}>{body}</Text>
+    </View>
+  );
+}
+
+function MetaChip({ icon, label, text, tone = 'green' }) {
+  const c =
+    tone === 'gold'
+      ? { bg: '#1A1300', border: colors.goldDeep, label: colors.gold }
+      : { bg: '#0A2418', border: colors.fairwayDeep, label: colors.fairwayHi };
+  return (
+    <View style={[styles.metaChip, { backgroundColor: c.bg, borderColor: c.border }]}>
+      <Text style={[styles.metaChipLabel, { color: c.label }]}>
+        {icon}  {label}
+      </Text>
+      <Text style={styles.metaChipText}>{text}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: { backgroundColor: colors.bg },
   container: {
     padding: 16,
     paddingBottom: 40,
   },
-  heroCard: {
-    backgroundColor: colors.fairway,
-    padding: 18,
-    borderRadius: 18,
+  cardFrame: {
+    borderWidth: 2,
+    borderColor: colors.gold,
+    padding: 2,
+    backgroundColor: '#02080A',
     marginBottom: 18,
   },
-  heroTitle: {
-    color: colors.white,
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 6,
+  headerCard: {
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
   },
-  heroSummary: {
+  eyebrow: {
+    color: colors.gold,
+    fontSize: 11,
+    letterSpacing: 3,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  handle: {
     color: colors.white,
-    fontSize: 15,
-    lineHeight: 21,
-    marginBottom: 12,
+    fontSize: 28,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    marginVertical: 6,
+  },
+  summary: {
+    color: colors.silver,
+    fontSize: 14,
+    lineHeight: 20,
   },
   goodBox: {
-    backgroundColor: colors.fairwayDark,
+    marginTop: 14,
     padding: 12,
-    borderRadius: 12,
+    backgroundColor: 'rgba(11,191,77,0.10)',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.fairwayHi,
   },
   goodLabel: {
-    color: colors.sun,
-    fontWeight: '800',
-    fontSize: 13,
+    color: colors.gold,
+    fontWeight: '900',
+    fontSize: 10,
+    letterSpacing: 2.5,
     marginBottom: 4,
   },
   goodText: {
     color: colors.white,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
-  sectionTitleRow: {
+
+  sectionLabelWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 8,
-    paddingHorizontal: 2,
+    marginTop: 14,
+    marginBottom: 10,
   },
-  sectionEmoji: {
-    fontSize: 20,
-    marginRight: 8,
+  sectionLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.panelBorder,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.ink,
+  sectionLabel: {
+    color: colors.gold,
+    fontSize: 11,
+    letterSpacing: 2.5,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginHorizontal: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    flexShrink: 1,
   },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    padding: 14,
+
+  takeawayFrame: {
+    borderWidth: 2,
+    borderColor: colors.gold,
+    padding: 2,
+    backgroundColor: '#02080A',
     marginBottom: 14,
+  },
+  takeawayCard: {
+    backgroundColor: colors.panel,
+    padding: 14,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: colors.panelBorder,
+  },
+  takeawayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  takeawayNum: {
+    width: 46,
+    height: 46,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    backgroundColor: '#02080A',
+  },
+  takeawayNumText: {
+    fontWeight: '900',
+    fontStyle: 'italic',
+    fontSize: 18,
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  priorityPill: {
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  priorityPillText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.6,
+  },
+  takeawayTitle: {
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    lineHeight: 22,
+  },
+
+  block: {
+    borderLeftWidth: 3,
+    paddingLeft: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+  },
+  blockLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
+  blockBody: {
+    color: colors.silver,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 10,
+  },
+  metaChip: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    borderWidth: 1,
+    padding: 8,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  metaChipLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.6,
+    marginBottom: 2,
+  },
+  metaChipText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  panel: {
+    backgroundColor: colors.panel,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
+    padding: 12,
+    marginBottom: 6,
   },
   paragraph: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.silver,
   },
+
   frameRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
+    borderBottomColor: colors.panelBorder,
   },
   frameRowTop: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   frameThumb: {
-    width: 54,
-    height: 72,
-    borderRadius: 8,
-    backgroundColor: colors.sand,
+    width: 50,
+    height: 70,
+    backgroundColor: '#000',
     marginRight: 10,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
   },
   frameThumbEmpty: {
     backgroundColor: colors.sand,
   },
+  frameTag: {
+    color: colors.gold,
+    fontSize: 9,
+    letterSpacing: 2,
+    fontWeight: '900',
+  },
   frameTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.ink,
-    marginBottom: 2,
+    fontSize: 13,
+    fontWeight: '900',
+    color: colors.white,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginVertical: 2,
   },
   frameWhat: {
-    fontSize: 13,
-    color: colors.inkSoft,
-    lineHeight: 18,
+    fontSize: 12,
+    color: colors.silver,
+    lineHeight: 17,
   },
   chev: {
     fontSize: 18,
-    color: colors.inkSoft,
+    color: colors.silverDim,
     marginLeft: 8,
+    fontWeight: '900',
   },
   tipBox: {
     marginTop: 10,
     padding: 10,
-    backgroundColor: colors.fairwayLight,
-    borderRadius: 10,
+    backgroundColor: 'rgba(11,191,77,0.10)',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.fairwayHi,
   },
   tipLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.fairway,
+    fontSize: 10,
+    fontWeight: '900',
+    color: colors.fairwayHi,
+    letterSpacing: 2.5,
     marginBottom: 4,
   },
   tipText: {
-    fontSize: 14,
-    color: colors.ink,
-    lineHeight: 20,
-  },
-  issueRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  issueBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-    marginTop: 2,
-  },
-  issueBadgeText: {
-    color: colors.white,
-    fontWeight: '800',
-  },
-  issueName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.ink,
-    marginBottom: 4,
-  },
-  issueLabel: {
-    fontWeight: '700',
-    color: colors.fairway,
-  },
-  issueWhy: {
-    fontSize: 14,
-    color: colors.inkSoft,
-    lineHeight: 19,
-    marginBottom: 2,
-  },
-  drillCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: colors.sun,
-  },
-  drillHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  drillNum: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.sun,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  drillNumText: {
-    fontWeight: '800',
-    color: colors.ink,
-  },
-  drillName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.ink,
-  },
-  drillLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.fairway,
-    textTransform: 'uppercase',
-    marginTop: 6,
-    marginBottom: 2,
-    letterSpacing: 0.4,
-  },
-  drillText: {
-    fontSize: 14,
-    color: colors.ink,
-    lineHeight: 20,
-  },
-  repsPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.fairwayLight,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    marginTop: 10,
-  },
-  repsText: {
-    color: colors.fairway,
-    fontWeight: '700',
     fontSize: 13,
+    color: colors.white,
+    lineHeight: 18,
+  },
+
+  nextTipFrame: {
+    borderWidth: 2,
+    borderColor: colors.gold,
+    padding: 2,
+    backgroundColor: '#02080A',
+    marginVertical: 10,
   },
   nextTipCard: {
-    backgroundColor: colors.sand,
-    borderColor: colors.sun,
+    backgroundColor: '#1A1300',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.goldDeep,
   },
   nextTipLabel: {
-    fontWeight: '800',
-    color: colors.ink,
+    fontWeight: '900',
+    color: colors.gold,
+    letterSpacing: 2.5,
+    fontSize: 10,
     marginBottom: 4,
   },
   nextTipText: {
-    color: colors.ink,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  primaryBtn: {
-    backgroundColor: colors.fairway,
-    padding: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  primaryBtnText: {
     color: colors.white,
-    fontWeight: '800',
-    fontSize: 16,
+    fontSize: 13,
+    lineHeight: 19,
   },
 });

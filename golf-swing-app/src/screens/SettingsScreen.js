@@ -9,8 +9,10 @@ import {
   ScrollView,
   Linking,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getApiKey, setApiKey } from '../services/swingAnalyzer';
 import { colors } from '../theme/colors';
+import GameButton from '../components/GameButton';
 
 export default function SettingsScreen({ navigation }) {
   const [key, setKey] = useState('');
@@ -26,18 +28,18 @@ export default function SettingsScreen({ navigation }) {
 
   async function save() {
     if (!key.trim()) {
-      Alert.alert('Hmm', 'Please paste your Claude API key first.');
+      Alert.alert('Hold On', 'Paste your Claude API key first.');
       return;
     }
     if (!key.trim().startsWith('sk-')) {
       Alert.alert(
-        'That doesn\'t look right',
+        'Looks Wrong',
         'A Claude API key usually starts with "sk-". Double-check it.'
       );
       return;
     }
     await setApiKey(key);
-    Alert.alert('Saved!', 'You can now analyze swings.', [
+    Alert.alert('Saved', 'You can now analyze swings.', [
       { text: 'OK', onPress: () => navigation.goBack() },
     ]);
   }
@@ -45,113 +47,130 @@ export default function SettingsScreen({ navigation }) {
   async function clear() {
     await setApiKey('');
     setKey('');
-    Alert.alert('Cleared', 'Key removed from this phone.');
+    Alert.alert('Cleared', 'Key removed from this device.');
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>One-Time Setup</Text>
-        <Text style={styles.body}>
-          This app uses Claude (an AI coach) to look at your swing. To talk to
-          Claude, we need a small secret called an <Text style={styles.bold}>API key</Text>.
-          A grown-up can get one for free to start.
-        </Text>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
+      <LinearGradient
+        colors={[colors.bgGradTop, colors.bg, colors.bgGradBottom]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <View style={styles.cardFrame}>
+        <View style={styles.card}>
+          <Text style={styles.eyebrow}>STEP 01</Text>
+          <Text style={styles.title}>GET YOUR KEY</Text>
+          <Text style={styles.body}>
+            The app talks to Claude AI to grade your swing. You need a free
+            Claude API key (about 2 minutes to make).
+          </Text>
+          <GameButton
+            icon="🔑"
+            label="Open Claude Console"
+            caption="console.anthropic.com"
+            variant="gold"
+            onPress={() =>
+              Linking.openURL('https://console.anthropic.com/settings/keys')
+            }
+          />
+        </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.stepTitle}>Step 1 — Get a key</Text>
-        <Text style={styles.body}>
-          Go to console.anthropic.com, sign in, and make a new API key.
-        </Text>
-        <TouchableOpacity
-          style={styles.linkBtn}
-          onPress={() => Linking.openURL('https://console.anthropic.com/settings/keys')}
-        >
-          <Text style={styles.linkBtnText}>Open Claude Console</Text>
-        </TouchableOpacity>
+      <View style={styles.cardFrame}>
+        <View style={styles.card}>
+          <Text style={styles.eyebrow}>STEP 02</Text>
+          <Text style={styles.title}>PASTE IT HERE</Text>
+          <TextInput
+            style={styles.input}
+            value={key}
+            onChangeText={setKey}
+            placeholder="sk-ant-..."
+            placeholderTextColor={colors.silverDim}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            editable={loaded}
+          />
+          <GameButton
+            icon="✓"
+            label="Save Key"
+            caption="Stored only on this device"
+            onPress={save}
+          />
+          {!!key && (
+            <TouchableOpacity style={styles.clearBtn} onPress={clear}>
+              <Text style={styles.clearBtnText}>REMOVE KEY</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.stepTitle}>Step 2 — Paste it here</Text>
-        <TextInput
-          style={styles.input}
-          value={key}
-          onChangeText={setKey}
-          placeholder="sk-ant-..."
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry
-          editable={loaded}
-        />
-        <TouchableOpacity style={styles.saveBtn} onPress={save}>
-          <Text style={styles.saveBtnText}>Save Key</Text>
-        </TouchableOpacity>
-        {!!key && (
-          <TouchableOpacity style={styles.clearBtn} onPress={clear}>
-            <Text style={styles.clearBtnText}>Remove Key</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={[styles.card, styles.safeCard]}>
-        <Text style={styles.safeLabel}>🔒 Your key stays on your phone.</Text>
-        <Text style={styles.body}>
-          We save it only on this device. We don't send it anywhere except
-          directly to Claude when we analyze your swing.
-        </Text>
+      <View style={styles.safeFrame}>
+        <View style={styles.safeCard}>
+          <Text style={styles.safeLabel}>🔒  PRIVACY</Text>
+          <Text style={styles.body}>
+            Your key is stored only on this phone. Swing frames go directly
+            from your phone to Anthropic. No middleman, no accounts.
+          </Text>
+        </View>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: { backgroundColor: colors.bg },
   container: { padding: 16, paddingBottom: 40 },
+  cardFrame: {
+    borderWidth: 2,
+    borderColor: colors.gold,
+    padding: 2,
+    backgroundColor: '#02080A',
+    marginBottom: 14,
+  },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.panel,
     padding: 16,
-    borderRadius: 14,
-    marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: colors.panelBorder,
+  },
+  eyebrow: {
+    color: colors.gold,
+    fontSize: 11,
+    letterSpacing: 3,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.ink,
+    fontSize: 22,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    color: colors.white,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
     marginBottom: 8,
   },
-  stepTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.fairway,
-    marginBottom: 6,
-  },
   body: {
-    fontSize: 14,
-    color: colors.ink,
-    lineHeight: 20,
+    fontSize: 13,
+    color: colors.silver,
+    lineHeight: 19,
+    marginBottom: 10,
   },
-  bold: { fontWeight: '800' },
   input: {
     borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: 10,
+    borderColor: colors.panelBorder,
     padding: 12,
-    fontSize: 14,
-    marginTop: 10,
-    marginBottom: 10,
-    backgroundColor: colors.sand,
-  },
-  saveBtn: {
-    backgroundColor: colors.fairway,
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveBtnText: {
+    fontSize: 13,
+    marginVertical: 10,
+    backgroundColor: '#02080A',
     color: colors.white,
-    fontWeight: '800',
+    letterSpacing: 1,
   },
   clearBtn: {
     marginTop: 10,
@@ -160,26 +179,27 @@ const styles = StyleSheet.create({
   },
   clearBtnText: {
     color: colors.danger,
-    fontWeight: '700',
+    fontWeight: '900',
+    letterSpacing: 2,
+    fontSize: 12,
   },
-  linkBtn: {
-    marginTop: 10,
-    backgroundColor: colors.sun,
-    padding: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  linkBtnText: {
-    color: colors.ink,
-    fontWeight: '800',
+  safeFrame: {
+    borderWidth: 2,
+    borderColor: colors.fairwayDeep,
+    padding: 2,
+    backgroundColor: '#02080A',
   },
   safeCard: {
-    backgroundColor: colors.fairwayLight,
-    borderColor: colors.fairway,
+    backgroundColor: '#0A1F14',
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.fairwayDeep,
   },
   safeLabel: {
-    fontWeight: '800',
-    color: colors.fairway,
-    marginBottom: 4,
+    fontWeight: '900',
+    color: colors.fairwayHi,
+    letterSpacing: 2.5,
+    fontSize: 11,
+    marginBottom: 6,
   },
 });

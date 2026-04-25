@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -12,38 +12,58 @@ import { colors } from './src/theme/colors';
 
 const Stack = createNativeStackNavigator();
 
+const NavTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.bg,
+    card: '#02080A',
+    text: colors.white,
+    border: colors.gold,
+    primary: colors.fairwayHi,
+  },
+};
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <NavigationContainer>
+      <NavigationContainer theme={NavTheme}>
         <Stack.Navigator
           screenOptions={{
-            headerStyle: { backgroundColor: colors.fairway },
-            headerTintColor: colors.white,
-            headerTitleStyle: { fontWeight: '800' },
-            contentStyle: { backgroundColor: colors.sky },
+            headerStyle: { backgroundColor: '#02080A' },
+            headerTintColor: colors.gold,
+            headerTitleStyle: {
+              fontWeight: '900',
+              letterSpacing: 2,
+              textTransform: 'uppercase',
+              fontStyle: 'italic',
+              fontSize: 16,
+              color: colors.white,
+            },
+            headerShadowVisible: true,
+            contentStyle: { backgroundColor: colors.bg },
           }}
         >
           <Stack.Screen
             name="Home"
             component={HomeScreen}
-            options={{ title: 'Golf Swing Coach' }}
+            options={{ title: 'Swing Tour ’26' }}
           />
           <Stack.Screen
             name="Analyze"
             component={AnalyzeScreen}
-            options={{ title: 'Looking At Your Swing' }}
+            options={{ title: 'Scan In Progress' }}
           />
           <Stack.Screen
             name="Results"
             component={ResultsScreen}
-            options={{ title: 'Your Swing Report' }}
+            options={{ title: 'Player Report' }}
           />
           <Stack.Screen
             name="Settings"
             component={SettingsScreen}
-            options={{ title: 'Setup' }}
+            options={{ title: 'Tournament Setup' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

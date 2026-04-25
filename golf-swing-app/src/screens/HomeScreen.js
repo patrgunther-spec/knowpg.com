@@ -6,10 +6,13 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../theme/colors';
+import GameButton from '../components/GameButton';
 
 const KEY_STORAGE = 'CLAUDE_API_KEY';
 
@@ -26,17 +29,20 @@ export default function HomeScreen({ navigation }) {
     setHasKey(!!k);
   }
 
+  function requireKey() {
+    if (hasKey) return true;
+    Alert.alert(
+      'Setup Needed',
+      'Open Tournament Setup and add your Claude API key to start the round.'
+    );
+    return false;
+  }
+
   async function pickVideo() {
-    if (!hasKey) {
-      Alert.alert(
-        'One small setup step',
-        'Tap the Setup button first to add your Claude API key. A grown-up can help.'
-      );
-      return;
-    }
+    if (!requireKey()) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Oops', 'Please allow photo library access so we can pick your swing video.');
+      Alert.alert('Access Denied', 'Photo library access is required to load a swing.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -51,16 +57,10 @@ export default function HomeScreen({ navigation }) {
   }
 
   async function recordVideo() {
-    if (!hasKey) {
-      Alert.alert(
-        'One small setup step',
-        'Tap the Setup button first to add your Claude API key. A grown-up can help.'
-      );
-      return;
-    }
+    if (!requireKey()) return;
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Oops', 'Please allow camera access so you can record a swing.');
+      Alert.alert('Access Denied', 'Camera access is required to record a swing.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -75,152 +75,261 @@ export default function HomeScreen({ navigation }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.hero}>
-        <Text style={styles.title}>Hi! I'm your Swing Coach.</Text>
-        <Text style={styles.subtitle}>
-          Show me your golf swing and I'll tell you what to fix — in easy words.
-        </Text>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
+      <LinearGradient
+        colors={[colors.bgGradTop, colors.bg, colors.bgGradBottom]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Hero */}
+      <View style={styles.heroFrame}>
+        <LinearGradient
+          colors={['#0A2418', '#06120C']}
+          style={styles.hero}
+        >
+          <Text style={styles.eyebrow}>Pro Series · Swing Coach</Text>
+          <Text style={styles.title}>
+            DRIVE.{'\n'}
+            <Text style={styles.titleAccent}>ANALYZE.</Text>
+            {'\n'}DOMINATE.
+          </Text>
+          <Text style={styles.subtitle}>
+            Capture your swing. Our AI coach scans 8 key frames and grades your
+            game with drills to fix what's costing you strokes.
+          </Text>
+          <View style={styles.statRow}>
+            <Stat label="Frames" value="8" />
+            <Sep />
+            <Stat label="Drills" value="3–5" />
+            <Sep />
+            <Stat label="Tips" value="∞" />
+          </View>
+        </LinearGradient>
       </View>
 
-      <View style={styles.steps}>
-        <StepCard number="1" text="Record or pick a video of your swing." />
-        <StepCard number="2" text="I look at the important moments." />
-        <StepCard number="3" text="You get tips and fun drills to try." />
-      </View>
-
-      <TouchableOpacity style={styles.primaryBtn} onPress={recordVideo}>
-        <Text style={styles.primaryBtnText}>📹  Record a Swing</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.secondaryBtn} onPress={pickVideo}>
-        <Text style={styles.secondaryBtnText}>📁  Pick a Swing Video</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.settingsBtn}
+      {/* Main menu */}
+      <SectionLabel text="Main Menu" />
+      <GameButton
+        icon="📹"
+        label="Quick Round"
+        caption="Record a new swing now"
+        onPress={recordVideo}
+      />
+      <GameButton
+        icon="📁"
+        label="Load Swing"
+        caption="Pick a video from your library"
+        onPress={pickVideo}
+        variant="gold"
+      />
+      <GameButton
+        icon="⚙️"
+        label={hasKey ? 'Tournament Setup · Ready' : 'Tournament Setup · Required'}
+        caption={hasKey ? 'API key is loaded' : 'Add Claude API key to play'}
         onPress={() => navigation.navigate('Settings')}
-      >
-        <Text style={styles.settingsBtnText}>
-          {hasKey ? '⚙️  Setup (done)' : '⚙️  Setup (needed)'}
-        </Text>
-      </TouchableOpacity>
+        variant="ghost"
+      />
 
-      <Text style={styles.tip}>
-        Tip: Film from the side so we can see your whole body.
+      {/* How it works */}
+      <SectionLabel text="How To Play" />
+      <View style={styles.howCard}>
+        <HowRow
+          n="01"
+          title="Frame Up"
+          text="Stand 8–10 feet to the side. Show head to feet."
+        />
+        <HowRow
+          n="02"
+          title="Take The Cut"
+          text="Record or upload a 3–10 second swing."
+        />
+        <HowRow
+          n="03"
+          title="Get Graded"
+          text="See power, tempo, balance + custom drills."
+        />
+      </View>
+
+      <View style={{ height: 24 }} />
+      <Text style={styles.footer}>
+        BUILT WITH CLAUDE VISION · NOT AFFILIATED WITH PGA TOUR
       </Text>
     </ScrollView>
   );
 }
 
-function StepCard({ number, text }) {
+function Stat({ label, value }) {
   return (
-    <View style={styles.stepCard}>
-      <View style={styles.stepBadge}>
-        <Text style={styles.stepBadgeText}>{number}</Text>
+    <View style={styles.statBox}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function Sep() {
+  return <View style={styles.statSep} />;
+}
+
+function SectionLabel({ text }) {
+  return (
+    <View style={styles.sectionLabelWrap}>
+      <View style={styles.sectionLine} />
+      <Text style={styles.sectionLabel}>{text}</Text>
+      <View style={styles.sectionLine} />
+    </View>
+  );
+}
+
+function HowRow({ n, title, text }) {
+  return (
+    <View style={styles.howRow}>
+      <Text style={styles.howNum}>{n}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.howTitle}>{title}</Text>
+        <Text style={styles.howText}>{text}</Text>
       </View>
-      <Text style={styles.stepText}>{text}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: { backgroundColor: colors.bg },
   container: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 40,
-    backgroundColor: colors.sky,
+  },
+  heroFrame: {
+    borderWidth: 2,
+    borderColor: colors.gold,
+    padding: 2,
+    backgroundColor: '#02080A',
+    marginBottom: 18,
   },
   hero: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
     padding: 22,
-    marginBottom: 18,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: colors.panelBorder,
+  },
+  eyebrow: {
+    color: colors.gold,
+    fontSize: 11,
+    letterSpacing: 3,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 8,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.ink,
-    marginBottom: 8,
+    color: colors.white,
+    fontSize: 34,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    letterSpacing: 1,
+    lineHeight: 38,
+    textTransform: 'uppercase',
+  },
+  titleAccent: {
+    color: colors.fairwayHi,
   },
   subtitle: {
-    fontSize: 16,
-    color: colors.inkSoft,
-    lineHeight: 22,
+    color: colors.silver,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 14,
   },
-  steps: {
-    marginBottom: 18,
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.panelBorder,
   },
-  stepCard: {
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    color: colors.fairwayHi,
+    fontSize: 22,
+    fontWeight: '900',
+    fontStyle: 'italic',
+  },
+  statLabel: {
+    color: colors.silverDim,
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  statSep: {
+    width: 1,
+    backgroundColor: colors.panelBorder,
+    marginVertical: 4,
+  },
+  sectionLabelWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.fairwayLight,
-    padding: 14,
-    borderRadius: 14,
+    marginTop: 10,
     marginBottom: 8,
   },
-  stepBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.fairway,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  stepBadgeText: {
-    color: colors.white,
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  stepText: {
+  sectionLine: {
     flex: 1,
-    fontSize: 15,
-    color: colors.ink,
+    height: 1,
+    backgroundColor: colors.panelBorder,
   },
-  primaryBtn: {
-    backgroundColor: colors.fairway,
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 10,
+  sectionLabel: {
+    color: colors.gold,
+    fontSize: 11,
+    letterSpacing: 3,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginHorizontal: 12,
+    fontStyle: 'italic',
   },
-  primaryBtnText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  secondaryBtn: {
-    backgroundColor: colors.sun,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  secondaryBtnText: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  settingsBtn: {
-    backgroundColor: colors.white,
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: 'center',
+  howCard: {
+    backgroundColor: colors.panel,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
-    marginBottom: 14,
+    borderColor: colors.panelBorder,
+    padding: 14,
   },
-  settingsBtnText: {
-    color: colors.ink,
+  howRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.panelBorder,
+  },
+  howNum: {
+    color: colors.gold,
+    fontSize: 26,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    width: 56,
+  },
+  howTitle: {
+    color: colors.white,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
-  tip: {
-    textAlign: 'center',
-    color: colors.inkSoft,
+  howText: {
+    color: colors.silver,
     fontSize: 13,
-    marginTop: 4,
+    lineHeight: 18,
+  },
+  footer: {
+    color: colors.silverDim,
+    fontSize: 9,
+    textAlign: 'center',
+    letterSpacing: 2,
+    fontWeight: '700',
   },
 });

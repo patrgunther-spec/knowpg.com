@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
 import { extractFrames, analyzeSwing } from '../services/swingAnalyzer';
 import { colors } from '../theme/colors';
@@ -47,35 +48,77 @@ export default function AnalyzeScreen({ route, navigation }) {
     }
   }
 
+  const pct = Math.round((stage === 'analyzing' ? 1 : progress) * 100);
+  const stageText =
+    stage === 'extracting'
+      ? 'CAPTURING KEYFRAMES'
+      : stage === 'analyzing'
+      ? 'AI COACH ANALYZING'
+      : stage === 'error'
+      ? 'SIGNAL LOST'
+      : 'STAND BY';
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Video
-        source={{ uri: videoUri }}
-        style={styles.video}
-        useNativeControls
-        resizeMode={ResizeMode.CONTAIN}
-        isLooping={false}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
+      <LinearGradient
+        colors={[colors.bgGradTop, colors.bg, colors.bgGradBottom]}
+        style={StyleSheet.absoluteFill}
       />
 
-      {stage === 'extracting' && (
-        <StatusCard
-          icon="🎞️"
-          title="Finding the important moments…"
-          detail={`Looking at frame ${Math.round(progress * 8)} of 8`}
+      {/* Video viewport */}
+      <View style={styles.videoFrame}>
+        <Video
+          source={{ uri: videoUri }}
+          style={styles.video}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping={false}
         />
-      )}
+        <View style={styles.cornerTL} />
+        <View style={styles.cornerTR} />
+        <View style={styles.cornerBL} />
+        <View style={styles.cornerBR} />
+        <View style={styles.hudBadge}>
+          <Text style={styles.hudBadgeText}>● REC · SWING FEED</Text>
+        </View>
+      </View>
 
-      {stage === 'analyzing' && (
-        <StatusCard
-          icon="🧠"
-          title="Coach is watching your swing…"
-          detail="This takes a few seconds."
-        />
-      )}
+      {/* HUD status */}
+      <View style={styles.hud}>
+        <View style={styles.hudRow}>
+          <Text style={styles.hudLabel}>STATUS</Text>
+          <Text style={styles.hudValue}>{stageText}</Text>
+          {stage !== 'error' && <ActivityIndicator color={colors.fairwayHi} />}
+        </View>
+        <View style={styles.progressTrack}>
+          <LinearGradient
+            colors={[colors.fairwayHi, colors.fairwayDeep]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.progressFill, { width: `${pct}%` }]}
+          />
+        </View>
+        <View style={styles.hudRow}>
+          <Text style={styles.hudSmall}>
+            {stage === 'extracting'
+              ? `Frame ${Math.min(8, Math.round(progress * 8))} / 8`
+              : stage === 'analyzing'
+              ? 'Sending frames to coach…'
+              : stage === 'error'
+              ? '—'
+              : 'Loading'}
+          </Text>
+          <Text style={styles.hudSmall}>{pct}%</Text>
+        </View>
+      </View>
 
       {stage === 'error' && (
         <View style={styles.errorBox}>
-          <Text style={styles.errorTitle}>Uh oh!</Text>
+          <Text style={styles.errorTitle}>SIGNAL LOST</Text>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity
             style={styles.retryBtn}
@@ -84,20 +127,20 @@ export default function AnalyzeScreen({ route, navigation }) {
               run();
             }}
           >
-            <Text style={styles.retryBtnText}>Try Again</Text>
+            <Text style={styles.retryBtnText}>↻  RETRY ANALYSIS</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backBtnText}>Back</Text>
+            <Text style={styles.backBtnText}>BACK TO MENU</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {frames.length > 0 && (
         <View style={styles.framesWrap}>
-          <Text style={styles.framesTitle}>Key Moments</Text>
+          <Text style={styles.framesTitle}>KEY MOMENTS</Text>
           <View style={styles.framesGrid}>
             {frames.map((f) => (
               <View key={f.order} style={styles.frameCard}>
@@ -105,10 +148,15 @@ export default function AnalyzeScreen({ route, navigation }) {
                   <Image source={{ uri: f.uri }} style={styles.frameImg} />
                 ) : (
                   <View style={[styles.frameImg, styles.frameMissing]}>
-                    <Text>—</Text>
+                    <Text style={{ color: colors.silverDim }}>—</Text>
                   </View>
                 )}
-                <Text style={styles.frameLabel}>{f.label}</Text>
+                <View style={styles.frameLabelBar}>
+                  <Text style={styles.frameOrder}>F{f.order + 1}</Text>
+                  <Text style={styles.frameLabel} numberOfLines={1}>
+                    {f.label.split(' (')[0]}
+                  </Text>
+                </View>
               </View>
             ))}
           </View>
@@ -118,67 +166,108 @@ export default function AnalyzeScreen({ route, navigation }) {
   );
 }
 
-function StatusCard({ icon, title, detail }) {
-  return (
-    <View style={styles.statusCard}>
-      <Text style={styles.statusIcon}>{icon}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.statusTitle}>{title}</Text>
-        <Text style={styles.statusDetail}>{detail}</Text>
-      </View>
-      <ActivityIndicator color={colors.fairway} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
+  scroll: { backgroundColor: colors.bg },
   container: {
     padding: 16,
     paddingBottom: 40,
   },
+  videoFrame: {
+    borderWidth: 2,
+    borderColor: colors.gold,
+    backgroundColor: '#000',
+    marginBottom: 14,
+    position: 'relative',
+  },
   video: {
     width: '100%',
     height: 240,
-    backgroundColor: colors.ink,
-    borderRadius: 16,
+    backgroundColor: '#000',
+  },
+  hudBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(2,8,10,0.85)',
+    borderWidth: 1,
+    borderColor: colors.fairwayHi,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  hudBadgeText: {
+    color: colors.fairwayHi,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    fontWeight: '900',
+  },
+  cornerTL: { position: 'absolute', top: -1, left: -1, width: 14, height: 14, borderTopWidth: 3, borderLeftWidth: 3, borderColor: colors.fairwayHi },
+  cornerTR: { position: 'absolute', top: -1, right: -1, width: 14, height: 14, borderTopWidth: 3, borderRightWidth: 3, borderColor: colors.fairwayHi },
+  cornerBL: { position: 'absolute', bottom: -1, left: -1, width: 14, height: 14, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: colors.fairwayHi },
+  cornerBR: { position: 'absolute', bottom: -1, right: -1, width: 14, height: 14, borderBottomWidth: 3, borderRightWidth: 3, borderColor: colors.fairwayHi },
+
+  hud: {
+    backgroundColor: colors.panel,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
+    padding: 14,
     marginBottom: 14,
   },
-  statusCard: {
+  hudRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  statusIcon: {
-    fontSize: 28,
-    marginRight: 12,
+  hudLabel: {
+    color: colors.silverDim,
+    fontSize: 10,
+    letterSpacing: 2.5,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
-  statusTitle: {
-    fontSize: 16,
+  hudValue: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    fontStyle: 'italic',
+    marginHorizontal: 10,
+    textAlign: 'right',
+  },
+  hudSmall: {
+    color: colors.silver,
+    fontSize: 11,
+    letterSpacing: 1.2,
     fontWeight: '700',
-    color: colors.ink,
-    marginBottom: 2,
+    textTransform: 'uppercase',
   },
-  statusDetail: {
-    fontSize: 13,
-    color: colors.inkSoft,
-  },
-  framesWrap: {
-    backgroundColor: colors.white,
-    padding: 14,
-    borderRadius: 14,
+  progressTrack: {
+    height: 12,
+    backgroundColor: '#040A06',
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: colors.panelBorder,
+    overflow: 'hidden',
+    marginVertical: 8,
+  },
+  progressFill: {
+    height: '100%',
+  },
+
+  framesWrap: {
+    backgroundColor: colors.panel,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
   },
   framesTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2.5,
+    color: colors.gold,
     marginBottom: 10,
-    color: colors.ink,
+    textTransform: 'uppercase',
+    fontStyle: 'italic',
   },
   framesGrid: {
     flexDirection: 'row',
@@ -188,59 +277,87 @@ const styles = StyleSheet.create({
   frameCard: {
     width: '48%',
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
+    backgroundColor: '#02080A',
   },
   frameImg: {
     width: '100%',
     aspectRatio: 9 / 16,
-    borderRadius: 10,
-    backgroundColor: colors.sand,
+    backgroundColor: '#000',
   },
   frameMissing: {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  frameLabelBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.panelBorder,
+    backgroundColor: colors.panelHi,
+  },
+  frameOrder: {
+    color: colors.gold,
+    fontWeight: '900',
+    fontSize: 10,
+    letterSpacing: 1,
+    marginRight: 6,
+  },
   frameLabel: {
-    fontSize: 12,
-    color: colors.inkSoft,
-    marginTop: 4,
-    textAlign: 'center',
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    flex: 1,
   },
   errorBox: {
-    backgroundColor: colors.white,
+    backgroundColor: '#1A0509',
     padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.danger,
     marginBottom: 14,
   },
   errorTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '900',
     color: colors.danger,
-    marginBottom: 6,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
+    fontStyle: 'italic',
+    marginBottom: 8,
   },
   errorText: {
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: 13,
+    color: colors.silver,
     marginBottom: 12,
+    lineHeight: 18,
   },
   retryBtn: {
-    backgroundColor: colors.fairway,
+    backgroundColor: colors.fairwayDeep,
     padding: 12,
-    borderRadius: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.fairwayHi,
     marginBottom: 8,
   },
   retryBtnText: {
     color: colors.white,
-    fontWeight: '700',
+    fontWeight: '900',
+    letterSpacing: 1.6,
+    fontSize: 13,
   },
   backBtn: {
     padding: 10,
     alignItems: 'center',
   },
   backBtnText: {
-    color: colors.inkSoft,
-    fontWeight: '600',
+    color: colors.silverDim,
+    fontWeight: '800',
+    letterSpacing: 2,
+    fontSize: 11,
   },
 });
