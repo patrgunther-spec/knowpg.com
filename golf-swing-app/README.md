@@ -17,28 +17,33 @@ Claude vision, and returns:
 
 ## 🚀 Launch in one command
 
-**One time on your Mac (if you don't already have these):**
+**One-time prerequisites** (skip any you already have):
 
 ```bash
-brew install node watchman
+brew install node watchman git
 ```
 
-**Every time you want to run the app:**
+**Then this one paste-able command does everything** — clones the repo if
+needed, switches to the right branch, pulls the latest, installs deps,
+clears caches, and prints the Expo Go QR:
+
+```bash
+{ [ -d ~/knowpg.com ] || git clone https://github.com/patrgunther-spec/knowpg.com.git ~/knowpg.com; } && git -C ~/knowpg.com fetch origin claude/golf-swing-analyzer-app-KvuW5 && git -C ~/knowpg.com checkout claude/golf-swing-analyzer-app-KvuW5 && git -C ~/knowpg.com pull --ff-only origin claude/golf-swing-analyzer-app-KvuW5 && bash ~/knowpg.com/golf-swing-app/start.sh
+```
+
+Open your iPhone Camera → point at the QR → tap the notification → Expo Go
+opens the app.
+
+*(iPhone and Mac on the **same Wi-Fi**.)*
+
+After the first run, any of these work:
 
 ```bash
 bash ~/knowpg.com/golf-swing-app/start.sh
 ```
 
-That single command pulls the latest code, installs anything missing, clears
-stale caches, and prints a QR. Open your iPhone Camera, point at the QR,
-tap the notification — Expo Go opens the app.
-
-*(Your iPhone and Mac must be on the **same Wi-Fi**.)*
-
-If you've never cloned the repo, do this once first:
-
 ```bash
-git clone https://github.com/patrgunther-spec/knowpg.com.git ~/knowpg.com
+cd ~/knowpg.com/golf-swing-app && npm start
 ```
 
 ---
