@@ -25,11 +25,10 @@ if ! command -v watchman >/dev/null 2>&1; then
   fi
 fi
 
-# 4. Install JS dependencies if needed.
-if [ ! -d node_modules ]; then
-  echo "[setup] Installing JavaScript packages (one-time)…"
-  npm install
-fi
+# 4. Sync JS dependencies. Always runs - fast no-op when nothing new,
+# and catches new deps added by `git pull`.
+echo "[setup] Syncing JavaScript packages…"
+npm install --no-audit --no-fund
 
 # 5. Wipe stale Metro/Expo cache so the QR always prints.
 rm -rf .expo node_modules/.cache /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
