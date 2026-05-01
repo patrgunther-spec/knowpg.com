@@ -3,6 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { extractFrames } from '../lib/extractFrames';
 
+const SCAN_QUOTES = [
+  'Watching the whole clip…',
+  'Finding the actual swing…',
+  'Skipping practice strokes…',
+  'Locking onto impact…',
+];
+
 const COACH_QUOTES = [
   'Studying your tempo…',
   'Checking your spine angle…',
@@ -10,26 +17,25 @@ const COACH_QUOTES = [
   'Reading your weight transfer…',
   'Looking at impact position…',
   'Comparing to tour pros…',
-  'Spotting the strokes you can save…',
+  'Spotting strokes you can save…',
   'Drafting your custom drills…',
+  'Writing it all down…',
 ];
 
 export default function Page() {
   const [view, setView] = useState('home'); // home | analyze | results
   const [frames, setFrames] = useState([]);
   const [progress, setProgress] = useState(0);
-  const [stage, setStage] = useState('idle'); // idle | extracting | analyzing | error
+  const [stage, setStage] = useState('idle'); // idle | scanning | capturing | analyzing | error
   const [error, setError] = useState(null);
   const [report, setReport] = useState(null);
+  const [swing, setSwing] = useState(null);
   const [quoteIdx, setQuoteIdx] = useState(0);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (stage !== 'analyzing') return;
-    const id = setInterval(
-      () => setQuoteIdx((i) => (i + 1) % COACH_QUOTES.length),
-      1800
-    );
+    if (stage !== 'analyzing' && stage !== 'scanning') return;
+    const id = setInterval(() => setQuoteIdx((i) => i + 1), 1800);
     return () => clearInterval(id);
   }, [stage]);
 
@@ -39,18 +45,25 @@ export default function Page() {
 
   async function handleFileChange(e) {
     const file = e.target.files?.[0];
-    e.target.value = ''; // reset so same file can be picked again
+    e.target.value = '';
     if (!file) return;
     setView('analyze');
     setError(null);
     setReport(null);
     setProgress(0);
     setFrames([]);
+    setSwing(null);
+    setQuoteIdx(0);
 
     try {
-      setStage('extracting');
-      const got = await extractFrames(file, (p) => setProgress(p));
+      setStage('scanning');
+      const { frames: got, swing: detected } = await extractFrames(
+        file,
+        (p) => setProgress(p),
+        (s) => setStage(s) // 'scanning' → 'capturing'
+      );
       setFrames(got);
+      setSwing(detected);
 
       setStage('analyzing');
       const res = await fetch('/api/analyze', {
@@ -85,6 +98,7 @@ export default function Page() {
     setStage('idle');
     setError(null);
     setReport(null);
+    setSwing(null);
   }
 
   return (
@@ -104,13 +118,23 @@ export default function Page() {
           stage={stage}
           progress={progress}
           frames={frames}
+          swing={swing}
           error={error}
-          quote={COACH_QUOTES[quoteIdx]}
+          quote={
+            stage === 'scanning'
+              ? SCAN_QUOTES[quoteIdx % SCAN_QUOTES.length]
+              : COACH_QUOTES[quoteIdx % COACH_QUOTES.length]
+          }
           onRetry={reset}
         />
       )}
       {view === 'results' && report && (
-        <Results report={report} frames={frames} onReset={reset} />
+        <Results
+          report={report}
+          frames={frames}
+          swing={swing}
+          onReset={reset}
+        />
       )}
     </main>
   );
@@ -130,23 +154,24 @@ function Home({ onPick }) {
             DOMINATE.
           </h1>
           <p className="subtitle">
-            Capture your swing. Our AI coach scans 8 key frames and gives you
-            3-5 actionable fixes to lower your handicap.
+            Film a swing from any angle. Our coach finds the swing automatically,
+            breaks it into 12 positions, and gives you 5-10 detailed fixes to
+            lower your handicap.
           </p>
           <div className="hero-stats">
             <div className="hero-stat">
-              <div className="hero-stat-value">8</div>
-              <div className="hero-stat-label">Frames</div>
+              <div className="hero-stat-value">12</div>
+              <div className="hero-stat-label">Positions</div>
             </div>
             <div className="hero-stat-sep" />
             <div className="hero-stat">
-              <div className="hero-stat-value">3-5</div>
+              <div className="hero-stat-value">5-10</div>
               <div className="hero-stat-label">Fixes</div>
             </div>
             <div className="hero-stat-sep" />
             <div className="hero-stat">
-              <div className="hero-stat-value">∞</div>
-              <div className="hero-stat-label">Tips</div>
+              <div className="hero-stat-value">All</div>
+              <div className="hero-stat-label">Angles</div>
             </div>
           </div>
         </div>
@@ -159,7 +184,7 @@ function Home({ onPick }) {
           <span className="btn-icon">📹</span>
           <span className="btn-text-stack">
             <span className="label">Upload or Record Swing</span>
-            <span className="caption">Side view, 3-10 seconds works best</span>
+            <span className="caption">Up to ~20 seconds, any angle</span>
           </span>
         </span>
         <span className="btn-chev">▸</span>
@@ -171,27 +196,35 @@ function Home({ onPick }) {
           <div className="how-num">01</div>
           <div>
             <div className="how-title">Frame Up</div>
-            <div className="how-text">Stand 8-10 feet to the side. Show head to feet.</div>
+            <div className="how-text">
+              Down-the-line, face-on, behind, or overhead — all work.
+              Show head to feet.
+            </div>
           </div>
         </div>
         <div className="how-row">
           <div className="how-num">02</div>
           <div>
             <div className="how-title">Take The Cut</div>
-            <div className="how-text">Record or upload a 3-10 second swing.</div>
+            <div className="how-text">
+              Record up to 20 seconds. Practice swings, walking, and waggles
+              are auto-skipped.
+            </div>
           </div>
         </div>
         <div className="how-row">
           <div className="how-num">03</div>
           <div>
-            <div className="how-title">Get Graded</div>
-            <div className="how-text">See custom drills + handicap-saving fixes.</div>
+            <div className="how-title">Get Coached</div>
+            <div className="how-text">
+              5-10 specific fixes with drills, reps, and a weekly practice plan.
+            </div>
           </div>
         </div>
       </div>
 
       <div className="footer">
-        BUILT WITH CLAUDE VISION · NOT AFFILIATED WITH PGA TOUR
+        BUILT WITH GEMINI VISION · NOT AFFILIATED WITH PGA TOUR
       </div>
     </>
   );
@@ -199,13 +232,17 @@ function Home({ onPick }) {
 
 /* ─── Analyze ──────────────────────────────────────────────────────────── */
 
-function Analyze({ stage, progress, frames, error, quote, onRetry }) {
-  const pct = Math.round((stage === 'analyzing' ? 1 : progress) * 100);
+function Analyze({ stage, progress, frames, swing, error, quote, onRetry }) {
+  const pct = Math.round(
+    (stage === 'analyzing' ? 1 : Math.min(0.99, progress)) * 100
+  );
   const stageText =
-    stage === 'extracting'
+    stage === 'scanning'
+      ? 'SCANNING FOR SWING'
+      : stage === 'capturing'
       ? 'CAPTURING KEYFRAMES'
       : stage === 'analyzing'
-      ? 'AI COACH ANALYZING'
+      ? 'COACH ANALYZING'
       : stage === 'error'
       ? 'SIGNAL LOST'
       : 'STAND BY';
@@ -223,8 +260,10 @@ function Analyze({ stage, progress, frames, error, quote, onRetry }) {
         </div>
         <div className="hud-row">
           <div className="hud-small" style={{ flex: 1 }}>
-            {stage === 'extracting'
-              ? `Frame ${Math.min(8, Math.round(progress * 8))} / 8`
+            {stage === 'scanning'
+              ? quote
+              : stage === 'capturing'
+              ? `Frame ${Math.min(12, Math.round((progress - 0.5) * 24))} / 12`
               : stage === 'analyzing'
               ? quote
               : stage === 'error'
@@ -233,6 +272,15 @@ function Analyze({ stage, progress, frames, error, quote, onRetry }) {
           </div>
           <div className="hud-small">{pct}%</div>
         </div>
+        {swing && stage !== 'error' && (
+          <div className="hud-row" style={{ marginTop: 6, marginBottom: 0 }}>
+            <div className="hud-small" style={{ color: 'var(--fairway-hi)' }}>
+              ✓ Swing window: {fmt(swing.startTime)} – {fmt(swing.endTime)}
+              {' '}
+              ({(swing.durationMs / 1000).toFixed(1)}s)
+            </div>
+          </div>
+        )}
       </div>
 
       {stage === 'error' && (
@@ -257,7 +305,7 @@ function Analyze({ stage, progress, frames, error, quote, onRetry }) {
 
       {frames.length > 0 && (
         <>
-          <div className="section-label">Key Moments</div>
+          <div className="section-label">12 Key Positions</div>
           <div className="frames">
             {frames.map((f, i) => (
               <div className="frame-card" key={i}>
@@ -268,7 +316,7 @@ function Analyze({ stage, progress, frames, error, quote, onRetry }) {
                 />
                 <div className="frame-bar">
                   <span className="frame-tag">F{i + 1}</span>
-                  <span className="frame-name">{f.label.split(' (')[0]}</span>
+                  <span className="frame-name">{f.label}</span>
                 </div>
               </div>
             ))}
@@ -279,9 +327,15 @@ function Analyze({ stage, progress, frames, error, quote, onRetry }) {
   );
 }
 
+function fmt(t) {
+  const m = Math.floor(t / 60);
+  const s = (t - m * 60).toFixed(1);
+  return `${m}:${s.padStart(4, '0')}`;
+}
+
 /* ─── Results ──────────────────────────────────────────────────────────── */
 
-function Results({ report, frames, onReset }) {
+function Results({ report, frames, swing, onReset }) {
   const [open, setOpen] = useState(null);
   const takeaways = report.takeaways || [];
 
@@ -291,6 +345,23 @@ function Results({ report, frames, onReset }) {
         <div className="report-header frame-inner">
           <div className="eyebrow">SWING REPORT</div>
           <h1 className="report-handle">{report.playerHandle || 'The Player'}</h1>
+          <div className="report-meta">
+            {report.cameraAngle && (
+              <span className="meta-badge">
+                {String(report.cameraAngle).toUpperCase()} VIEW
+              </span>
+            )}
+            {report.handedness && (
+              <span className="meta-badge">
+                {String(report.handedness).toUpperCase()}-HANDED
+              </span>
+            )}
+            {swing && (
+              <span className="meta-badge">
+                {(swing.durationMs / 1000).toFixed(1)}s SWING
+              </span>
+            )}
+          </div>
           <p className="report-summary">{report.summary}</p>
           <div className="highlight-box">
             <div className="highlight-label">★  ONE THING YOU DID WELL</div>
@@ -300,11 +371,33 @@ function Results({ report, frames, onReset }) {
       </div>
 
       <div className="section-label">
-        {takeaways.length} Fixes To Lower Your Handicap
+        {takeaways.length} Specific Fixes To Lower Your Handicap
       </div>
       {takeaways.map((t, i) => (
         <Takeaway key={i} t={t} index={i} />
       ))}
+
+      {report.practicePlan && (
+        <>
+          <div className="section-label">Your Weekly Practice Plan</div>
+          <div className="frame">
+            <div className="frame-inner" style={{ padding: 14 }}>
+              <p className="brd-what" style={{ fontSize: 14, marginBottom: 12 }}>
+                {report.practicePlan.summary}
+              </p>
+              <div className="schedule">
+                {(report.practicePlan.weeklySchedule || []).map((d, i) => (
+                  <div key={i} className="sched-row">
+                    <div className="sched-day">{d.day}</div>
+                    <div className="sched-focus">{d.focus}</div>
+                    <div className="sched-min">{d.minutes} min</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="section-label">Ball Flight Forecast</div>
       <div className="frame">
@@ -428,18 +521,27 @@ function Takeaway({ t, index }) {
           accent="var(--danger)"
         />
         <Block
-          label="HOW TO FIX IT"
+          label="HOW TO FIX IT — STEP BY STEP"
           body={t.howToFix}
           accent="var(--fairway-hi)"
+          preserveLines
         />
 
+        {Array.isArray(t.commonMistakes) && t.commonMistakes.length > 0 && (
+          <div className="block" style={{ borderLeftColor: 'var(--gold)' }}>
+            <div className="block-label" style={{ color: 'var(--gold)' }}>
+              ► WATCH OUT FOR
+            </div>
+            <ul className="bullet-list">
+              {t.commonMistakes.map((m, i) => (
+                <li key={i}>{m}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="meta-row">
-          <Chip
-            icon="⏱"
-            label="DO IT"
-            text={t.reps}
-            tone="green"
-          />
+          <Chip icon="⏱" label="DO IT" text={t.reps} tone="green" />
           <Chip
             icon="📉"
             label="HANDICAP IMPACT"
@@ -452,13 +554,18 @@ function Takeaway({ t, index }) {
   );
 }
 
-function Block({ label, body, accent }) {
+function Block({ label, body, accent, preserveLines }) {
   return (
     <div className="block" style={{ borderLeftColor: accent }}>
       <div className="block-label" style={{ color: accent }}>
         ► {label}
       </div>
-      <div className="block-body">{body}</div>
+      <div
+        className="block-body"
+        style={preserveLines ? { whiteSpace: 'pre-line' } : undefined}
+      >
+        {body}
+      </div>
     </div>
   );
 }
