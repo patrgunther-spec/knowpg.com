@@ -81,17 +81,17 @@ done
 
 if [ $NEED_INSTALL -eq 1 ]; then
   echo "[setup] Installing app dependencies via Expo (SDK-correct versions)…"
-  if ! CI=1 npx --yes expo install "${EXPO_DEPS[@]}" --non-interactive; then
+  if ! CI=1 npx --yes expo install "${EXPO_DEPS[@]}"; then
     echo "[setup] expo install failed. Wiping cache and retrying once…"
     rm -rf "$LOCAL_CACHE" node_modules package-lock.json
     mkdir -p "$LOCAL_CACHE"
     npm install $NPM_FLAGS
-    CI=1 npx --yes expo install "${EXPO_DEPS[@]}" --non-interactive
+    CI=1 npx --yes expo install "${EXPO_DEPS[@]}"
   fi
 fi
 
 # ─── 8. Align any version drift ──────────────────────────────────────────
-CI=1 npx --yes expo install --fix --non-interactive >/dev/null 2>&1 || true
+CI=1 npx --yes expo install --fix >/dev/null 2>&1 || true
 
 # ─── 9. Wipe stale Metro/Expo cache so the QR always prints ──────────────
 rm -rf .expo node_modules/.cache /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
