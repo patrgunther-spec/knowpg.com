@@ -1,36 +1,38 @@
 #!/usr/bin/env bash
-# One-shot launcher: pulls latest, installs prereqs, lets Expo pick the
-# right dep versions for the current SDK, clears stale caches, and
-# starts Expo Go in LAN mode.
+# One-shot launcher. Self-heals npm cache, SDK changes, missing deps,
+# and Metro caches; then starts Expo Go in LAN mode.
 set -e
 
 cd "$(dirname "$0")"
+PROJECT_DIR="$(pwd)"
 
-# 1. Pull latest. If this script itself was updated, re-exec the new version.
+# ─── 1. Self-update and re-exec if this script changed ───────────────────
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   HASH_BEFORE=$(shasum "$0" 2>/dev/null | awk '{print $1}' || echo "")
   git pull --ff-only 2>/dev/null || true
   HASH_AFTER=$(shasum "$0" 2>/dev/null | awk '{print $1}' || echo "")
   if [ -n "$HASH_BEFORE" ] && [ "$HASH_BEFORE" != "$HASH_AFTER" ]; then
-    echo "[setup] Launcher updated. Restarting with new version…"
+    echo "[setup] Launcher updated. Restarting…"
     exec bash "$0" "$@"
   fi
 fi
 
-# 2. File descriptor limit so Metro doesn't crash with EMFILE.
+# ─── 2. Use a project-local npm cache ────────────────────────────────────
+# Sidesteps any pre-existing permission damage to ~/.npm (EACCES/EEXIST).
+LOCAL_CACHE="$PROJECT_DIR/.npm-cache"
+mkdir -p "$LOCAL_CACHE"
+export NPM_CONFIG_CACHE="$LOCAL_CACHE"
+
+# ─── 3. Bump Metro file watcher limit ────────────────────────────────────
 ulimit -n 65536 2>/dev/null || true
 
-# 3. Watchman (macOS, Homebrew).
-if ! command -v watchman >/dev/null 2>&1; then
-  if command -v brew >/dev/null 2>&1; then
-    echo "[setup] Installing Watchman (one-time)…"
-    brew install watchman
-  fi
+# ─── 4. Watchman (one-time, only if Homebrew is around) ──────────────────
+if ! command -v watchman >/dev/null 2>&1 && command -v brew >/dev/null 2>&1; then
+  echo "[setup] Installing Watchman (one-time)…"
+  brew install watchman
 fi
 
-# 4. Detect SDK change. If the installed Expo major differs from what
-# package.json wants, blow away node_modules + lockfile so we don't drag
-# in old transitive deps.
+# ─── 5. Detect SDK change → blow away node_modules + lockfile ────────────
 WANTED_SDK=$(grep -oE '"expo": *"[^"]+"' package.json | sed -E 's/.*"\^?~?([0-9]+).*/\1/' || echo "")
 INSTALLED_SDK=""
 if [ -f node_modules/expo/package.json ]; then
@@ -41,14 +43,17 @@ if [ -n "$WANTED_SDK" ] && [ -n "$INSTALLED_SDK" ] && [ "$WANTED_SDK" != "$INSTA
   rm -rf node_modules package-lock.json
 fi
 
-# 5. Bootstrap: install just expo + react + react-native baseline so we
-# can run `expo install` for the rest with SDK-correct versions.
+# ─── 6. Install base packages (just expo, since that's all package.json pins) ──
+NPM_FLAGS="--no-audit --no-fund --loglevel=error"
 echo "[setup] Installing base packages…"
-npm install --no-audit --no-fund --loglevel=error
+if ! npm install $NPM_FLAGS; then
+  echo "[setup] First install failed. Wiping local cache and retrying…"
+  rm -rf "$LOCAL_CACHE" node_modules package-lock.json
+  mkdir -p "$LOCAL_CACHE"
+  npm install $NPM_FLAGS
+fi
 
-# 6. Use `expo install` to add every other dep at the version that
-# matches the installed Expo SDK. This is the only reliable way - it
-# reads the SDK's bundled config and picks compatible versions.
+# ─── 7. Add the rest via `expo install` (picks SDK-correct versions) ─────
 EXPO_DEPS=(
   react
   react-native
@@ -66,7 +71,6 @@ EXPO_DEPS=(
   expo-file-system
 )
 
-# Only install what's missing - skip if every dep is already there.
 NEED_INSTALL=0
 for pkg in "${EXPO_DEPS[@]}"; do
   if [ ! -d "node_modules/$pkg" ]; then
@@ -76,21 +80,23 @@ for pkg in "${EXPO_DEPS[@]}"; do
 done
 
 if [ $NEED_INSTALL -eq 1 ]; then
-  echo "[setup] Installing app dependencies via Expo (uses SDK-correct versions)…"
-  CI=1 npx --yes expo install "${EXPO_DEPS[@]}" --non-interactive
+  echo "[setup] Installing app dependencies via Expo (SDK-correct versions)…"
+  if ! CI=1 npx --yes expo install "${EXPO_DEPS[@]}" --non-interactive; then
+    echo "[setup] expo install failed. Wiping cache and retrying once…"
+    rm -rf "$LOCAL_CACHE" node_modules package-lock.json
+    mkdir -p "$LOCAL_CACHE"
+    npm install $NPM_FLAGS
+    CI=1 npx --yes expo install "${EXPO_DEPS[@]}" --non-interactive
+  fi
 fi
 
-# 7. Final alignment pass: catch any version drift.
-echo "[setup] Aligning dep versions to SDK…"
+# ─── 8. Align any version drift ──────────────────────────────────────────
 CI=1 npx --yes expo install --fix --non-interactive >/dev/null 2>&1 || true
 
-# 8. Best-effort silent security patches.
-npm audit fix --no-audit --no-fund --loglevel=error >/dev/null 2>&1 || true
-
-# 9. Wipe stale Metro/Expo cache.
+# ─── 9. Wipe stale Metro/Expo cache so the QR always prints ──────────────
 rm -rf .expo node_modules/.cache /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
 
-# 10. Launch in Expo Go + LAN mode and print the QR.
+# ─── 10. Launch in Expo Go + LAN mode and print the QR ───────────────────
 echo ""
 echo "═══════════════════════════════════════════════════════"
 echo "  GOLF SWING COACH · STARTING"
