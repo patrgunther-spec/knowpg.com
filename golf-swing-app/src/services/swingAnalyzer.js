@@ -1,5 +1,4 @@
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY_STORAGE = 'CLAUDE_API_KEY';
@@ -62,11 +61,21 @@ export async function extractFrames(videoUri, durationMs, onProgress) {
   return frames;
 }
 
+// Read a local file URI and return its bytes as base64.
+// Uses fetch + FileReader so we don't need expo-file-system.
 async function frameToBase64(uri) {
-  const b64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error('Could not read frame.'));
+    reader.readAsDataURL(blob);
   });
-  return b64;
 }
 
 const SYSTEM_PROMPT = `You are an expert PGA-level golf swing coach. The user wants real,
@@ -75,12 +84,10 @@ golf swing (side or face-on view).
 
 Coaching rules:
 - Be honest but encouraging. Start with ONE thing they did well.
-- Use simple words. If you use a golf term ("shaft lean", "early extension",
-  "over the top", "casting", "chicken wing", "reverse pivot"), explain it in
-  5 plain words right after the term.
+- Use simple words. If you use a golf term, explain it in 5 plain words right after.
 - Predict ball flight with reasoning (slice, hook, pull, push, thin, fat, straight)
   and explain WHY based on the frames.
-- The breakdown should describe what is actually visible at each frame.
+- The frame breakdown should describe what is actually visible at each frame.
 
 Takeaways (this is the most important part of the response):
 - Provide 3 to 5 takeaways. These are the big actionable things to fix.
@@ -88,21 +95,19 @@ Takeaways (this is the most important part of the response):
 - For each takeaway include:
   * title: short imperative ("Stop Coming Over The Top")
   * whatToFix: 1-2 sentences explaining the move that's wrong
-  * whyItMatters: 1-2 sentences on the strokes it costs (slice into trouble,
-    inconsistent contact, lost distance, etc.)
-  * howToFix: a specific drill or feel cue they can do this week, with steps
-  * reps: e.g. "5 minutes / day for 2 weeks" or "20 swings before each round"
-  * estimatedHandicapImpact: realistic guess like "Save ~2 strokes/round" or
-    "1-3 strokes off your handicap in 4 weeks". Don't promise miracles.
+  * whyItMatters: 1-2 sentences on the strokes it costs
+  * howToFix: a specific drill or feel cue with steps
+  * reps: e.g. "5 minutes / day for 2 weeks"
+  * estimatedHandicapImpact: realistic guess like "Save ~2 strokes/round"
   * priority: "High" | "Medium" | "Low"
 
 You MUST return ONLY valid JSON matching this exact schema (no prose outside JSON, no markdown fences):
 
 {
-  "playerHandle": "A short fun nickname based on the swing (e.g. 'The Slasher', 'Smooth Operator'). 1-3 words.",
+  "playerHandle": "Short fun nickname based on the swing. 1-3 words.",
   "summary": "1-2 short sentences describing the swing overall.",
   "oneThingYouDidWell": "A short positive note.",
-  "ballFlightExplanation": "Plain-language explanation of where the ball likely goes and WHY based on the frames.",
+  "ballFlightExplanation": "Plain-language explanation of where the ball likely goes and WHY.",
   "frameBreakdown": [
     { "label": "Setup (stance before swing)", "whatISee": "...", "tip": "..." },
     { "label": "Early takeaway", "whatISee": "...", "tip": "..." },
@@ -115,10 +120,10 @@ You MUST return ONLY valid JSON matching this exact schema (no prose outside JSO
   ],
   "takeaways": [
     {
-      "title": "Short imperative title",
+      "title": "...",
       "whatToFix": "...",
       "whyItMatters": "...",
-      "howToFix": "Specific drill or cue with steps",
+      "howToFix": "...",
       "reps": "...",
       "estimatedHandicapImpact": "...",
       "priority": "High"
@@ -136,7 +141,7 @@ export async function analyzeSwing(frames) {
   }
   const usable = frames.filter((f) => f.uri);
   if (usable.length === 0) {
-    throw new Error('Could not grab any video frames. Try a shorter, clearer video.');
+    throw new Error('Could not grab any video frames. Try a clearer video.');
   }
 
   const content = [];
