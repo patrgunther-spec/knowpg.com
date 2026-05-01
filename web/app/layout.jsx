@@ -3,8 +3,14 @@ import './globals.css';
 export const metadata = {
   title: 'Golf Swing Coach',
   description:
-    'AI golf swing analyzer. Upload a swing, get 3-5 actionable fixes to lower your handicap.',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+    'AI golf swing analyzer. Upload a swing, get 5-10 actionable fixes to lower your handicap.',
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   themeColor: '#06100A',
 };
 
