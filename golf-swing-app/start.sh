@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# One-shot launcher: pulls latest code, installs prerequisites,
+# One-shot launcher: pulls latest, installs prereqs, aligns Expo dep versions,
 # clears stale caches, and starts Expo Go in LAN mode.
 set -e
 
 cd "$(dirname "$0")"
 
-# 1. Pull latest. If this script itself was updated, re-exec the new
-# version so bash doesn't keep running the old one in memory.
+# 1. Pull latest. If this script itself was updated, re-exec the new version.
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   HASH_BEFORE=$(shasum "$0" 2>/dev/null | awk '{print $1}' || echo "")
   git pull --ff-only 2>/dev/null || true
@@ -17,10 +16,10 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 fi
 
-# 2. Bump file descriptor limit so Metro doesn't crash with EMFILE.
+# 2. File descriptor limit so Metro doesn't crash with EMFILE.
 ulimit -n 65536 2>/dev/null || true
 
-# 3. Install Watchman if missing (macOS, Homebrew).
+# 3. Watchman (macOS, Homebrew).
 if ! command -v watchman >/dev/null 2>&1; then
   if command -v brew >/dev/null 2>&1; then
     echo "[setup] Installing Watchman (one-time)…"
@@ -28,14 +27,30 @@ if ! command -v watchman >/dev/null 2>&1; then
   fi
 fi
 
-# 4. Sync JS dependencies. Always runs - fast no-op when nothing new,
-# and catches new deps added by `git pull`.
-echo "[setup] Syncing JavaScript packages (this may take ~30s first time)…"
+# 4. Detect SDK version change. If the installed Expo major differs from
+# what package.json wants, blow away node_modules so we don't drag in
+# old transitive deps.
+WANTED_SDK=$(grep -oE '"expo": *"[^"]+"' package.json | sed -E 's/.*"\^?~?([0-9]+).*/\1/' || echo "")
+INSTALLED_SDK=""
+if [ -f node_modules/expo/package.json ]; then
+  INSTALLED_SDK=$(grep -oE '"version": *"[0-9]+' node_modules/expo/package.json | head -1 | grep -oE '[0-9]+$' || echo "")
+fi
+if [ -n "$WANTED_SDK" ] && [ -n "$INSTALLED_SDK" ] && [ "$WANTED_SDK" != "$INSTALLED_SDK" ]; then
+  echo "[setup] Expo SDK changed ($INSTALLED_SDK → $WANTED_SDK). Clean reinstall…"
+  rm -rf node_modules package-lock.json
+fi
+
+# 5. Sync JS deps.
+echo "[setup] Syncing JavaScript packages (this may take ~30-60s)…"
 npm install --no-audit --no-fund --loglevel=error
 
-# 5. Sanity check: confirm critical deps are present, force reinstall if not.
+# 6. Let Expo align all expo-* package versions to match the SDK.
+echo "[setup] Aligning Expo package versions to SDK…"
+CI=1 npx --yes expo install --fix --non-interactive >/dev/null 2>&1 || true
+
+# 7. Sanity check critical deps; if any are missing, force clean reinstall.
 MISSING=""
-for pkg in expo-linear-gradient expo-haptics expo-video-thumbnails; do
+for pkg in expo expo-linear-gradient expo-haptics expo-video expo-video-thumbnails expo-image-picker; do
   [ -d "node_modules/$pkg" ] || MISSING="$MISSING $pkg"
 done
 if [ -n "$MISSING" ]; then
@@ -44,13 +59,13 @@ if [ -n "$MISSING" ]; then
   npm install --no-audit --no-fund --loglevel=error
 fi
 
-# 6. Apply non-breaking security fixes (silent, best-effort).
+# 8. Best-effort silent security patches.
 npm audit fix --no-audit --no-fund --loglevel=error >/dev/null 2>&1 || true
 
-# 7. Wipe stale Metro/Expo cache so the QR always prints.
+# 9. Wipe stale Metro/Expo cache.
 rm -rf .expo node_modules/.cache /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
 
-# 8. Launch in Expo Go + LAN mode and print the QR.
+# 10. Launch in Expo Go + LAN mode and print the QR.
 echo ""
 echo "═══════════════════════════════════════════════════════"
 echo "  GOLF SWING COACH · STARTING"

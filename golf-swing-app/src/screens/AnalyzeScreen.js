@@ -11,7 +11,7 @@ import {
   Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Haptics from 'expo-haptics';
 import { extractFrames, analyzeSwing } from '../services/swingAnalyzer';
 import { colors } from '../theme/colors';
@@ -37,6 +37,10 @@ export default function AnalyzeScreen({ route, navigation }) {
   const cancelled = useRef(false);
   const pulse = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
+  const player = useVideoPlayer(videoUri, (p) => {
+    p.loop = false;
+    p.muted = true;
+  });
 
   useEffect(() => {
     run();
@@ -122,12 +126,12 @@ export default function AnalyzeScreen({ route, navigation }) {
 
       {/* Video viewport */}
       <View style={styles.videoFrame}>
-        <Video
-          source={{ uri: videoUri }}
+        <VideoView
+          player={player}
           style={styles.video}
-          useNativeControls
-          resizeMode={ResizeMode.CONTAIN}
-          isLooping={false}
+          contentFit="contain"
+          nativeControls
+          allowsFullscreen
         />
         <View style={styles.cornerTL} />
         <View style={styles.cornerTR} />
