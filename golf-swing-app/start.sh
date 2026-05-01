@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# One-shot launcher: pulls latest, installs prereqs, aligns Expo dep versions,
-# clears stale caches, and starts Expo Go in LAN mode.
+# One-shot launcher: pulls latest, installs prereqs, lets Expo pick the
+# right dep versions for the current SDK, clears stale caches, and
+# starts Expo Go in LAN mode.
 set -e
 
 cd "$(dirname "$0")"
@@ -27,9 +28,9 @@ if ! command -v watchman >/dev/null 2>&1; then
   fi
 fi
 
-# 4. Detect SDK version change. If the installed Expo major differs from
-# what package.json wants, blow away node_modules so we don't drag in
-# old transitive deps.
+# 4. Detect SDK change. If the installed Expo major differs from what
+# package.json wants, blow away node_modules + lockfile so we don't drag
+# in old transitive deps.
 WANTED_SDK=$(grep -oE '"expo": *"[^"]+"' package.json | sed -E 's/.*"\^?~?([0-9]+).*/\1/' || echo "")
 INSTALLED_SDK=""
 if [ -f node_modules/expo/package.json ]; then
@@ -40,24 +41,48 @@ if [ -n "$WANTED_SDK" ] && [ -n "$INSTALLED_SDK" ] && [ "$WANTED_SDK" != "$INSTA
   rm -rf node_modules package-lock.json
 fi
 
-# 5. Sync JS deps.
-echo "[setup] Syncing JavaScript packages (this may take ~30-60s)…"
+# 5. Bootstrap: install just expo + react + react-native baseline so we
+# can run `expo install` for the rest with SDK-correct versions.
+echo "[setup] Installing base packages…"
 npm install --no-audit --no-fund --loglevel=error
 
-# 6. Let Expo align all expo-* package versions to match the SDK.
-echo "[setup] Aligning Expo package versions to SDK…"
-CI=1 npx --yes expo install --fix --non-interactive >/dev/null 2>&1 || true
+# 6. Use `expo install` to add every other dep at the version that
+# matches the installed Expo SDK. This is the only reliable way - it
+# reads the SDK's bundled config and picks compatible versions.
+EXPO_DEPS=(
+  react
+  react-native
+  @react-navigation/native
+  @react-navigation/native-stack
+  @react-native-async-storage/async-storage
+  react-native-screens
+  react-native-safe-area-context
+  expo-status-bar
+  expo-haptics
+  expo-image-picker
+  expo-linear-gradient
+  expo-video
+  expo-video-thumbnails
+  expo-file-system
+)
 
-# 7. Sanity check critical deps; if any are missing, force clean reinstall.
-MISSING=""
-for pkg in expo expo-linear-gradient expo-haptics expo-video expo-video-thumbnails expo-image-picker; do
-  [ -d "node_modules/$pkg" ] || MISSING="$MISSING $pkg"
+# Only install what's missing - skip if every dep is already there.
+NEED_INSTALL=0
+for pkg in "${EXPO_DEPS[@]}"; do
+  if [ ! -d "node_modules/$pkg" ]; then
+    NEED_INSTALL=1
+    break
+  fi
 done
-if [ -n "$MISSING" ]; then
-  echo "[setup] Missing:$MISSING. Forcing clean reinstall…"
-  rm -rf node_modules package-lock.json
-  npm install --no-audit --no-fund --loglevel=error
+
+if [ $NEED_INSTALL -eq 1 ]; then
+  echo "[setup] Installing app dependencies via Expo (uses SDK-correct versions)…"
+  CI=1 npx --yes expo install "${EXPO_DEPS[@]}" --non-interactive
 fi
+
+# 7. Final alignment pass: catch any version drift.
+echo "[setup] Aligning dep versions to SDK…"
+CI=1 npx --yes expo install --fix --non-interactive >/dev/null 2>&1 || true
 
 # 8. Best-effort silent security patches.
 npm audit fix --no-audit --no-fund --loglevel=error >/dev/null 2>&1 || true
