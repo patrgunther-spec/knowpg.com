@@ -31,11 +31,13 @@ export const FRAME_LABELS = [
 const FRAME_COUNT = 12;
 
 // Motion-detection canvas size. Tiny on purpose - we just need motion magnitude.
-const MOTION_W = 64;
-const MOTION_H = 96;
-const MOTION_FPS = 6; // sample rate for the motion pass
-const MIN_MOTION_SAMPLES = 20;
-const MAX_MOTION_SAMPLES = 180;
+const MOTION_W = 96;
+const MOTION_H = 144;
+// Sample densely so we don't miss the swing. 30fps target matches standard
+// phone video. For a typical 20s clip this gives ~600 samples.
+const MOTION_FPS = 30;
+const MIN_MOTION_SAMPLES = 30;
+const MAX_MOTION_SAMPLES = 600;
 
 // Output frame size cap (long side).
 const OUT_MAX = 720;
@@ -107,21 +109,75 @@ export async function extractFrames(file, onProgress, onStage) {
   }
 
   // ---- 2. Locate swing window -------------------------------------------
-  // Smooth scores with a small moving average.
-  const smoothed = movingAverage(motionScores, 3);
+  // Smooth scores with a moving average to suppress jitter while still
+  // letting the impact spike show through.
+  const smoothed = movingAverage(motionScores, 5);
 
-  // Find the peak (impact-ish).
+  // Global peak value.
+  let globalMax = 0;
+  for (let i = 0; i < smoothed.length; i++) {
+    if (smoothed[i] > globalMax) globalMax = smoothed[i];
+  }
+
+  // Find every distinct local peak whose height is at least 55% of the global
+  // max. A "distinct" peak is separated from neighbors by at least 0.3s of
+  // sub-threshold motion - so practice-swing blips and the real swing each
+  // count once.
+  const peakThreshold = Math.max(1, globalMax * 0.55);
+  const minSeparationSamples = Math.max(2, Math.round(MOTION_FPS * 0.3));
+  const peaks = [];
+  let inPeak = false;
+  let peakStart = 0;
+  let peakBestIdx = 0;
+  let peakBestVal = -1;
+  let belowSince = -1;
+
+  for (let i = 0; i < smoothed.length; i++) {
+    if (smoothed[i] >= peakThreshold) {
+      if (!inPeak) {
+        inPeak = true;
+        peakStart = i;
+        peakBestIdx = i;
+        peakBestVal = smoothed[i];
+      } else if (smoothed[i] > peakBestVal) {
+        peakBestVal = smoothed[i];
+        peakBestIdx = i;
+      }
+      belowSince = -1;
+    } else {
+      if (inPeak) {
+        if (belowSince < 0) belowSince = i;
+        if (i - belowSince >= minSeparationSamples) {
+          peaks.push({ idx: peakBestIdx, val: peakBestVal });
+          inPeak = false;
+          peakBestVal = -1;
+        }
+      }
+    }
+  }
+  if (inPeak) peaks.push({ idx: peakBestIdx, val: peakBestVal });
+
+  // Pick the LATEST significant peak. Most users do practice swings BEFORE
+  // their real swing, so the real swing is usually last. If there's only one
+  // peak we obviously use that one.
   let peakIdx = 0;
   let peakVal = -1;
-  for (let i = 1; i < smoothed.length; i++) {
-    if (smoothed[i] > peakVal) {
-      peakVal = smoothed[i];
-      peakIdx = i;
+  if (peaks.length > 0) {
+    const last = peaks[peaks.length - 1];
+    peakIdx = last.idx;
+    peakVal = last.val;
+  } else {
+    // Fallback: global max.
+    for (let i = 0; i < smoothed.length; i++) {
+      if (smoothed[i] > peakVal) {
+        peakVal = smoothed[i];
+        peakIdx = i;
+      }
     }
   }
 
-  // Walk outward from the peak to find the swing boundaries:
-  // first index in either direction where motion drops below ~25% of peak.
+  // Walk outward from the peak to find the swing boundaries: first index in
+  // either direction where motion drops below ~25% of peak.
   const restThreshold = Math.max(1, peakVal * 0.25);
   let startIdx = peakIdx;
   while (startIdx > 0 && smoothed[startIdx] > restThreshold) startIdx--;
