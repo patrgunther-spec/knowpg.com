@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { extractFrames } from '../lib/extractFrames';
+import { extractFrames, extractFramesAtWindow } from '../lib/extractFrames';
 
 const SCAN_QUOTES = [
   'Watching the whole clip…',
@@ -23,13 +23,15 @@ const COACH_QUOTES = [
 ];
 
 export default function Page() {
-  const [view, setView] = useState('home'); // home | analyze | results
+  const [view, setView] = useState('home'); // home | analyze | review | results
   const [frames, setFrames] = useState([]);
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState('idle'); // idle | scanning | capturing | analyzing | error
   const [error, setError] = useState(null);
   const [report, setReport] = useState(null);
   const [swing, setSwing] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [videoDuration, setVideoDuration] = useState(0);
   const [quoteIdx, setQuoteIdx] = useState(0);
   const fileInputRef = useRef(null);
 
@@ -57,20 +59,35 @@ export default function Page() {
 
     try {
       setStage('scanning');
-      const { frames: got, swing: detected } = await extractFrames(
+      const result = await extractFrames(
         file,
         (p) => setProgress(p),
         (s) => setStage(s) // 'scanning' → 'capturing'
       );
-      setFrames(got);
-      setSwing(detected);
+      setFrames(result.frames);
+      setSwing(result.swing);
+      setVideoUrl(result.videoUrl);
+      setVideoDuration(result.videoDuration);
 
-      setStage('analyzing');
+      // Pause at the review screen so the user can verify the auto-detected
+      // window and re-pick if needed before we burn an API call.
+      setStage('idle');
+      setView('review');
+    } catch (e) {
+      setError(e.message || String(e));
+      setStage('error');
+    }
+  }
+
+  async function runAnalysis(framesToSend) {
+    setStage('analyzing');
+    setView('analyze');
+    try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          frames: got.map((f) => ({
+          frames: framesToSend.map((f) => ({
             data: f.data,
             label: f.label,
             timeMs: f.timeMs,
@@ -91,7 +108,34 @@ export default function Page() {
     }
   }
 
+  async function rePickWindow(newStart, newEnd) {
+    if (!videoUrl) return;
+    setView('analyze');
+    setStage('capturing');
+    setProgress(0);
+    setError(null);
+    try {
+      const result = await extractFramesAtWindow(
+        videoUrl,
+        newStart,
+        newEnd,
+        (p) => setProgress(p)
+      );
+      setFrames(result.frames);
+      setSwing(result.swing);
+      await runAnalysis(result.frames);
+    } catch (e) {
+      setError(e.message || String(e));
+      setStage('error');
+    }
+  }
+
   function reset() {
+    if (videoUrl) {
+      try {
+        URL.revokeObjectURL(videoUrl);
+      } catch {}
+    }
     setView('home');
     setFrames([]);
     setProgress(0);
@@ -99,6 +143,8 @@ export default function Page() {
     setError(null);
     setReport(null);
     setSwing(null);
+    setVideoUrl(null);
+    setVideoDuration(0);
   }
 
   return (
@@ -113,6 +159,17 @@ export default function Page() {
       />
 
       {view === 'home' && <Home onPick={pickVideo} />}
+      {view === 'review' && (
+        <Review
+          frames={frames}
+          swing={swing}
+          videoUrl={videoUrl}
+          videoDuration={videoDuration}
+          onConfirm={() => runAnalysis(frames)}
+          onRePick={rePickWindow}
+          onReset={reset}
+        />
+      )}
       {view === 'analyze' && (
         <Analyze
           stage={stage}
@@ -227,6 +284,242 @@ function Home({ onPick }) {
         BUILT WITH GEMINI VISION · NOT AFFILIATED WITH PGA TOUR
       </div>
     </>
+  );
+}
+
+/* ─── Review ───────────────────────────────────────────────────────────── */
+// User confirms or re-picks the swing window before we burn an API call.
+
+function Review({ frames, swing, videoUrl, videoDuration, onConfirm, onRePick, onReset }) {
+  const [start, setStart] = useState(swing?.startTime ?? 0);
+  const [end, setEnd] = useState(swing?.endTime ?? Math.min(2, videoDuration));
+  const [editing, setEditing] = useState(false);
+  const videoRef = useRef(null);
+
+  // Snap start/end whenever the auto-detected swing changes (first load).
+  useEffect(() => {
+    setStart(swing?.startTime ?? 0);
+    setEnd(swing?.endTime ?? Math.min(2, videoDuration));
+  }, [swing?.startTime, swing?.endTime, videoDuration]);
+
+  function playWindow() {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = start;
+    v.play().catch(() => {});
+    const stopAt = () => {
+      if (v.currentTime >= end) {
+        v.pause();
+        v.removeEventListener('timeupdate', stopAt);
+      }
+    };
+    v.addEventListener('timeupdate', stopAt);
+  }
+
+  return (
+    <>
+      <div className="frame">
+        <div className="hero frame-inner">
+          <div className="eyebrow">REVIEW · DOES THIS LOOK RIGHT?</div>
+          <p className="subtitle" style={{ marginTop: 6 }}>
+            We auto-detected your swing. If the 12 frames below look like the
+            actual swing, tap <b>Looks Good — Analyze</b>. If the wrong moment
+            was picked, tap <b>Re-Pick The Swing</b> and drag the slider.
+          </p>
+        </div>
+      </div>
+
+      <div className="section-label">12 Auto-Picked Positions</div>
+      <div className="frames">
+        {frames.map((f, i) => (
+          <div className="frame-card" key={i}>
+            <img
+              className="frame-img"
+              src={`data:image/jpeg;base64,${f.data}`}
+              alt={f.label}
+            />
+            <div className="frame-bar">
+              <span className="frame-tag">F{i + 1}</span>
+              <span className="frame-name">{f.label}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ height: 14 }} />
+
+      <button className="btn" onClick={onConfirm}>
+        <span className="btn-content">
+          <span className="btn-icon">✓</span>
+          <span className="btn-text-stack">
+            <span className="label">Looks Good — Analyze</span>
+            <span className="caption">Send these 12 frames to the AI coach</span>
+          </span>
+        </span>
+        <span className="btn-chev">▸</span>
+      </button>
+
+      <button
+        className="btn btn-gold"
+        onClick={() => setEditing((e) => !e)}
+      >
+        <span className="btn-content">
+          <span className="btn-icon">✂︎</span>
+          <span className="btn-text-stack">
+            <span className="label">
+              {editing ? 'Hide The Re-Picker' : 'Re-Pick The Swing'}
+            </span>
+            <span className="caption">Drag to mark just the swing</span>
+          </span>
+        </span>
+        <span className="btn-chev">▸</span>
+      </button>
+
+      {editing && videoUrl && (
+        <div className="frame">
+          <div className="frame-inner" style={{ padding: 14 }}>
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              style={{ width: '100%', maxHeight: 320, background: '#000' }}
+              playsInline
+              muted
+              controls
+            />
+            <Scrubber
+              duration={videoDuration}
+              start={start}
+              end={end}
+              onChange={(s, e) => {
+                setStart(s);
+                setEnd(e);
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button
+                className="btn btn-ghost"
+                style={{ flex: 1 }}
+                onClick={playWindow}
+              >
+                <span className="btn-content">
+                  <span className="btn-icon">▶</span>
+                  <span className="btn-text-stack">
+                    <span className="label">Preview Window</span>
+                  </span>
+                </span>
+              </button>
+              <button
+                className="btn"
+                style={{ flex: 1 }}
+                onClick={() => onRePick(start, end)}
+              >
+                <span className="btn-content">
+                  <span className="btn-icon">↻</span>
+                  <span className="btn-text-stack">
+                    <span className="label">Re-Extract & Analyze</span>
+                  </span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button className="btn btn-ghost" onClick={onReset}>
+        <span className="btn-content">
+          <span className="btn-icon">←</span>
+          <span className="btn-text-stack">
+            <span className="label">Cancel · Pick Different Video</span>
+          </span>
+        </span>
+        <span className="btn-chev">▸</span>
+      </button>
+    </>
+  );
+}
+
+function Scrubber({ duration, start, end, onChange }) {
+  const fmt = (t) => {
+    const m = Math.floor(t / 60);
+    const s = (t - m * 60).toFixed(1);
+    return `${m}:${s.padStart(4, '0')}`;
+  };
+
+  const minWindow = 0.6;
+  const maxWindow = Math.min(4.0, duration);
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: 11,
+          letterSpacing: 1.4,
+          fontWeight: 900,
+          color: 'var(--gold)',
+          marginBottom: 6,
+        }}
+      >
+        <span>START · {fmt(start)}</span>
+        <span>WINDOW · {fmt(end - start)}</span>
+        <span>END · {fmt(end)}</span>
+      </div>
+
+      <label
+        style={{
+          fontSize: 10,
+          letterSpacing: 1.6,
+          fontWeight: 900,
+          color: 'var(--silver-dim)',
+        }}
+      >
+        START OF SWING
+      </label>
+      <input
+        type="range"
+        min={0}
+        max={Math.max(0, duration - minWindow)}
+        step={0.05}
+        value={start}
+        onChange={(e) => {
+          const s = Number(e.target.value);
+          let newEnd = end;
+          if (newEnd - s < minWindow) newEnd = Math.min(duration, s + minWindow);
+          if (newEnd - s > maxWindow) newEnd = s + maxWindow;
+          onChange(s, newEnd);
+        }}
+        style={{ width: '100%' }}
+      />
+
+      <label
+        style={{
+          fontSize: 10,
+          letterSpacing: 1.6,
+          fontWeight: 900,
+          color: 'var(--silver-dim)',
+          marginTop: 8,
+          display: 'block',
+        }}
+      >
+        END OF SWING
+      </label>
+      <input
+        type="range"
+        min={Math.min(start + minWindow, duration)}
+        max={duration}
+        step={0.05}
+        value={end}
+        onChange={(e) => {
+          const ee = Number(e.target.value);
+          let newStart = start;
+          if (ee - newStart < minWindow) newStart = Math.max(0, ee - minWindow);
+          if (ee - newStart > maxWindow) newStart = ee - maxWindow;
+          onChange(newStart, ee);
+        }}
+        style={{ width: '100%' }}
+      />
+    </div>
   );
 }
 

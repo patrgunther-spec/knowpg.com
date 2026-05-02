@@ -109,61 +109,54 @@ export async function extractFrames(file, onProgress, onStage) {
   }
 
   // ---- 2. Locate swing window -------------------------------------------
-  // Smooth scores with a moving average to suppress jitter while still
-  // letting the impact spike show through.
+  //
+  // Algorithm:
+  //   1. Smooth motion curve.
+  //   2. Find ALL local maxima with non-maximum suppression at 0.4s spacing.
+  //      We do NOT prefilter by height - the actual swing impact may be
+  //      pixel-smaller than a slow bend-over because the camera is far away
+  //      and the impact lasts only a few frames.
+  //   3. For each peak, compute:
+  //        - peakHeight   : raw motion at the peak
+  //        - sharpness    : peak / max(avg_before, avg_after) over windows
+  //                         0.4s-1.0s away from the peak
+  //        - addressScore : how QUIET the 0.6s..1.1s before the peak is.
+  //                         A real swing has a still address; bending,
+  //                         walking, and tee-ups do not.
+  //   4. Pick the peak with the highest combined score:
+  //        score = sharpness × addressScore × log1p(peakHeight)
+  //      No "lateness" bias - the swing isn't always the last peak.
+
   const smoothed = movingAverage(motionScores, 5);
 
-  // Global peak value.
   let globalMax = 0;
-  for (let i = 0; i < smoothed.length; i++) {
-    if (smoothed[i] > globalMax) globalMax = smoothed[i];
+  let globalMedian = 0;
+  {
+    const sorted = [...smoothed].sort((a, b) => a - b);
+    globalMax = sorted[sorted.length - 1] || 1;
+    globalMedian = sorted[Math.floor(sorted.length / 2)] || 0;
   }
 
-  // Find every distinct local peak whose height is at least 55% of the global
-  // max. A "distinct" peak is separated from neighbors by at least 0.3s of
-  // sub-threshold motion.
-  const peakThreshold = Math.max(1, globalMax * 0.55);
-  const minSeparationSamples = Math.max(2, Math.round(MOTION_FPS * 0.3));
+  // Find every local maximum (NMS with 0.4s spacing).  Inclusion threshold
+  // is just above the median noise floor - we keep small peaks too because
+  // the actual swing peak may be smaller than non-swing peaks.
+  const sepSamples = Math.max(3, Math.round(MOTION_FPS * 0.4));
+  const minPeakHeight = Math.max(globalMedian * 1.5, globalMax * 0.08, 1);
   const peaks = [];
-  let inPeak = false;
-  let peakBestIdx = 0;
-  let peakBestVal = -1;
-  let belowSince = -1;
-
-  for (let i = 0; i < smoothed.length; i++) {
-    if (smoothed[i] >= peakThreshold) {
-      if (!inPeak) {
-        inPeak = true;
-        peakBestIdx = i;
-        peakBestVal = smoothed[i];
-      } else if (smoothed[i] > peakBestVal) {
-        peakBestVal = smoothed[i];
-        peakBestIdx = i;
-      }
-      belowSince = -1;
-    } else {
-      if (inPeak) {
-        if (belowSince < 0) belowSince = i;
-        if (i - belowSince >= minSeparationSamples) {
-          peaks.push({ idx: peakBestIdx, val: peakBestVal });
-          inPeak = false;
-          peakBestVal = -1;
-        }
+  for (let i = 1; i < smoothed.length - 1; i++) {
+    if (smoothed[i] < minPeakHeight) continue;
+    let isLocalMax = true;
+    for (let k = -sepSamples; k <= sepSamples; k++) {
+      const j = i + k;
+      if (j < 0 || j >= smoothed.length || j === i) continue;
+      if (smoothed[j] > smoothed[i]) {
+        isLocalMax = false;
+        break;
       }
     }
+    if (isLocalMax) peaks.push({ idx: i, val: smoothed[i] });
   }
-  if (inPeak) peaks.push({ idx: peakBestIdx, val: peakBestVal });
 
-  // Score each peak by SHARPNESS, not just height.  The real swing is a
-  // brief, violent spike (lots of motion at impact, near-zero ~0.7s before
-  // and after).  Bending over to tee the ball or walking is sustained
-  // motion - lower sharpness.
-  //
-  // sharpness = peak / max(avg_before, avg_after, 1)
-  // where avg_before/after is the mean motion in a window 0.4s..1.0s
-  // away from the peak.
-  const sharpnessSpan = Math.round(MOTION_FPS * 1.0);
-  const sharpnessGap = Math.round(MOTION_FPS * 0.4);
   function avgRange(start, end) {
     const lo = Math.max(0, Math.min(smoothed.length, start));
     const hi = Math.max(0, Math.min(smoothed.length, end));
@@ -172,26 +165,40 @@ export async function extractFrames(file, onProgress, onStage) {
     for (let i = lo; i < hi; i++) sum += smoothed[i];
     return sum / (hi - lo);
   }
+
+  // Score each peak by swing-shape signature.
+  const farSpan = Math.round(MOTION_FPS * 1.0);
+  const farGap = Math.round(MOTION_FPS * 0.4);
+  const addrFar = Math.round(MOTION_FPS * 1.1);
+  const addrNear = Math.round(MOTION_FPS * 0.6);
+
   for (const p of peaks) {
-    const beforeAvg = avgRange(p.idx - sharpnessSpan, p.idx - sharpnessGap);
-    const afterAvg = avgRange(p.idx + sharpnessGap, p.idx + sharpnessSpan);
-    const baseline = Math.max(beforeAvg, afterAvg, 1);
-    p.sharpness = p.val / baseline;
+    const beforeAvg = avgRange(p.idx - farSpan, p.idx - farGap);
+    const afterAvg = avgRange(p.idx + farGap, p.idx + farSpan);
+    const farBaseline = Math.max(beforeAvg, afterAvg, 1);
+    p.sharpness = p.val / farBaseline;
+
+    // Address-quietness: average motion 0.6s..1.1s BEFORE peak.
+    // Real swings have very low motion in this window (golfer is still).
+    // Bending over / walking has continuous motion.
+    const addrAvg = avgRange(p.idx - addrFar, p.idx - addrNear);
+    p.addressScore = (globalMax + 1) / (addrAvg + globalMax * 0.05 + 1);
+
+    // Combined score - all factors weighted equally on a log scale.
+    p.score =
+      Math.log(1 + p.sharpness) *
+      Math.log(1 + p.addressScore) *
+      Math.log(1 + p.val);
   }
 
-  // Pick the peak with the highest sharpness × (slight weight on lateness, so
-  // ties break toward the LATER peak - real swing usually comes after practice
-  // swings or tee-up motion).
+  // Pick the highest-scoring peak.
   let peakIdx = 0;
   let peakVal = -1;
   if (peaks.length > 0) {
     let best = -Infinity;
-    for (let i = 0; i < peaks.length; i++) {
-      const p = peaks[i];
-      const lateness = 1 + 0.2 * (i / Math.max(1, peaks.length - 1));
-      const score = p.sharpness * lateness;
-      if (score > best) {
-        best = score;
+    for (const p of peaks) {
+      if (p.score > best) {
+        best = p.score;
         peakIdx = p.idx;
         peakVal = p.val;
       }
@@ -271,7 +278,9 @@ export async function extractFrames(file, onProgress, onStage) {
     if (onProgress) onProgress(0.5 + 0.5 * ((i + 1) / FRAME_COUNT));
   }
 
-  URL.revokeObjectURL(url);
+  // Don't revoke the blob URL yet - keep it so the page can show a video
+  // scrubber and let the user re-pick the swing window if our auto-detect
+  // got it wrong. The page revokes after navigation.
 
   return {
     frames,
@@ -279,6 +288,70 @@ export async function extractFrames(file, onProgress, onStage) {
       startTime,
       endTime,
       peakTime,
+      durationMs: Math.round((endTime - startTime) * 1000),
+    },
+    videoUrl: url,
+    videoDuration: duration,
+  };
+}
+
+// Re-extract 12 frames from the same video given a manually-chosen
+// [startTime, endTime] window. Used when the user disagrees with
+// auto-detection and drags the scrubber to the actual swing.
+export async function extractFramesAtWindow(videoUrl, startTime, endTime, onProgress) {
+  const video = document.createElement('video');
+  video.src = videoUrl;
+  video.preload = 'auto';
+  video.muted = true;
+  video.playsInline = true;
+  video.crossOrigin = 'anonymous';
+
+  await new Promise((resolve, reject) => {
+    video.addEventListener('loadedmetadata', () => resolve(), { once: true });
+    video.addEventListener('error', () => reject(new Error('Could not read video.')), {
+      once: true,
+    });
+  });
+
+  try {
+    await video.play();
+    video.pause();
+  } catch (_) {}
+
+  const w = video.videoWidth || 720;
+  const h = video.videoHeight || 1280;
+  const scale = Math.min(1, OUT_MAX / Math.max(w, h));
+  const cw = Math.max(1, Math.round(w * scale));
+  const ch = Math.max(1, Math.round(h * scale));
+
+  const oc = document.createElement('canvas');
+  oc.width = cw;
+  oc.height = ch;
+  const octx = oc.getContext('2d');
+
+  const frames = [];
+  for (let i = 0; i < FRAME_COUNT; i++) {
+    const f = (i + 0.5) / FRAME_COUNT;
+    const t = startTime + (endTime - startTime) * f;
+    await seek(video, t);
+    octx.drawImage(video, 0, 0, cw, ch);
+    const dataUrl = oc.toDataURL('image/jpeg', 0.78);
+    const base64 = dataUrl.split(',')[1] || '';
+    frames.push({
+      data: base64,
+      label: FRAME_LABELS[i],
+      timeMs: Math.round(t * 1000),
+      order: i,
+    });
+    if (onProgress) onProgress((i + 1) / FRAME_COUNT);
+  }
+
+  return {
+    frames,
+    swing: {
+      startTime,
+      endTime,
+      peakTime: (startTime + endTime) / 2,
       durationMs: Math.round((endTime - startTime) * 1000),
     },
   };
