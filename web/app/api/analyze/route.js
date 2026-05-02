@@ -302,7 +302,9 @@ export async function POST(req) {
   let res;
   let upstreamErr = null;
   // Try up to twice. If the first call returns 429 (free-tier 15 RPM bucket),
-  // wait 35s and try again. Vercel function maxDuration is 60s so this fits.
+  // wait 22s and retry. 22s is enough for most rate-window slots to free up,
+  // and keeps the function under Vercel's 60s cap when combined with two
+  // upstream calls (~15s each).
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       res = await fetch(`${API_BASE}/${MODEL}:generateContent`, {
@@ -320,8 +322,7 @@ export async function POST(req) {
     if (upstreamErr) break;
     if (res.status !== 429) break;
     if (attempt === 0) {
-      // Wait for the 60s rate window to reset, then retry.
-      await new Promise((r) => setTimeout(r, 35000));
+      await new Promise((r) => setTimeout(r, 22000));
     }
   }
 
