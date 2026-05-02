@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<meta name="theme-color" content="#06100A" />
+<title>Golf Swing Coach</title>
+<style>
+:root{
+  --bg:#06100A;--bgT:#0A1A11;--bgB:#03080A;
+  --panel:#0F1C13;--panelHi:#16291C;--pBorder:#1F3A2A;
+  --fairway:#0BBF4D;--fairwayHi:#19E160;--fairwayDeep:#06703A;
+  --gold:#F5C518;--goldHi:#FFE174;--goldDeep:#9C7A05;
+  --white:#FFF;--silver:#CDD6CF;--silverDim:#7A8A80;
+  --danger:#E63946;--dangerDeep:#7A1620;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--white);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100%;-webkit-font-smoothing:antialiased}
+body{background:radial-gradient(circle at top,var(--bgT),transparent 60%),radial-gradient(circle at bottom,var(--bgB),transparent 60%),var(--bg);min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea{font-family:inherit;color:inherit}
+a{color:var(--gold);text-decoration:none}
+.container{max-width:720px;margin:0 auto;padding:16px 16px 80px}
+.eyebrow{font-size:11px;letter-spacing:3px;font-weight:900;color:var(--gold);text-transform:uppercase}
+.title{font-size:34px;font-weight:900;font-style:italic;letter-spacing:1px;text-transform:uppercase;line-height:1.1}
+.title .accent{color:var(--fairwayHi)}
+.subtitle{font-size:14px;color:var(--silver);line-height:1.5;margin-top:12px}
+.frame{border:2px solid var(--gold);background:#02080A;padding:2px;margin-bottom:16px}
+.frame-inner{border:1px solid var(--pBorder);background:var(--panel)}
+.hero{padding:22px;background:linear-gradient(180deg,#0A2418 0%,#06120C 100%);border:1px solid var(--pBorder)}
+.hero-stats{display:flex;margin-top:16px;padding-top:14px;border-top:1px solid var(--pBorder)}
+.hero-stat{flex:1;text-align:center}
+.hero-stat-value{font-size:22px;font-weight:900;font-style:italic;color:var(--fairwayHi)}
+.hero-stat-label{font-size:10px;letter-spacing:2px;font-weight:800;color:var(--silverDim);text-transform:uppercase;margin-top:2px}
+.hero-stat-sep{width:1px;background:var(--pBorder);margin:4px 0}
+.btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px;border:2px solid var(--gold);background:linear-gradient(135deg,var(--fairwayHi),var(--fairwayDeep));color:var(--white);font-weight:900;letter-spacing:1.6px;text-transform:uppercase;font-style:italic;font-size:16px;margin-bottom:10px;-webkit-tap-highlight-color:transparent;transition:transform .06s ease,opacity .15s ease}
+.btn:active{transform:scale(.985)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--goldDeep));color:#241A00}
+.btn-ghost{background:var(--panel);border-color:var(--pBorder);color:var(--silver)}
+.btn-content{display:flex;align-items:center;gap:12px}
+.btn-icon{font-size:22px}
+.btn-text-stack .label{display:block}
+.btn-text-stack .caption{display:block;font-size:11px;letter-spacing:.8px;font-weight:700;opacity:.85;margin-top:2px;font-style:normal}
+.btn-chev{font-size:22px;font-weight:900}
+.section-label{display:flex;align-items:center;gap:12px;margin:16px 0 8px;color:var(--gold);font-size:11px;letter-spacing:2.8px;font-weight:900;font-style:italic;text-transform:uppercase}
+.section-label::before,.section-label::after{content:'';flex:1;height:1px;background:var(--pBorder)}
+.how{padding:14px;background:var(--panel);border:1px solid var(--pBorder)}
+.how-row{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--pBorder)}
+.how-row:last-child{border-bottom:none}
+.how-num{font-size:26px;font-weight:900;font-style:italic;color:var(--gold);width:56px}
+.how-title{font-size:15px;font-weight:900;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:2px}
+.how-text{color:var(--silver);font-size:13px;line-height:1.4}
+.hud{padding:14px;background:var(--panel);border:1px solid var(--pBorder)}
+.hud-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px}
+.hud-label{font-size:10px;letter-spacing:2.5px;font-weight:900;color:var(--silverDim);text-transform:uppercase}
+.hud-value{flex:1;font-size:14px;font-weight:900;letter-spacing:1.4px;font-style:italic;text-align:right}
+.hud-small{font-size:11px;letter-spacing:1.2px;font-weight:700;text-transform:uppercase;color:var(--silver)}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--fairwayHi);box-shadow:0 0 8px var(--fairwayHi);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
+.progress-track{height:12px;background:#040A06;border:1px solid var(--pBorder);overflow:hidden;margin:8px 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--fairwayHi),var(--fairwayDeep));transition:width .3s ease}
+.frames{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.frame-card{background:#02080A;border:1px solid var(--pBorder);overflow:hidden}
+.frame-img{width:100%;aspect-ratio:9/16;object-fit:cover;display:block;background:#000}
+.frame-bar{display:flex;align-items:center;padding:6px 8px;border-top:1px solid var(--pBorder);background:var(--panelHi);gap:6px}
+.frame-tag{color:var(--gold);font-weight:900;font-size:10px;letter-spacing:1px}
+.frame-name{color:var(--white);font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.report-header{padding:18px;background:linear-gradient(180deg,#0E2418 0%,#04100A 100%);border:1px solid var(--pBorder)}
+.report-handle{font-size:28px;font-weight:900;font-style:italic;letter-spacing:1.6px;text-transform:uppercase;margin:6px 0}
+.report-summary{font-size:14px;color:var(--silver);line-height:1.5}
+.report-meta{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.meta-badge{display:inline-block;padding:4px 8px;border:1px solid var(--goldDeep);background:#1A1300;color:var(--gold);font-size:9px;letter-spacing:1.6px;font-weight:900}
+.highlight-box{margin-top:14px;padding:12px;background:rgba(11,191,77,.10);border-left:3px solid var(--fairwayHi)}
+.highlight-label{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:2.5px;margin-bottom:4px}
+.highlight-text{font-size:13px;line-height:1.4}
+.takeaway{padding:16px;background:var(--panel);border:1px solid var(--pBorder)}
+.takeaway-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.takeaway-num{width:46px;height:46px;display:flex;align-items:center;justify-content:center;border:2px solid;background:#02080A;font-weight:900;font-style:italic;font-size:18px;flex-shrink:0}
+.priority-pill{display:inline-block;border:1px solid;padding:2px 6px;font-size:9px;font-weight:900;letter-spacing:1.6px;margin-bottom:4px}
+.takeaway-title{font-size:17px;font-weight:900;font-style:italic;letter-spacing:1px;text-transform:uppercase;line-height:1.3}
+.block{border-left:3px solid;padding:6px 10px;margin-top:8px}
+.block-label{font-size:10px;font-weight:900;letter-spacing:2px;margin-bottom:4px}
+.block-body{color:var(--silver);font-size:13px;line-height:1.4;white-space:pre-line}
+.bullet-list{list-style:none;margin:0;padding:0}
+.bullet-list li{position:relative;padding-left:18px;color:var(--silver);font-size:13px;line-height:1.45;margin-top:4px}
+.bullet-list li::before{content:'►';position:absolute;left:0;top:0;color:var(--gold);font-size:9px;font-weight:900}
+.meta-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.meta-chip{flex:1 1 calc(50% - 6px);min-width:140px;padding:8px;border:1px solid}
+.meta-chip-label{font-size:9px;font-weight:900;letter-spacing:1.6px;margin-bottom:2px}
+.meta-chip-text{color:var(--white);font-size:12px;font-weight:700}
+.brdrow{padding:10px 0;border-bottom:1px solid var(--pBorder);cursor:pointer;display:block;width:100%;text-align:left}
+.brdrow:last-child{border-bottom:none}
+.brdrow-top{display:flex;align-items:center;gap:10px}
+.brd-thumb{width:50px;height:70px;background:#000;border:1px solid var(--pBorder);flex-shrink:0;object-fit:cover}
+.brd-tag{color:var(--gold);font-size:9px;letter-spacing:2px;font-weight:900}
+.brd-title{font-size:13px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin:2px 0}
+.brd-what{font-size:12px;color:var(--silver);line-height:1.4}
+.brd-chev{font-size:18px;color:var(--silverDim);font-weight:900;margin-left:auto}
+.brd-tip{margin-top:10px;padding:10px;background:rgba(11,191,77,.10);border-left:3px solid var(--fairwayHi)}
+.brd-tip-label{font-size:10px;font-weight:900;color:var(--fairwayHi);letter-spacing:2.5px;margin-bottom:4px}
+.brd-tip-text{font-size:13px;line-height:1.4}
+.next-tip{padding:12px;background:#1A1300;border:1px solid var(--goldDeep)}
+.next-tip-label{font-weight:900;color:var(--gold);letter-spacing:2.5px;font-size:10px;margin-bottom:4px}
+.next-tip-text{font-size:13px;line-height:1.4}
+.input{width:100%;padding:12px;font-size:14px;background:#02080A;border:1px solid var(--pBorder);color:var(--white);letter-spacing:1px;margin:10px 0}
+.error-box{padding:16px;background:#1A0509;border:2px solid var(--danger);margin-bottom:14px}
+.error-title{color:var(--danger);font-size:14px;font-weight:900;letter-spacing:2.5px;text-transform:uppercase;font-style:italic;margin-bottom:8px}
+.error-text{color:var(--silver);font-size:13px;line-height:1.4;word-break:break-word}
+.footer{text-align:center;color:var(--silverDim);font-size:9px;letter-spacing:2px;font-weight:700;margin-top:24px}
+.schedule{display:flex;flex-direction:column;border:1px solid var(--pBorder)}
+.sched-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--pBorder);background:#02080A}
+.sched-row:last-child{border-bottom:none}
+.sched-day{width:84px;flex-shrink:0;font-weight:900;font-style:italic;color:var(--gold);letter-spacing:1.2px;text-transform:uppercase;font-size:12px}
+.sched-focus{flex:1;color:var(--white);font-size:13px;line-height:1.35}
+.sched-min{flex-shrink:0;color:var(--fairwayHi);font-weight:900;font-size:12px;letter-spacing:1px;font-style:italic}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;outline:none;margin:4px 0}
+input[type="range"]::-webkit-slider-runnable-track{height:6px;background:linear-gradient(90deg,var(--fairwayDeep),var(--fairwayHi));border:1px solid var(--pBorder)}
+input[type="range"]::-moz-range-track{height:6px;background:linear-gradient(90deg,var(--fairwayDeep),var(--fairwayHi));border:1px solid var(--pBorder)}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;background:var(--gold);border:2px solid #02080A;margin-top:-9px;cursor:pointer}
+input[type="range"]::-moz-range-thumb{width:20px;height:20px;background:var(--gold);border:2px solid #02080A;cursor:pointer}
+@media (max-width:480px){.title{font-size:28px}.takeaway-title{font-size:15px}.frames{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main class="container" id="root"></main>
+
+<script>
+/* Golf Swing Coach - single-file standalone build.
+ * Calls Google Gemini directly from the browser. The API key is stored only
+ * in localStorage. No backend, no servers, no charges. */
+
+const FRAME_LABELS = [
+  'Address','Takeaway','Hands At Hip (Back)','Lead Arm Parallel (Back)',
+  'Top Of Backswing','Transition','Lead Arm Parallel (Down)','Pre-Impact',
+  'Impact','Post-Impact Extension','Mid Follow-Through','Finish'
+];
+const FRAME_COUNT = 12;
+const MOTION_W = 96, MOTION_H = 144;
+const MOTION_FPS = 30;
+const MIN_SAMPLES = 30, MAX_SAMPLES = 600;
+const OUT_MAX = 720;
+const KEY_STORAGE = 'GEMINI_API_KEY';
+const MODELS = ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-2.5-flash-lite'];
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+const SCAN_QUOTES = [
+  'Watching the whole clip…','Finding the actual swing…',
+  'Skipping practice strokes…','Locking onto impact…'
+];
+const COACH_QUOTES = [
+  'Studying your tempo…','Checking your spine angle…','Tracing the club path…',
+  'Reading your weight transfer…','Looking at impact position…',
+  'Comparing to tour pros…','Spotting strokes you can save…',
+  'Drafting your custom drills…','Writing it all down…'
+];
+
+const SYSTEM_PROMPT = `You are an elite, PGA-Tour-level golf swing coach. The user wants the most thorough, specific, beginner-friendly coaching possible.
+
+You will receive 12 still frames from the SAME swing, sampled in order from address through finish. Treat all 12 frames as one continuous swing.
+
+The 12 frames, in order, are:
+  1. Address               2. Takeaway              3. Hands At Hip (Back)
+  4. Lead Arm Parallel (Back)  5. Top Of Backswing  6. Transition
+  7. Lead Arm Parallel (Down)  8. Pre-Impact        9. Impact
+ 10. Post-Impact Extension 11. Mid Follow-Through  12. Finish
+
+CAMERA ANGLE: Detect the angle (down-the-line / face-on / behind / overhead) and adapt your analysis. State the angle in the report.
+
+WRITING STYLE - this is critical:
+- Write so a smart 10-year-old American would understand. Short sentences. Simple words.
+- Whenever you use a golf term, define it in 5-12 plain words RIGHT AFTER the term, in parentheses. Example: "Stop casting (throwing the club out early like a fishing rod)."
+- Use simple analogies. Be very specific about body parts (assume right-handed unless visually clear).
+
+DEPTH - 5 to 10 ACTIONABLE TAKEAWAYS, ranked High → Low priority. For each:
+  * title              short imperative
+  * whatToFix          1-3 sentences (frame-specific)
+  * whyItMatters       1-3 sentences on strokes it costs and typical miss
+  * howToFix           NUMBERED STEPS the kid can do at home (4-7 steps)
+  * commonMistakes     up to 3
+  * reps               concrete dosage
+  * estimatedHandicapImpact  realistic
+  * priority           High|Medium|Low
+
+Return ONLY valid JSON with this exact schema. No prose outside JSON, no fences:
+
+{
+  "playerHandle": "Short fun nickname. 1-3 words.",
+  "cameraAngle": "down-the-line | face-on | behind | overhead | unclear",
+  "handedness": "right | left | unclear",
+  "summary": "2-4 sentences plain words.",
+  "oneThingYouDidWell": "One specific positive thing with frame number.",
+  "ballFlightExplanation": "Plain-language paragraph citing specific frames.",
+  "frameBreakdown": [
+    {"label":"Address","whatISee":"...","tip":"..."},
+    {"label":"Takeaway","whatISee":"...","tip":"..."},
+    {"label":"Hands At Hip (Back)","whatISee":"...","tip":"..."},
+    {"label":"Lead Arm Parallel (Back)","whatISee":"...","tip":"..."},
+    {"label":"Top Of Backswing","whatISee":"...","tip":"..."},
+    {"label":"Transition","whatISee":"...","tip":"..."},
+    {"label":"Lead Arm Parallel (Down)","whatISee":"...","tip":"..."},
+    {"label":"Pre-Impact","whatISee":"...","tip":"..."},
+    {"label":"Impact","whatISee":"...","tip":"..."},
+    {"label":"Post-Impact Extension","whatISee":"...","tip":"..."},
+    {"label":"Mid Follow-Through","whatISee":"...","tip":"..."},
+    {"label":"Finish","whatISee":"...","tip":"..."}
+  ],
+  "takeaways": [
+    {"title":"...","whatToFix":"...","whyItMatters":"...","howToFix":"1) ... 2) ... 3) ... 4) ...","commonMistakes":["...","..."],"reps":"...","estimatedHandicapImpact":"...","priority":"High"}
+  ],
+  "practicePlan": {
+    "summary":"...",
+    "weeklySchedule":[{"day":"Monday","focus":"Drill X","minutes":15}]
+  },
+  "nextVideoTip": "..."
+}
+
+Provide 5 to 10 takeaways. Be thorough.`;
+
+/* ===== State ===== */
+const state = {
+  view: 'home',
+  frames: [],
+  swing: null,
+  videoUrl: null,
+  videoDuration: 0,
+  progress: 0,
+  stage: 'idle',
+  error: null,
+  report: null,
+  quoteIdx: 0,
+  apiKey: localStorage.getItem(KEY_STORAGE) || '',
+  pickRange: null,
+  showScrubber: false,
+  openFrame: null,
+};
+let quoteTimer = null;
+
+function setState(patch) {
+  Object.assign(state, patch);
+  render();
+}
+
+/* ===== Frame extraction with motion-based swing detection ===== */
+function seek(video, t) {
+  return new Promise((resolve, reject) => {
+    const onSeeked = () => { cleanup(); setTimeout(resolve, 30); };
+    const onError = () => { cleanup(); reject(new Error('Could not seek video.')); };
+    const cleanup = () => {
+      video.removeEventListener('seeked', onSeeked);
+      video.removeEventListener('error', onError);
+    };
+    video.addEventListener('seeked', onSeeked);
+    video.addEventListener('error', onError);
+    video.currentTime = Math.max(0, t);
+  });
+}
+
+function movingAverage(arr, w) {
+  const half = Math.floor(w / 2);
+  const out = new Array(arr.length);
+  for (let i = 0; i < arr.length; i++) {
+    let s = 0, n = 0;
+    for (let k = -half; k <= half; k++) {
+      const j = i + k;
+      if (j >= 0 && j < arr.length) { s += arr[j]; n++; }
+    }
+    out[i] = n ? s / n : arr[i];
+  }
+  return out;
+}
+
+async function extractFrames(file, onProgress, onStage) {
+  const url = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.src = url;
+  video.preload = 'auto';
+  video.muted = true;
+  video.playsInline = true;
+  video.crossOrigin = 'anonymous';
+
+  await new Promise((resolve, reject) => {
+    video.addEventListener('loadedmetadata', () => resolve(), { once: true });
+    video.addEventListener('error', () => reject(new Error('Could not read video.')), { once: true });
+  });
+  try { await video.play(); video.pause(); } catch(_){}
+
+  const duration = isFinite(video.duration) && video.duration > 0 ? video.duration : 5;
+
+  if (onStage) onStage('scanning');
+  const samples = Math.max(MIN_SAMPLES, Math.min(MAX_SAMPLES, Math.round(duration * MOTION_FPS)));
+
+  const mc = document.createElement('canvas');
+  mc.width = MOTION_W; mc.height = MOTION_H;
+  const mctx = mc.getContext('2d', { willReadFrequently: true });
+
+  const motionTimes = [], motionScores = [];
+  let prevGray = null;
+
+  for (let i = 0; i < samples; i++) {
+    const t = (duration * (i + 0.5)) / samples;
+    await seek(video, t);
+    mctx.drawImage(video, 0, 0, MOTION_W, MOTION_H);
+    const data = mctx.getImageData(0, 0, MOTION_W, MOTION_H).data;
+    const gray = new Uint8Array(MOTION_W * MOTION_H);
+    for (let p = 0, g = 0; p < data.length; p += 4, g++) {
+      gray[g] = (data[p]*299 + data[p+1]*587 + data[p+2]*114) / 1000;
+    }
+    let diff = 0;
+    if (prevGray) {
+      for (let g = 0; g < gray.length; g++) {
+        const d = gray[g] - prevGray[g];
+        diff += d < 0 ? -d : d;
+      }
+    }
+    motionTimes.push(t);
+    motionScores.push(diff);
+    prevGray = gray;
+    if (onProgress) onProgress(0.5 * ((i + 1) / samples));
+  }
+
+  // Sharpness-based swing detection
+  const smoothed = movingAverage(motionScores, 5);
+  let globalMax = 0, globalMedian = 0;
+  {
+    const sorted = [...smoothed].sort((a,b) => a-b);
+    globalMax = sorted[sorted.length-1] || 1;
+    globalMedian = sorted[Math.floor(sorted.length/2)] || 0;
+  }
+  const sepSamples = Math.max(3, Math.round(MOTION_FPS * 0.4));
+  const minPeakHeight = Math.max(globalMedian * 1.5, globalMax * 0.08, 1);
+  const peaks = [];
+  for (let i = 1; i < smoothed.length - 1; i++) {
+    if (smoothed[i] < minPeakHeight) continue;
+    let isLocalMax = true;
+    for (let k = -sepSamples; k <= sepSamples; k++) {
+      const j = i + k;
+      if (j < 0 || j >= smoothed.length || j === i) continue;
+      if (smoothed[j] > smoothed[i]) { isLocalMax = false; break; }
+    }
+    if (isLocalMax) peaks.push({ idx: i, val: smoothed[i] });
+  }
+
+  const avgRange = (start, end) => {
+    const lo = Math.max(0, Math.min(smoothed.length, start));
+    const hi = Math.max(0, Math.min(smoothed.length, end));
+    if (hi <= lo) return 0;
+    let s = 0;
+    for (let i = lo; i < hi; i++) s += smoothed[i];
+    return s / (hi - lo);
+  };
+  const farSpan = Math.round(MOTION_FPS * 1.0);
+  const farGap = Math.round(MOTION_FPS * 0.4);
+  const addrFar = Math.round(MOTION_FPS * 1.1);
+  const addrNear = Math.round(MOTION_FPS * 0.6);
+
+  for (const p of peaks) {
+    const beforeAvg = avgRange(p.idx - farSpan, p.idx - farGap);
+    const afterAvg = avgRange(p.idx + farGap, p.idx + farSpan);
+    p.sharpness = p.val / Math.max(beforeAvg, afterAvg, 1);
+    const addrAvg = avgRange(p.idx - addrFar, p.idx - addrNear);
+    p.addressScore = (globalMax + 1) / (addrAvg + globalMax * 0.05 + 1);
+    p.score = Math.log(1 + p.sharpness) * Math.log(1 + p.addressScore) * Math.log(1 + p.val);
+  }
+
+  let peakIdx = 0, peakVal = -1;
+  if (peaks.length > 0) {
+    let best = -Infinity;
+    for (const p of peaks) {
+      if (p.score > best) { best = p.score; peakIdx = p.idx; peakVal = p.val; }
+    }
+  } else {
+    for (let i = 0; i < smoothed.length; i++) {
+      if (smoothed[i] > peakVal) { peakVal = smoothed[i]; peakIdx = i; }
+    }
+  }
+
+  const restThreshold = Math.max(1, peakVal * 0.4);
+  let startIdx = peakIdx;
+  while (startIdx > 0 && smoothed[startIdx] > restThreshold) startIdx--;
+  let endIdx = peakIdx;
+  while (endIdx < smoothed.length - 1 && smoothed[endIdx] > restThreshold) endIdx++;
+
+  const peakTime = motionTimes[peakIdx];
+  let startTime = motionTimes[startIdx] ?? Math.max(0, peakTime - 1.2);
+  let endTime = motionTimes[endIdx] ?? Math.min(duration, peakTime + 0.8);
+  startTime = Math.max(0, startTime - 0.6);
+  endTime = Math.min(duration, endTime + 0.3);
+
+  const MIN_WIN = 1.2, MAX_WIN = 2.6;
+  if (endTime - startTime < MIN_WIN) {
+    const c = (startTime + endTime) / 2;
+    startTime = Math.max(0, c - MIN_WIN/2 - 0.1);
+    endTime = Math.min(duration, c + MIN_WIN/2);
+  }
+  if (endTime - startTime > MAX_WIN) {
+    startTime = Math.max(0, peakTime - 1.4);
+    endTime = Math.min(duration, peakTime + 0.8);
+  }
+
+  if (onStage) onStage('capturing');
+  const frames = await sliceFrames(video, startTime, endTime, (p) => {
+    if (onProgress) onProgress(0.5 + 0.5 * p);
+  });
+
+  return {
+    frames,
+    swing: { startTime, endTime, peakTime, durationMs: Math.round((endTime - startTime) * 1000) },
+    videoUrl: url,
+    videoDuration: duration,
+  };
+}
+
+async function sliceFrames(video, startTime, endTime, onProgress) {
+  const w = video.videoWidth || 720;
+  const h = video.videoHeight || 1280;
+  const scale = Math.min(1, OUT_MAX / Math.max(w, h));
+  const cw = Math.max(1, Math.round(w * scale));
+  const ch = Math.max(1, Math.round(h * scale));
+  const oc = document.createElement('canvas');
+  oc.width = cw; oc.height = ch;
+  const octx = oc.getContext('2d');
+  const frames = [];
+  for (let i = 0; i < FRAME_COUNT; i++) {
+    const f = (i + 0.5) / FRAME_COUNT;
+    const t = startTime + (endTime - startTime) * f;
+    await seek(video, t);
+    octx.drawImage(video, 0, 0, cw, ch);
+    const dataUrl = oc.toDataURL('image/jpeg', 0.78);
+    const base64 = dataUrl.split(',')[1] || '';
+    frames.push({ data: base64, label: FRAME_LABELS[i], timeMs: Math.round(t*1000), order: i });
+    if (onProgress) onProgress((i+1) / FRAME_COUNT);
+  }
+  return frames;
+}
+
+async function extractFramesAtWindow(videoUrl, startTime, endTime, onProgress) {
+  const video = document.createElement('video');
+  video.src = videoUrl;
+  video.preload = 'auto';
+  video.muted = true;
+  video.playsInline = true;
+  video.crossOrigin = 'anonymous';
+  await new Promise((resolve, reject) => {
+    video.addEventListener('loadedmetadata', () => resolve(), { once: true });
+    video.addEventListener('error', () => reject(new Error('Could not read video.')), { once: true });
+  });
+  try { await video.play(); video.pause(); } catch(_){}
+  const frames = await sliceFrames(video, startTime, endTime, onProgress);
+  return { frames, swing: { startTime, endTime, peakTime: (startTime+endTime)/2, durationMs: Math.round((endTime-startTime)*1000) } };
+}
+
+/* ===== Gemini call (browser-direct, cascade through 3 free models) ===== */
+async function analyzeFrames(frames, apiKey) {
+  const parts = [];
+  for (const f of frames) {
+    parts.push({ text: `Frame ${(f.order ?? 0)+1} of ${frames.length} — ${f.label} — at ~${f.timeMs} ms inside the detected swing window.` });
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data: f.data } });
+  }
+  parts.push({ text: 'Now analyze this swing and return ONLY the JSON described in the system instructions.' });
+
+  const body = {
+    contents: [{ role: 'user', parts }],
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    generationConfig: { temperature: 0.4, maxOutputTokens: 8192, responseMimeType: 'application/json' },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+  };
+
+  let lastErr = null;
+  for (const model of MODELS) {
+    let res;
+    try {
+      res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (e) { lastErr = e; continue; }
+    if (res.status === 429 || res.status === 503) { lastErr = new Error('rate_limited'); continue; }
+    if (res.status === 400) {
+      const peek = await res.clone().text();
+      if (/quota|rate limit|resource_exhausted/i.test(peek)) { lastErr = new Error('rate_limited'); continue; }
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Your Gemini API key was rejected. Open Setup and paste a fresh one from aistudio.google.com/apikey.');
+    }
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Coach error: HTTP ${res.status}. ${txt.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    const cand = (data.candidates || [])[0];
+    const txt = (cand?.content?.parts || []).map(p => p.text || '').join('').trim();
+    if (!txt) { lastErr = new Error('empty_response'); continue; }
+
+    let s = txt;
+    const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fence) s = fence[1].trim();
+    const a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if (a !== -1 && b !== -1) s = s.slice(a, b+1);
+    try { return JSON.parse(s); }
+    catch { throw new Error('Coach mumbled. Try again with a clearer video.'); }
+  }
+  throw new Error('All free models are momentarily busy. Wait ~30 seconds and try again. (No charges - just free-tier quota.)');
+}
+
+/* ===== Main flow handlers ===== */
+async function pickFile() {
+  const i = document.getElementById('fileInput');
+  i.value = '';
+  i.click();
+}
+
+async function onFile(file) {
+  if (!file) return;
+  if (!state.apiKey) {
+    setState({ view: 'setup' });
+    return;
+  }
+  if (state.videoUrl) { try { URL.revokeObjectURL(state.videoUrl); } catch(_){} }
+  setState({ view: 'analyze', stage: 'scanning', progress: 0, frames: [], swing: null, error: null, report: null, quoteIdx: 0 });
+  startQuoteTimer();
+  try {
+    const r = await extractFrames(
+      file,
+      (p) => setState({ progress: p }),
+      (s) => setState({ stage: s })
+    );
+    stopQuoteTimer();
+    setState({
+      frames: r.frames, swing: r.swing,
+      videoUrl: r.videoUrl, videoDuration: r.videoDuration,
+      stage: 'idle', view: 'review',
+      pickRange: { start: r.swing.startTime, end: r.swing.endTime },
+      showScrubber: false,
+    });
+  } catch (e) {
+    stopQuoteTimer();
+    setState({ stage: 'error', error: e.message || String(e) });
+  }
+}
+
+async function runAnalysis(frames) {
+  setState({ view: 'analyze', stage: 'analyzing', progress: 1, error: null, quoteIdx: 0 });
+  startQuoteTimer();
+  try {
+    const report = await analyzeFrames(frames, state.apiKey);
+    stopQuoteTimer();
+    setState({ report, stage: 'idle', view: 'results', openFrame: null });
+  } catch (e) {
+    stopQuoteTimer();
+    setState({ stage: 'error', error: e.message || String(e) });
+  }
+}
+
+async function rePick(start, end) {
+  if (!state.videoUrl) return;
+  setState({ view: 'analyze', stage: 'capturing', progress: 0, error: null });
+  try {
+    const r = await extractFramesAtWindow(state.videoUrl, start, end, (p) => setState({ progress: p }));
+    setState({ frames: r.frames, swing: r.swing });
+    await runAnalysis(r.frames);
+  } catch (e) {
+    setState({ stage: 'error', error: e.message || String(e) });
+  }
+}
+
+function reset() {
+  if (state.videoUrl) { try { URL.revokeObjectURL(state.videoUrl); } catch(_){} }
+  setState({
+    view: 'home', frames: [], swing: null, videoUrl: null, videoDuration: 0,
+    progress: 0, stage: 'idle', error: null, report: null, quoteIdx: 0,
+    pickRange: null, showScrubber: false, openFrame: null,
+  });
+}
+
+function startQuoteTimer() {
+  stopQuoteTimer();
+  quoteTimer = setInterval(() => setState({ quoteIdx: (state.quoteIdx || 0) + 1 }), 1800);
+}
+function stopQuoteTimer() {
+  if (quoteTimer) { clearInterval(quoteTimer); quoteTimer = null; }
+}
+
+function saveKey() {
+  const v = document.getElementById('apiKeyInput').value.trim();
+  if (!v) { alert('Paste your Gemini API key first.'); return; }
+  localStorage.setItem(KEY_STORAGE, v);
+  setState({ apiKey: v, view: 'home' });
+}
+function clearKey() {
+  localStorage.removeItem(KEY_STORAGE);
+  setState({ apiKey: '' });
+}
+
+/* ===== Renderers ===== */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function priorityTone(p) {
+  const v = String(p || '').toLowerCase();
+  if (v === 'high') return 'var(--danger)';
+  if (v === 'medium') return 'var(--gold)';
+  return 'var(--fairwayHi)';
+}
+function fmtTime(t) {
+  const m = Math.floor(t / 60);
+  const s = (t - m * 60).toFixed(1);
+  return `${m}:${s.padStart(4,'0')}`;
+}
+
+function viewHome() {
+  return `
+  <div class="frame">
+    <div class="hero frame-inner">
+      <div class="eyebrow">Pro Series · Swing Coach</div>
+      <h1 class="title">DRIVE.<br><span class="accent">ANALYZE.</span><br>DOMINATE.</h1>
+      <p class="subtitle">Film a swing from any angle. Our coach finds the swing automatically, breaks it into 12 positions, and gives you 5-10 detailed fixes to lower your handicap. 100% free — calls Gemini directly from your browser.</p>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="hero-stat-value">12</div><div class="hero-stat-label">Positions</div></div>
+        <div class="hero-stat-sep"></div>
+        <div class="hero-stat"><div class="hero-stat-value">5-10</div><div class="hero-stat-label">Fixes</div></div>
+        <div class="hero-stat-sep"></div>
+        <div class="hero-stat"><div class="hero-stat-value">$0</div><div class="hero-stat-label">Cost</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Main Menu</div>
+  <button class="btn" onclick="pickFile()">
+    <span class="btn-content"><span class="btn-icon">📹</span><span class="btn-text-stack"><span class="label">Upload or Record Swing</span><span class="caption">${state.apiKey ? 'Up to ~20 seconds, any angle' : 'Tap Setup first to add your free API key'}</span></span></span>
+    <span class="btn-chev">▸</span>
+  </button>
+  <button class="btn ${state.apiKey ? 'btn-ghost' : 'btn-gold'}" onclick="setState({view:'setup'})">
+    <span class="btn-content"><span class="btn-icon">⚙︎</span><span class="btn-text-stack"><span class="label">${state.apiKey ? 'Setup · Done' : 'Setup · Required'}</span><span class="caption">${state.apiKey ? 'Free Gemini key is loaded' : 'Free Gemini API key — no credit card'}</span></span></span>
+    <span class="btn-chev">▸</span>
+  </button>
+
+  <div class="section-label">How To Play</div>
+  <div class="how">
+    <div class="how-row"><div class="how-num">01</div><div><div class="how-title">Frame Up</div><div class="how-text">Down-the-line, face-on, behind, or overhead. Show head to feet.</div></div></div>
+    <div class="how-row"><div class="how-num">02</div><div><div class="how-title">Take The Cut</div><div class="how-text">Record up to 20 seconds. Practice swings auto-skipped.</div></div></div>
+    <div class="how-row"><div class="how-num">03</div><div><div class="how-title">Get Coached</div><div class="how-text">5-10 specific fixes with drills and a weekly plan.</div></div></div>
+  </div>
+  <div class="footer">BUILT WITH GEMINI VISION · NOT AFFILIATED WITH PGA TOUR</div>`;
+}
+
+function viewSetup() {
+  return `
+  <div class="frame">
+    <div class="frame-inner" style="padding:18px">
+      <div class="eyebrow">FREE SETUP</div>
+      <h1 class="title" style="font-size:24px">PASTE YOUR GEMINI KEY</h1>
+      <p class="subtitle">Get a FREE key (no credit card) at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> — click <b>Create API key</b> and copy. The key is stored only on this device, never sent anywhere except directly to Google.</p>
+      <input id="apiKeyInput" class="input" type="password" placeholder="AIzaSy…" value="${esc(state.apiKey || '')}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      <button class="btn" onclick="saveKey()">
+        <span class="btn-content"><span class="btn-icon">✓</span><span class="btn-text-stack"><span class="label">Save Key</span></span></span>
+        <span class="btn-chev">▸</span>
+      </button>
+      ${state.apiKey ? `<button class="btn btn-ghost" onclick="clearKey()"><span class="btn-content"><span class="btn-icon">×</span><span class="btn-text-stack"><span class="label">Clear Saved Key</span></span></span><span class="btn-chev">▸</span></button>` : ''}
+      <button class="btn btn-ghost" onclick="setState({view:'home'})">
+        <span class="btn-content"><span class="btn-icon">←</span><span class="btn-text-stack"><span class="label">Back</span></span></span>
+        <span class="btn-chev">▸</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+function viewReview() {
+  const start = state.pickRange?.start ?? 0;
+  const end = state.pickRange?.end ?? Math.min(2, state.videoDuration);
+  return `
+  <div class="frame">
+    <div class="hero frame-inner">
+      <div class="eyebrow">REVIEW · DOES THIS LOOK RIGHT?</div>
+      <p class="subtitle">We auto-detected your swing. If the 12 frames below show your actual swing, tap <b>Looks Good — Analyze</b>. If the wrong moment was picked, tap <b>Re-Pick The Swing</b> and drag the slider.</p>
+    </div>
+  </div>
+  <div class="section-label">12 Auto-Picked Positions</div>
+  <div class="frames">
+    ${state.frames.map((f,i) => `
+      <div class="frame-card">
+        <img class="frame-img" src="data:image/jpeg;base64,${f.data}" alt="${esc(f.label)}" />
+        <div class="frame-bar"><span class="frame-tag">F${i+1}</span><span class="frame-name">${esc(f.label)}</span></div>
+      </div>`).join('')}
+  </div>
+  <div style="height:14px"></div>
+  <button class="btn" onclick="runAnalysis(state.frames)">
+    <span class="btn-content"><span class="btn-icon">✓</span><span class="btn-text-stack"><span class="label">Looks Good — Analyze</span><span class="caption">Send these 12 frames to the AI coach</span></span></span>
+    <span class="btn-chev">▸</span>
+  </button>
+  <button class="btn btn-gold" onclick="toggleScrubber()">
+    <span class="btn-content"><span class="btn-icon">✂︎</span><span class="btn-text-stack"><span class="label">${state.showScrubber ? 'Hide The Re-Picker' : 'Re-Pick The Swing'}</span><span class="caption">Drag to mark just the swing</span></span></span>
+    <span class="btn-chev">▸</span>
+  </button>
+  ${state.showScrubber ? `
+    <div class="frame">
+      <div class="frame-inner" style="padding:14px">
+        <video id="scrubVideo" src="${state.videoUrl}" style="width:100%;max-height:320px;background:#000" playsInline muted controls></video>
+        <div style="margin-top:14px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;letter-spacing:1.4px;font-weight:900;color:var(--gold);margin-bottom:6px">
+            <span>START · ${fmtTime(start)}</span>
+            <span>WINDOW · ${fmtTime(end - start)}</span>
+            <span>END · ${fmtTime(end)}</span>
+          </div>
+          <label style="font-size:10px;letter-spacing:1.6px;font-weight:900;color:var(--silverDim)">START OF SWING</label>
+          <input type="range" min="0" max="${Math.max(0, state.videoDuration - 0.6).toFixed(2)}" step="0.05" value="${start}" oninput="updatePick('start', this.value)" />
+          <label style="font-size:10px;letter-spacing:1.6px;font-weight:900;color:var(--silverDim);margin-top:8px;display:block">END OF SWING</label>
+          <input type="range" min="${Math.min(start + 0.6, state.videoDuration).toFixed(2)}" max="${state.videoDuration.toFixed(2)}" step="0.05" value="${end}" oninput="updatePick('end', this.value)" />
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-ghost" style="flex:1" onclick="previewWindow()">
+            <span class="btn-content"><span class="btn-icon">▶</span><span class="btn-text-stack"><span class="label">Preview Window</span></span></span>
+          </button>
+          <button class="btn" style="flex:1" onclick="rePick(state.pickRange.start, state.pickRange.end)">
+            <span class="btn-content"><span class="btn-icon">↻</span><span class="btn-text-stack"><span class="label">Re-Extract & Analyze</span></span></span>
+          </button>
+        </div>
+      </div>
+    </div>` : ''}
+  <button class="btn btn-ghost" onclick="reset()">
+    <span class="btn-content"><span class="btn-icon">←</span><span class="btn-text-stack"><span class="label">Cancel · Pick Different Video</span></span></span>
+    <span class="btn-chev">▸</span>
+  </button>`;
+}
+
+function toggleScrubber() {
+  setState({ showScrubber: !state.showScrubber });
+}
+function updatePick(which, val) {
+  const v = Number(val);
+  const minWin = 0.6;
+  const maxWin = Math.min(4.0, state.videoDuration);
+  let { start, end } = state.pickRange;
+  if (which === 'start') {
+    start = v;
+    if (end - start < minWin) end = Math.min(state.videoDuration, start + minWin);
+    if (end - start > maxWin) end = start + maxWin;
+  } else {
+    end = v;
+    if (end - start < minWin) start = Math.max(0, end - minWin);
+    if (end - start > maxWin) start = end - maxWin;
+  }
+  state.pickRange = { start, end };
+  // Update labels live without full re-render to keep slider focus.
+  const labels = document.querySelectorAll('#root .frame .frame-inner > div > div span');
+  if (labels.length >= 3) {
+    labels[0].textContent = `START · ${fmtTime(start)}`;
+    labels[1].textContent = `WINDOW · ${fmtTime(end - start)}`;
+    labels[2].textContent = `END · ${fmtTime(end)}`;
+  }
+}
+function previewWindow() {
+  const v = document.getElementById('scrubVideo');
+  if (!v) return;
+  const { start, end } = state.pickRange;
+  v.currentTime = start;
+  v.play().catch(()=>{});
+  const stopAt = () => {
+    if (v.currentTime >= end) { v.pause(); v.removeEventListener('timeupdate', stopAt); }
+  };
+  v.addEventListener('timeupdate', stopAt);
+}
+
+function viewAnalyze() {
+  const pct = Math.round((state.stage === 'analyzing' ? 1 : Math.min(0.99, state.progress)) * 100);
+  const stageText =
+    state.stage === 'scanning' ? 'SCANNING FOR SWING' :
+    state.stage === 'capturing' ? 'CAPTURING KEYFRAMES' :
+    state.stage === 'analyzing' ? 'COACH ANALYZING' :
+    state.stage === 'error' ? 'SIGNAL LOST' : 'STAND BY';
+  const quote = state.stage === 'scanning'
+    ? SCAN_QUOTES[(state.quoteIdx || 0) % SCAN_QUOTES.length]
+    : COACH_QUOTES[(state.quoteIdx || 0) % COACH_QUOTES.length];
+  const detail =
+    state.stage === 'scanning' ? quote :
+    state.stage === 'capturing' ? `Frame ${Math.min(12, Math.round((state.progress - 0.5) * 24))} / 12` :
+    state.stage === 'analyzing' ? quote :
+    state.stage === 'error' ? '—' : 'Loading';
+
+  return `
+  <div class="hud">
+    <div class="hud-row">
+      ${state.stage !== 'error' ? '<div class="status-dot"></div>' : ''}
+      <div class="hud-label">STATUS</div>
+      <div class="hud-value">${esc(stageText)}</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="hud-row">
+      <div class="hud-small" style="flex:1">${esc(detail)}</div>
+      <div class="hud-small">${pct}%</div>
+    </div>
+    ${state.swing && state.stage !== 'error' ? `<div class="hud-row" style="margin-top:6px;margin-bottom:0"><div class="hud-small" style="color:var(--fairwayHi)">✓ Swing window: ${fmtTime(state.swing.startTime)} – ${fmtTime(state.swing.endTime)} (${(state.swing.durationMs/1000).toFixed(1)}s)</div></div>` : ''}
+  </div>
+  ${state.stage === 'error' ? `
+    <div class="error-box">
+      <div class="error-title">SIGNAL LOST</div>
+      <div class="error-text">${esc(state.error)}</div>
+      <button class="btn" style="margin-top:12px" onclick="reset()">
+        <span class="btn-content"><span class="btn-icon">↻</span><span class="btn-text-stack"><span class="label">Back to Menu</span></span></span>
+        <span class="btn-chev">▸</span>
+      </button>
+    </div>` : ''}
+  ${state.frames.length > 0 ? `
+    <div class="section-label">12 Key Positions</div>
+    <div class="frames">
+      ${state.frames.map((f,i) => `
+        <div class="frame-card">
+          <img class="frame-img" src="data:image/jpeg;base64,${f.data}" alt="${esc(f.label)}" />
+          <div class="frame-bar"><span class="frame-tag">F${i+1}</span><span class="frame-name">${esc(f.label.split(' (')[0])}</span></div>
+        </div>`).join('')}
+    </div>` : ''}`;
+}
+
+function viewResults() {
+  const r = state.report || {};
+  const takeaways = r.takeaways || [];
+  return `
+  <div class="frame">
+    <div class="report-header frame-inner">
+      <div class="eyebrow">SWING REPORT</div>
+      <h1 class="report-handle">${esc(r.playerHandle || 'The Player')}</h1>
+      <div class="report-meta">
+        ${r.cameraAngle ? `<span class="meta-badge">${esc(String(r.cameraAngle).toUpperCase())} VIEW</span>` : ''}
+        ${r.handedness ? `<span class="meta-badge">${esc(String(r.handedness).toUpperCase())}-HANDED</span>` : ''}
+        ${state.swing ? `<span class="meta-badge">${(state.swing.durationMs/1000).toFixed(1)}s SWING</span>` : ''}
+      </div>
+      <p class="report-summary">${esc(r.summary)}</p>
+      <div class="highlight-box">
+        <div class="highlight-label">★  ONE THING YOU DID WELL</div>
+        <div class="highlight-text">${esc(r.oneThingYouDidWell)}</div>
+      </div>
+    </div>
+  </div>
+  <div class="section-label">${takeaways.length} Specific Fixes To Lower Your Handicap</div>
+  ${takeaways.map((t,i) => renderTakeaway(t, i)).join('')}
+  ${r.practicePlan ? `
+    <div class="section-label">Your Weekly Practice Plan</div>
+    <div class="frame">
+      <div class="frame-inner" style="padding:14px">
+        <p class="brd-what" style="font-size:14px;margin-bottom:12px">${esc(r.practicePlan.summary)}</p>
+        <div class="schedule">
+          ${(r.practicePlan.weeklySchedule || []).map(d => `
+            <div class="sched-row">
+              <div class="sched-day">${esc(d.day)}</div>
+              <div class="sched-focus">${esc(d.focus)}</div>
+              <div class="sched-min">${esc(d.minutes)} min</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>` : ''}
+  <div class="section-label">Ball Flight Forecast</div>
+  <div class="frame"><div class="frame-inner" style="padding:14px"><p class="brd-what" style="font-size:14px">${esc(r.ballFlightExplanation)}</p></div></div>
+  <div class="section-label">Swing Path · Frame By Frame</div>
+  <div class="frame"><div class="frame-inner" style="padding:12px">
+    ${(r.frameBreakdown || []).map((fb, i) => {
+      const frame = state.frames[i];
+      const isOpen = state.openFrame === i;
+      return `<button class="brdrow" onclick="toggleBrd(${i})">
+        <div class="brdrow-top">
+          ${frame?.data ? `<img class="brd-thumb" src="data:image/jpeg;base64,${frame.data}" alt="" />` : `<div class="brd-thumb"></div>`}
+          <div style="flex:1;min-width:0">
+            <div class="brd-tag">F${i+1}</div>
+            <div class="brd-title">${esc(fb.label)}</div>
+            <div class="brd-what" style="${isOpen ? '' : 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden'}">${esc(fb.whatISee)}</div>
+          </div>
+          <span class="brd-chev" style="${isOpen ? 'color:var(--fairwayHi)' : ''}">${isOpen ? '▾' : '▸'}</span>
+        </div>
+        ${isOpen ? `<div class="brd-tip"><div class="brd-tip-label">► COACH TIP</div><div class="brd-tip-text">${esc(fb.tip)}</div></div>` : ''}
+      </button>`;
+    }).join('')}
+  </div></div>
+  ${r.nextVideoTip ? `
+    <div class="frame"><div class="next-tip">
+      <div class="next-tip-label">📡  TIP FOR YOUR NEXT VIDEO</div>
+      <div class="next-tip-text">${esc(r.nextVideoTip)}</div>
+    </div></div>` : ''}
+  <button class="btn" onclick="reset()">
+    <span class="btn-content"><span class="btn-icon">↻</span><span class="btn-text-stack"><span class="label">Analyze Another Swing</span><span class="caption">Run it back</span></span></span>
+    <span class="btn-chev">▸</span>
+  </button>`;
+}
+
+function toggleBrd(i) {
+  setState({ openFrame: state.openFrame === i ? null : i });
+}
+
+function renderTakeaway(t, i) {
+  const tone = priorityTone(t.priority);
+  const mistakes = Array.isArray(t.commonMistakes) ? t.commonMistakes : [];
+  return `
+  <div class="frame">
+    <div class="takeaway frame-inner">
+      <div class="takeaway-head">
+        <div class="takeaway-num" style="border-color:${tone};color:${tone}">${String(i+1).padStart(2,'0')}</div>
+        <div style="flex:1;min-width:0">
+          <div class="priority-pill" style="border-color:${tone};color:${tone}">${esc(String(t.priority || 'Medium').toUpperCase())} PRIORITY</div>
+          <div class="takeaway-title">${esc(t.title)}</div>
+        </div>
+      </div>
+      <div class="block" style="border-left-color:var(--gold)">
+        <div class="block-label" style="color:var(--gold)">► WHAT'S WRONG</div>
+        <div class="block-body">${esc(t.whatToFix)}</div>
+      </div>
+      <div class="block" style="border-left-color:var(--danger)">
+        <div class="block-label" style="color:var(--danger)">► WHY IT'S COSTING YOU STROKES</div>
+        <div class="block-body">${esc(t.whyItMatters)}</div>
+      </div>
+      <div class="block" style="border-left-color:var(--fairwayHi)">
+        <div class="block-label" style="color:var(--fairwayHi)">► HOW TO FIX IT — STEP BY STEP</div>
+        <div class="block-body">${esc(t.howToFix)}</div>
+      </div>
+      ${mistakes.length ? `
+        <div class="block" style="border-left-color:var(--gold)">
+          <div class="block-label" style="color:var(--gold)">► WATCH OUT FOR</div>
+          <ul class="bullet-list">${mistakes.map(m => `<li>${esc(m)}</li>`).join('')}</ul>
+        </div>` : ''}
+      <div class="meta-row">
+        <div class="meta-chip" style="background:#0A2418;border-color:var(--fairwayDeep)">
+          <div class="meta-chip-label" style="color:var(--fairwayHi)">⏱  DO IT</div>
+          <div class="meta-chip-text">${esc(t.reps)}</div>
+        </div>
+        <div class="meta-chip" style="background:#1A1300;border-color:var(--goldDeep)">
+          <div class="meta-chip-label" style="color:var(--gold)">📉  HANDICAP IMPACT</div>
+          <div class="meta-chip-text">${esc(t.estimatedHandicapImpact)}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function render() {
+  const root = document.getElementById('root');
+  let html = '';
+  if (state.view === 'home') html = viewHome();
+  else if (state.view === 'setup') html = viewSetup();
+  else if (state.view === 'review') html = viewReview();
+  else if (state.view === 'analyze') html = viewAnalyze();
+  else if (state.view === 'results') html = viewResults();
+  else html = viewHome();
+  root.innerHTML = `
+    <input id="fileInput" type="file" accept="video/*" capture="environment" style="display:none" onchange="onFile(this.files && this.files[0])" />
+    ${html}`;
+  if (state.view === 'setup') {
+    setTimeout(() => document.getElementById('apiKeyInput')?.focus(), 50);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', render);
+window.pickFile = pickFile;
+window.onFile = onFile;
+window.runAnalysis = runAnalysis;
+window.rePick = rePick;
+window.reset = reset;
+window.saveKey = saveKey;
+window.clearKey = clearKey;
+window.setState = setState;
+window.toggleScrubber = toggleScrubber;
+window.updatePick = updatePick;
+window.previewWindow = previewWindow;
+window.toggleBrd = toggleBrd;
+window.state = state;
+</script>
+</body>
+</html>
