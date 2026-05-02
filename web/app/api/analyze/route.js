@@ -12,6 +12,8 @@
 // - In-memory per-IP token bucket gates abuse on a single instance.
 // - Generic error messages (no upstream secrets, stack traces, or env leaks).
 export const runtime = 'nodejs';
+// Vercel Hobby cap is 60s. We use up to ~30s for the rate-limit retry
+// sleep + ~30s for the upstream Gemini call.
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
@@ -298,23 +300,46 @@ export async function POST(req) {
   };
 
   let res;
-  try {
-    res = await fetch(`${API_BASE}/${MODEL}:generateContent`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify(requestBody),
-    });
-  } catch {
+  let upstreamErr = null;
+  // Try up to twice. If the first call returns 429 (free-tier 15 RPM bucket),
+  // wait 35s and try again. Vercel function maxDuration is 60s so this fits.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      res = await fetch(`${API_BASE}/${MODEL}:generateContent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify(requestBody),
+      });
+      upstreamErr = null;
+    } catch (e) {
+      upstreamErr = e;
+    }
+    if (upstreamErr) break;
+    if (res.status !== 429) break;
+    if (attempt === 0) {
+      // Wait for the 60s rate window to reset, then retry.
+      await new Promise((r) => setTimeout(r, 35000));
+    }
+  }
+
+  if (upstreamErr) {
     return json({ error: 'Could not reach the coach. Try again.' }, 502);
   }
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403)
       return json({ error: 'Server is not configured.' }, 503);
-    if (res.status === 429) return json({ error: 'Free tier quota hit. Try in a minute.' }, 429);
+    if (res.status === 429)
+      return json(
+        {
+          error:
+            'Free tier is rate-limited (15 swings per minute). Wait ~30 seconds and try again.',
+        },
+        429
+      );
     if (res.status === 413) return json({ error: 'Video frames are too large.' }, 413);
     if (res.status >= 500) return json({ error: 'Coach is temporarily unavailable.' }, 502);
     return json({ error: 'Could not analyze swing.' }, 502);
