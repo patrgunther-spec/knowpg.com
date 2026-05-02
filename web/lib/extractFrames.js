@@ -121,13 +121,11 @@ export async function extractFrames(file, onProgress, onStage) {
 
   // Find every distinct local peak whose height is at least 55% of the global
   // max. A "distinct" peak is separated from neighbors by at least 0.3s of
-  // sub-threshold motion - so practice-swing blips and the real swing each
-  // count once.
+  // sub-threshold motion.
   const peakThreshold = Math.max(1, globalMax * 0.55);
   const minSeparationSamples = Math.max(2, Math.round(MOTION_FPS * 0.3));
   const peaks = [];
   let inPeak = false;
-  let peakStart = 0;
   let peakBestIdx = 0;
   let peakBestVal = -1;
   let belowSince = -1;
@@ -136,7 +134,6 @@ export async function extractFrames(file, onProgress, onStage) {
     if (smoothed[i] >= peakThreshold) {
       if (!inPeak) {
         inPeak = true;
-        peakStart = i;
         peakBestIdx = i;
         peakBestVal = smoothed[i];
       } else if (smoothed[i] > peakBestVal) {
@@ -157,15 +154,48 @@ export async function extractFrames(file, onProgress, onStage) {
   }
   if (inPeak) peaks.push({ idx: peakBestIdx, val: peakBestVal });
 
-  // Pick the LATEST significant peak. Most users do practice swings BEFORE
-  // their real swing, so the real swing is usually last. If there's only one
-  // peak we obviously use that one.
+  // Score each peak by SHARPNESS, not just height.  The real swing is a
+  // brief, violent spike (lots of motion at impact, near-zero ~0.7s before
+  // and after).  Bending over to tee the ball or walking is sustained
+  // motion - lower sharpness.
+  //
+  // sharpness = peak / max(avg_before, avg_after, 1)
+  // where avg_before/after is the mean motion in a window 0.4s..1.0s
+  // away from the peak.
+  const sharpnessSpan = Math.round(MOTION_FPS * 1.0);
+  const sharpnessGap = Math.round(MOTION_FPS * 0.4);
+  function avgRange(start, end) {
+    const lo = Math.max(0, Math.min(smoothed.length, start));
+    const hi = Math.max(0, Math.min(smoothed.length, end));
+    if (hi <= lo) return 0;
+    let sum = 0;
+    for (let i = lo; i < hi; i++) sum += smoothed[i];
+    return sum / (hi - lo);
+  }
+  for (const p of peaks) {
+    const beforeAvg = avgRange(p.idx - sharpnessSpan, p.idx - sharpnessGap);
+    const afterAvg = avgRange(p.idx + sharpnessGap, p.idx + sharpnessSpan);
+    const baseline = Math.max(beforeAvg, afterAvg, 1);
+    p.sharpness = p.val / baseline;
+  }
+
+  // Pick the peak with the highest sharpness × (slight weight on lateness, so
+  // ties break toward the LATER peak - real swing usually comes after practice
+  // swings or tee-up motion).
   let peakIdx = 0;
   let peakVal = -1;
   if (peaks.length > 0) {
-    const last = peaks[peaks.length - 1];
-    peakIdx = last.idx;
-    peakVal = last.val;
+    let best = -Infinity;
+    for (let i = 0; i < peaks.length; i++) {
+      const p = peaks[i];
+      const lateness = 1 + 0.2 * (i / Math.max(1, peaks.length - 1));
+      const score = p.sharpness * lateness;
+      if (score > best) {
+        best = score;
+        peakIdx = p.idx;
+        peakVal = p.val;
+      }
+    }
   } else {
     // Fallback: global max.
     for (let i = 0; i < smoothed.length; i++) {
@@ -176,34 +206,38 @@ export async function extractFrames(file, onProgress, onStage) {
     }
   }
 
-  // Walk outward from the peak to find the swing boundaries: first index in
-  // either direction where motion drops below ~25% of peak.
-  const restThreshold = Math.max(1, peakVal * 0.25);
+  // Walk outward from the peak to find the swing boundaries.  Use a higher
+  // rest threshold (40% of peak) so slow non-swing motion (bending over,
+  // walking) is excluded from the window.
+  const restThreshold = Math.max(1, peakVal * 0.4);
   let startIdx = peakIdx;
   while (startIdx > 0 && smoothed[startIdx] > restThreshold) startIdx--;
   let endIdx = peakIdx;
   while (endIdx < smoothed.length - 1 && smoothed[endIdx] > restThreshold)
     endIdx++;
 
-  // Ensure a sensible minimum window length (1.0s) around the peak.
   const peakTime = motionTimes[peakIdx];
   let startTime = motionTimes[startIdx] ?? Math.max(0, peakTime - 1.2);
   let endTime = motionTimes[endIdx] ?? Math.min(duration, peakTime + 0.8);
 
-  // Asymmetric padding: address is almost still, follow-through has motion.
-  // So bias the window slightly back so we capture address.
-  startTime = Math.max(0, startTime - 0.4);
-  endTime = Math.min(duration, endTime + 0.2);
+  // Asymmetric padding: a real swing has near-still address before and a
+  // slow finish after.  Pad more before than after so we capture address.
+  startTime = Math.max(0, startTime - 0.6);
+  endTime = Math.min(duration, endTime + 0.3);
 
-  // Final safety: window is 0.8s..3.5s. If detection failed (rare) fall back
-  // to peak ± 1.0s.
-  if (endTime - startTime < 0.8) {
-    startTime = Math.max(0, peakTime - 1.2);
-    endTime = Math.min(duration, peakTime + 0.8);
+  // Real swings are ~1.4-2.2s end-to-end.  Clamp the window so we never
+  // grab a giant chunk of non-swing motion, and never miss the address.
+  const MIN_WIN = 1.2;
+  const MAX_WIN = 2.6;
+  if (endTime - startTime < MIN_WIN) {
+    const center = (startTime + endTime) / 2;
+    startTime = Math.max(0, center - MIN_WIN / 2 - 0.1);
+    endTime = Math.min(duration, center + MIN_WIN / 2);
   }
-  if (endTime - startTime > 3.5) {
-    startTime = Math.max(0, peakTime - 1.5);
-    endTime = Math.min(duration, peakTime + 1.0);
+  if (endTime - startTime > MAX_WIN) {
+    // Center around the peak (impact happens near the end of a swing).
+    startTime = Math.max(0, peakTime - 1.4);
+    endTime = Math.min(duration, peakTime + 0.8);
   }
 
   // ---- 3. Extract 12 keyframes from the swing window --------------------
