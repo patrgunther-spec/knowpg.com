@@ -17,7 +17,15 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-const MODEL = 'gemini-2.0-flash';
+// Cascade through three free-tier Gemini models. Each model has its own
+// per-minute and per-day rate-limit bucket, so when one is throttled we
+// transparently fall through to the next. Combined free-tier ceilings give
+// us ~60 RPM and >1400 RPD before the user sees a 429.
+const MODELS = [
+  'gemini-2.0-flash',        // 15 RPM,  200 RPD
+  'gemini-2.0-flash-lite',   // 30 RPM,  200 RPD
+  'gemini-2.5-flash-lite',   // 15 RPM, 1000 RPD
+];
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_BODY_BYTES = 12 * 1024 * 1024; // 12 MB hard cap on request size
 const MAX_FRAMES = 16;
@@ -299,15 +307,16 @@ export async function POST(req) {
     ],
   };
 
+  // Cascade through models. Each Gemini model has its own rate-limit bucket,
+  // so when one is throttled we fall through transparently to the next.
+  // Combined ceiling across the 3 free models: ~60 RPM and >1400 RPD.
   let res;
   let upstreamErr = null;
-  // Try up to twice. If the first call returns 429 (free-tier 15 RPM bucket),
-  // wait 22s and retry. 22s is enough for most rate-window slots to free up,
-  // and keeps the function under Vercel's 60s cap when combined with two
-  // upstream calls (~15s each).
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let lastStatus = 0;
+  for (let i = 0; i < MODELS.length; i++) {
+    const model = MODELS[i];
     try {
-      res = await fetch(`${API_BASE}/${MODEL}:generateContent`, {
+      res = await fetch(`${API_BASE}/${model}:generateContent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -318,31 +327,39 @@ export async function POST(req) {
       upstreamErr = null;
     } catch (e) {
       upstreamErr = e;
+      // Network error - try next model.
+      continue;
     }
-    if (upstreamErr) break;
-    if (res.status !== 429) break;
-    if (attempt === 0) {
-      await new Promise((r) => setTimeout(r, 22000));
+    lastStatus = res.status;
+    // 429 / 503 / quota-style 400 → try the next model in the cascade.
+    if (res.status === 429 || res.status === 503) continue;
+    // Some Gemini quota errors come back as 400 with a quota message; sniff
+    // the body to detect them and keep cascading.
+    if (res.status === 400) {
+      const peek = await res.clone().text();
+      if (/quota|rate limit|resource_exhausted/i.test(peek)) continue;
     }
+    break;
   }
 
-  if (upstreamErr) {
+  if (upstreamErr && !res) {
     return json({ error: 'Could not reach the coach. Try again.' }, 502);
   }
 
-  if (!res.ok) {
-    if (res.status === 401 || res.status === 403)
+  if (!res || !res.ok) {
+    const status = res?.status ?? lastStatus;
+    if (status === 401 || status === 403)
       return json({ error: 'Server is not configured.' }, 503);
-    if (res.status === 429)
+    if (status === 429 || status === 503)
       return json(
         {
           error:
-            'Free tier is rate-limited (15 swings per minute). Wait ~30 seconds and try again.',
+            'All free models are momentarily busy. Wait ~30 seconds and try again. (No charges - just free-tier quota.)',
         },
         429
       );
-    if (res.status === 413) return json({ error: 'Video frames are too large.' }, 413);
-    if (res.status >= 500) return json({ error: 'Coach is temporarily unavailable.' }, 502);
+    if (status === 413) return json({ error: 'Video frames are too large.' }, 413);
+    if (status >= 500) return json({ error: 'Coach is temporarily unavailable.' }, 502);
     return json({ error: 'Could not analyze swing.' }, 502);
   }
 
