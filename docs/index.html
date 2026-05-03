@@ -494,8 +494,13 @@ async function analyzeFrames(frames) {
 }
 
 /* ===== Main flow handlers ===== */
-async function pickFile() {
-  const i = document.getElementById('fileInput');
+// source: 'library' = open Photos picker (no `capture` attribute, so iOS
+// shows the standard sheet starting with the Photo Library).
+// source: 'camera'  = force the camera with capture="environment".
+function pickFile(source) {
+  const id = source === 'camera' ? 'fileInputCamera' : 'fileInputLibrary';
+  const i = document.getElementById(id);
+  if (!i) return;
   i.value = '';
   i.click();
 }
@@ -603,8 +608,12 @@ function viewHome() {
   </div>
 
   <div class="section-label">Main Menu</div>
-  <button class="btn" onclick="pickFile()">
-    <span class="btn-content"><span class="btn-icon">📹</span><span class="btn-text-stack"><span class="label">Upload or Record Swing</span><span class="caption">Up to ~20 seconds, any angle</span></span></span>
+  <button class="btn" onclick="pickFile('library')">
+    <span class="btn-content"><span class="btn-icon">📁</span><span class="btn-text-stack"><span class="label">Upload From Camera Roll</span><span class="caption">Pick a swing video you already filmed</span></span></span>
+    <span class="btn-chev">▸</span>
+  </button>
+  <button class="btn btn-gold" onclick="pickFile('camera')">
+    <span class="btn-content"><span class="btn-icon">📹</span><span class="btn-text-stack"><span class="label">Record New Swing</span><span class="caption">Open the camera and film one now</span></span></span>
     <span class="btn-chev">▸</span>
   </button>
 
@@ -916,7 +925,8 @@ function render() {
   else if (state.view === 'results') html = viewResults();
   else html = viewHome();
   root.innerHTML = `
-    <input id="fileInput" type="file" accept="video/*" capture="environment" style="display:none" onchange="onFile(this.files && this.files[0])" />
+    <input id="fileInputLibrary" type="file" accept="video/*" style="display:none" onchange="onFile(this.files && this.files[0])" />
+    <input id="fileInputCamera" type="file" accept="video/*" capture="environment" style="display:none" onchange="onFile(this.files && this.files[0])" />
     ${html}`;
 }
 
