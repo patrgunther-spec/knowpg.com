@@ -141,10 +141,51 @@ const MOTION_FPS = 30;
 const MIN_SAMPLES = 30, MAX_SAMPLES = 600;
 const OUT_MAX = 720;
 // Free, public, no-API-key AI vision service. We POST 12 swing frames + a
-// coaching prompt and get back structured JSON. Cascades through several
-// backend models on rate-limit/error.
+// coaching prompt and get back structured JSON. We discover the current
+// vision-capable models on first load so model renames never break us.
 const POLLINATIONS_URL = 'https://text.pollinations.ai/openai';
-const VISION_MODELS = ['openai', 'gemini', 'mistral', 'claude'];
+const POLLINATIONS_MODELS_URL = 'https://text.pollinations.ai/models';
+// Wide fallback list - some are aliases, some may 404, the cascade just
+// skips to the next on any failure.
+const VISION_MODEL_FALLBACK = [
+  'openai', 'openai-fast', 'openai-large', 'openai-reasoning',
+  'claude-hybridspace', 'claude', 'gemini', 'gemini-thinking',
+  'mistral', 'llama', 'qwen-coder',
+];
+let cachedModels = null;
+
+async function discoverVisionModels() {
+  if (cachedModels) return cachedModels;
+  try {
+    const res = await fetch(POLLINATIONS_MODELS_URL, { cache: 'no-store' });
+    if (res.ok) {
+      const list = await res.json();
+      const vision = (Array.isArray(list) ? list : [])
+        .filter((m) => {
+          const name = m?.name || m?.id || m?.slug;
+          if (!name) return false;
+          // Heuristics: prefer entries flagged as vision/multimodal/image-capable.
+          if (m.vision === true) return true;
+          if (Array.isArray(m.input_modalities) &&
+              m.input_modalities.some((x) => /image|vision|multimodal/i.test(String(x)))) return true;
+          if (Array.isArray(m.modalities) &&
+              m.modalities.some((x) => /image|vision|multimodal/i.test(String(x)))) return true;
+          if (m.multimodal === true) return true;
+          // Fall back to name-based hints
+          return /openai|gpt|claude|gemini|llava|qwen-vl|llama-vision/i.test(String(name));
+        })
+        .map((m) => m.name || m.id || m.slug)
+        .filter(Boolean);
+      if (vision.length) {
+        // Combine discovered models with our fallback list (de-duped, discovered first).
+        cachedModels = Array.from(new Set([...vision, ...VISION_MODEL_FALLBACK]));
+        return cachedModels;
+      }
+    }
+  } catch {}
+  cachedModels = VISION_MODEL_FALLBACK.slice();
+  return cachedModels;
+}
 
 const SCAN_QUOTES = [
   'Watching the whole clip…','Finding the actual swing…',
@@ -443,8 +484,10 @@ async function analyzeFrames(frames) {
     { role: 'user', content: userContent },
   ];
 
+  const models = await discoverVisionModels();
   let lastErr = null;
-  for (const model of VISION_MODELS) {
+  let lastErrPeek = '';
+  for (const model of models) {
     let res;
     try {
       res = await fetch(POLLINATIONS_URL, {
@@ -464,9 +507,10 @@ async function analyzeFrames(frames) {
 
     if (!res.ok) {
       lastErr = new Error('http_' + res.status);
-      if (res.status === 429 || res.status >= 500 || res.status === 408) continue;
-      const peek = await res.text().catch(() => '');
-      throw new Error('Coach error: HTTP ' + res.status + '. ' + peek.slice(0, 200));
+      // Try the next model on ANY error (404 model-not-found, 429 rate-
+      // limit, 5xx, 4xx that's the model rejecting the input, etc.).
+      lastErrPeek = await res.text().catch(() => '');
+      continue;
     }
 
     const ct = res.headers.get('content-type') || '';
@@ -490,7 +534,8 @@ async function analyzeFrames(frames) {
     try { return JSON.parse(s); }
     catch { lastErr = new Error('parse_error'); continue; }
   }
-  throw new Error('Coach is temporarily busy. Wait 20 seconds and try again. (Free service, no charges.)');
+  // All models in the cascade failed.
+  throw new Error('Coach is temporarily busy across all free models. Wait 20-30 seconds and try again. ' + (lastErrPeek ? '(Detail: ' + lastErrPeek.slice(0, 120) + ')' : ''));
 }
 
 /* ===== Main flow handlers ===== */
