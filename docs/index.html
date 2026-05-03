@@ -647,19 +647,31 @@ function viewReview() {
   ${state.showScrubber ? `
     <div class="frame">
       <div class="frame-inner" style="padding:14px">
-        <video id="scrubVideo" src="${state.videoUrl}" style="width:100%;max-height:320px;background:#000" playsInline muted controls></video>
-        <div style="margin-top:14px">
-          <div style="display:flex;justify-content:space-between;font-size:11px;letter-spacing:1.4px;font-weight:900;color:var(--gold);margin-bottom:6px">
-            <span id="lblStart">START · ${fmtTime(start)}</span>
-            <span id="lblWindow">WINDOW · ${fmtTime(end - start)}</span>
-            <span id="lblEnd">END · ${fmtTime(end)}</span>
+        <video id="scrubVideo" src="${state.videoUrl}" style="width:100%;max-height:320px;background:#000;display:block" playsInline muted controls></video>
+
+        <div style="margin-top:14px;padding:10px;background:#0A2418;border:1px solid var(--fairwayDeep)">
+          <div style="font-size:10px;letter-spacing:2px;font-weight:900;color:var(--fairwayHi);margin-bottom:4px">PICKED SWING WINDOW</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span id="lblStart" style="font-size:13px;font-weight:900;font-style:italic;color:var(--white)">START · ${fmtTime(start)}</span>
+            <span id="lblWindow" style="font-size:11px;letter-spacing:1.4px;font-weight:900;color:var(--gold)">${fmtTime(end - start)}</span>
+            <span id="lblEnd" style="font-size:13px;font-weight:900;font-style:italic;color:var(--white)">END · ${fmtTime(end)}</span>
           </div>
-          <label style="font-size:10px;letter-spacing:1.6px;font-weight:900;color:var(--silverDim)">START OF SWING</label>
-          <input id="rngStart" type="range" min="0" max="${Math.max(0, state.videoDuration - 0.6).toFixed(2)}" step="0.05" value="${start}" oninput="updatePick('start', this.value)" />
-          <label style="font-size:10px;letter-spacing:1.6px;font-weight:900;color:var(--silverDim);margin-top:8px;display:block">END OF SWING</label>
-          <input id="rngEnd" type="range" min="${Math.min(start + 0.6, state.videoDuration).toFixed(2)}" max="${state.videoDuration.toFixed(2)}" step="0.05" value="${end}" oninput="updatePick('end', this.value)" />
         </div>
+
+        <div style="margin-top:10px;font-size:11px;color:var(--silver);line-height:1.4">
+          <b>How to use:</b> Play the video and pause at the moment your swing starts (right before takeaway). Tap <b>Mark Start</b>. Then play forward, pause at your finish pose. Tap <b>Mark End</b>. Then tap <b>Re-Extract & Analyze</b>.
+        </div>
+
         <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-gold" style="flex:1" onclick="markPickHere('start')">
+            <span class="btn-content"><span class="btn-icon">🎬</span><span class="btn-text-stack"><span class="label">Mark Start</span><span class="caption">at current frame</span></span></span>
+          </button>
+          <button class="btn btn-gold" style="flex:1" onclick="markPickHere('end')">
+            <span class="btn-content"><span class="btn-icon">🏁</span><span class="btn-text-stack"><span class="label">Mark End</span><span class="caption">at current frame</span></span></span>
+          </button>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn btn-ghost" style="flex:1" onclick="previewWindow()">
             <span class="btn-content"><span class="btn-icon">▶</span><span class="btn-text-stack"><span class="label">Preview Window</span></span></span>
           </button>
@@ -678,33 +690,43 @@ function viewReview() {
 function toggleScrubber() {
   setState({ showScrubber: !state.showScrubber });
 }
-function updatePick(which, val) {
-  const v = Number(val);
+// User scrubs the native video player to the moment of swing start (or
+// finish), then taps the corresponding button. We snap the picked window
+// boundary to the video's current playback time.
+function markPickHere(which) {
+  const v = document.getElementById('scrubVideo');
+  if (!v) return;
+  const t = Math.max(0, Math.min(state.videoDuration, Number(v.currentTime) || 0));
+  let { start, end } = state.pickRange || { start: 0, end: Math.min(2, state.videoDuration) };
+
+  if (which === 'start') {
+    start = t;
+    if (end <= start) end = Math.min(state.videoDuration, start + 1.5);
+  } else {
+    end = t;
+    if (start >= end) start = Math.max(0, end - 1.5);
+  }
+  // Clamp to a sensible 0.6s..4.0s window length.
   const minWin = 0.6;
   const maxWin = Math.min(4.0, state.videoDuration);
-  let { start, end } = state.pickRange;
-  if (which === 'start') {
-    start = v;
-    if (end - start < minWin) end = Math.min(state.videoDuration, start + minWin);
-    if (end - start > maxWin) end = start + maxWin;
-  } else {
-    end = v;
-    if (end - start < minWin) start = Math.max(0, end - minWin);
-    if (end - start > maxWin) start = end - maxWin;
+  const span = end - start;
+  if (span < minWin) {
+    if (which === 'start') end = Math.min(state.videoDuration, start + minWin);
+    else start = Math.max(0, end - minWin);
+  }
+  if (span > maxWin) {
+    if (which === 'start') end = start + maxWin;
+    else start = end - maxWin;
   }
   state.pickRange = { start, end };
-  // Update labels and the OTHER slider live without full re-render to keep
-  // the slider thumb focus.
+
+  // Live-update the labels without a full re-render so the video keeps playing.
   const ls = document.getElementById('lblStart');
   const lw = document.getElementById('lblWindow');
   const le = document.getElementById('lblEnd');
   if (ls) ls.textContent = `START · ${fmtTime(start)}`;
-  if (lw) lw.textContent = `WINDOW · ${fmtTime(end - start)}`;
+  if (lw) lw.textContent = fmtTime(end - start);
   if (le) le.textContent = `END · ${fmtTime(end)}`;
-  const rs = document.getElementById('rngStart');
-  const re = document.getElementById('rngEnd');
-  if (which === 'start' && re) re.value = String(end);
-  if (which === 'end' && rs) rs.value = String(start);
 }
 function previewWindow() {
   const v = document.getElementById('scrubVideo');
@@ -906,7 +928,7 @@ window.rePick = rePick;
 window.reset = reset;
 window.setState = setState;
 window.toggleScrubber = toggleScrubber;
-window.updatePick = updatePick;
+window.markPickHere = markPickHere;
 window.previewWindow = previewWindow;
 window.toggleBrd = toggleBrd;
 window.state = state;
