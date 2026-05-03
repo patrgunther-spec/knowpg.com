@@ -144,7 +144,7 @@ const OUT_MAX = 720;
 // coaching prompt and get back structured JSON. Cascades through several
 // backend models on rate-limit/error.
 const POLLINATIONS_URL = 'https://text.pollinations.ai/openai';
-const VISION_MODELS = ['openai-large', 'openai', 'gemini'];
+const VISION_MODELS = ['openai', 'gemini', 'mistral', 'claude'];
 
 const SCAN_QUOTES = [
   'Watching the whole clip…','Finding the actual swing…',
@@ -320,83 +320,54 @@ async function extractFrames(file, onProgress, onStage) {
     if (onProgress) onProgress(0.5 * ((i + 1) / samples));
   }
 
-  // Sharpness-based swing detection
-  const smoothed = movingAverage(motionScores, 5);
-  let globalMax = 0, globalMedian = 0;
+  // Max-energy sliding window swing detection.  A real golf swing is the
+  // most concentrated burst of motion in the clip - so we slide a 1.8s
+  // window across the motion curve and pick the window whose total motion
+  // energy is highest.  No height thresholds, no peak picking, no fragile
+  // sharpness math.  This handles videos with long still address periods,
+  // long walks, bend-overs, and waggles - whatever the swing is, it's the
+  // most-motion stretch.
+  const smoothed = movingAverage(motionScores, 3);
+  const WIN_S = 1.8;                             // detected window length
+  const winSamples = Math.max(8, Math.round(MOTION_FPS * WIN_S));
+  const halfWin = Math.floor(winSamples / 2);
+
+  // Cumulative motion for O(1) window sums.
+  const cum = new Array(smoothed.length + 1).fill(0);
+  for (let i = 0; i < smoothed.length; i++) cum[i + 1] = cum[i] + smoothed[i];
+
+  let bestStart = 0, bestEnergy = -1, bestPeakIdx = 0;
+  for (let s = 0; s + winSamples <= smoothed.length; s++) {
+    const energy = cum[s + winSamples] - cum[s];
+    if (energy > bestEnergy) {
+      bestEnergy = energy;
+      bestStart = s;
+    }
+  }
+  // Find the local peak inside the chosen window (used for label "peakTime").
   {
-    const sorted = [...smoothed].sort((a,b) => a-b);
-    globalMax = sorted[sorted.length-1] || 1;
-    globalMedian = sorted[Math.floor(sorted.length/2)] || 0;
-  }
-  const sepSamples = Math.max(3, Math.round(MOTION_FPS * 0.4));
-  const minPeakHeight = Math.max(globalMedian * 1.5, globalMax * 0.08, 1);
-  const peaks = [];
-  for (let i = 1; i < smoothed.length - 1; i++) {
-    if (smoothed[i] < minPeakHeight) continue;
-    let isLocalMax = true;
-    for (let k = -sepSamples; k <= sepSamples; k++) {
-      const j = i + k;
-      if (j < 0 || j >= smoothed.length || j === i) continue;
-      if (smoothed[j] > smoothed[i]) { isLocalMax = false; break; }
-    }
-    if (isLocalMax) peaks.push({ idx: i, val: smoothed[i] });
-  }
-
-  const avgRange = (start, end) => {
-    const lo = Math.max(0, Math.min(smoothed.length, start));
-    const hi = Math.max(0, Math.min(smoothed.length, end));
-    if (hi <= lo) return 0;
-    let s = 0;
-    for (let i = lo; i < hi; i++) s += smoothed[i];
-    return s / (hi - lo);
-  };
-  const farSpan = Math.round(MOTION_FPS * 1.0);
-  const farGap = Math.round(MOTION_FPS * 0.4);
-  const addrFar = Math.round(MOTION_FPS * 1.1);
-  const addrNear = Math.round(MOTION_FPS * 0.6);
-
-  for (const p of peaks) {
-    const beforeAvg = avgRange(p.idx - farSpan, p.idx - farGap);
-    const afterAvg = avgRange(p.idx + farGap, p.idx + farSpan);
-    p.sharpness = p.val / Math.max(beforeAvg, afterAvg, 1);
-    const addrAvg = avgRange(p.idx - addrFar, p.idx - addrNear);
-    p.addressScore = (globalMax + 1) / (addrAvg + globalMax * 0.05 + 1);
-    p.score = Math.log(1 + p.sharpness) * Math.log(1 + p.addressScore) * Math.log(1 + p.val);
-  }
-
-  let peakIdx = 0, peakVal = -1;
-  if (peaks.length > 0) {
-    let best = -Infinity;
-    for (const p of peaks) {
-      if (p.score > best) { best = p.score; peakIdx = p.idx; peakVal = p.val; }
-    }
-  } else {
-    for (let i = 0; i < smoothed.length; i++) {
-      if (smoothed[i] > peakVal) { peakVal = smoothed[i]; peakIdx = i; }
+    let pv = -1;
+    for (let i = bestStart; i < bestStart + winSamples; i++) {
+      if (smoothed[i] > pv) { pv = smoothed[i]; bestPeakIdx = i; }
     }
   }
 
-  const restThreshold = Math.max(1, peakVal * 0.4);
-  let startIdx = peakIdx;
-  while (startIdx > 0 && smoothed[startIdx] > restThreshold) startIdx--;
-  let endIdx = peakIdx;
-  while (endIdx < smoothed.length - 1 && smoothed[endIdx] > restThreshold) endIdx++;
+  const peakTime = motionTimes[bestPeakIdx] ?? duration / 2;
+  let startTime = motionTimes[bestStart] ?? Math.max(0, peakTime - WIN_S / 2);
+  let endTime = motionTimes[Math.min(smoothed.length - 1, bestStart + winSamples)] ?? Math.min(duration, peakTime + WIN_S / 2);
 
-  const peakTime = motionTimes[peakIdx];
-  let startTime = motionTimes[startIdx] ?? Math.max(0, peakTime - 1.2);
-  let endTime = motionTimes[endIdx] ?? Math.min(duration, peakTime + 0.8);
-  startTime = Math.max(0, startTime - 0.6);
-  endTime = Math.min(duration, endTime + 0.3);
-
-  const MIN_WIN = 1.2, MAX_WIN = 2.6;
-  if (endTime - startTime < MIN_WIN) {
+  // Real swings are roughly 1.4-2.4 s end-to-end; clamp generously.
+  const MIN_WIN = 1.4, MAX_WIN = 2.4;
+  let span = endTime - startTime;
+  if (span < MIN_WIN) {
     const c = (startTime + endTime) / 2;
-    startTime = Math.max(0, c - MIN_WIN/2 - 0.1);
-    endTime = Math.min(duration, c + MIN_WIN/2);
-  }
-  if (endTime - startTime > MAX_WIN) {
-    startTime = Math.max(0, peakTime - 1.4);
-    endTime = Math.min(duration, peakTime + 0.8);
+    startTime = Math.max(0, c - MIN_WIN / 2);
+    endTime = Math.min(duration, startTime + MIN_WIN);
+    if (endTime - startTime < MIN_WIN) startTime = Math.max(0, endTime - MIN_WIN);
+  } else if (span > MAX_WIN) {
+    const c = (startTime + endTime) / 2;
+    startTime = Math.max(0, c - MAX_WIN / 2);
+    endTime = Math.min(duration, startTime + MAX_WIN);
   }
 
   if (onStage) onStage('capturing');
