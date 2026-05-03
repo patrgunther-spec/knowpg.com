@@ -140,9 +140,11 @@ const MOTION_W = 96, MOTION_H = 144;
 const MOTION_FPS = 30;
 const MIN_SAMPLES = 30, MAX_SAMPLES = 600;
 const OUT_MAX = 720;
-const KEY_STORAGE = 'GEMINI_API_KEY';
-const MODELS = ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-2.5-flash-lite'];
-const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+// Free, public, no-API-key AI vision service. We POST 12 swing frames + a
+// coaching prompt and get back structured JSON. Cascades through several
+// backend models on rate-limit/error.
+const POLLINATIONS_URL = 'https://text.pollinations.ai/openai';
+const VISION_MODELS = ['openai-large', 'openai', 'gemini'];
 
 const SCAN_QUOTES = [
   'Watching the whole clip…','Finding the actual swing…',
@@ -229,7 +231,6 @@ const state = {
   error: null,
   report: null,
   quoteIdx: 0,
-  apiKey: localStorage.getItem(KEY_STORAGE) || '',
   pickRange: null,
   showScrubber: false,
   openFrame: null,
@@ -450,63 +451,75 @@ async function extractFramesAtWindow(videoUrl, startTime, endTime, onProgress) {
   return { frames, swing: { startTime, endTime, peakTime: (startTime+endTime)/2, durationMs: Math.round((endTime-startTime)*1000) } };
 }
 
-/* ===== Gemini call (browser-direct, cascade through 3 free models) ===== */
-async function analyzeFrames(frames, apiKey) {
-  const parts = [];
+/* ===== AI call (FREE, no API key — via Pollinations public endpoint) =====
+   Pollinations is a free public AI service. The user never needs an API key
+   and never pays a cent. We send 12 frames + a coaching prompt and parse
+   the JSON response. Cascades through several backend models on failure. */
+async function analyzeFrames(frames) {
+  const userContent = [
+    { type: 'text', text: 'Analyze the golf swing in these 12 frames (in order from address to finish). Return ONLY the JSON described in the system instructions.' },
+  ];
   for (const f of frames) {
-    parts.push({ text: `Frame ${(f.order ?? 0)+1} of ${frames.length} — ${f.label} — at ~${f.timeMs} ms inside the detected swing window.` });
-    parts.push({ inline_data: { mime_type: 'image/jpeg', data: f.data } });
+    userContent.push({ type: 'text', text: `Frame ${(f.order ?? 0) + 1} of ${frames.length} — ${f.label} — at ~${f.timeMs} ms.` });
+    userContent.push({
+      type: 'image_url',
+      image_url: { url: `data:image/jpeg;base64,${f.data}` },
+    });
   }
-  parts.push({ text: 'Now analyze this swing and return ONLY the JSON described in the system instructions.' });
 
-  const body = {
-    contents: [{ role: 'user', parts }],
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    generationConfig: { temperature: 0.4, maxOutputTokens: 8192, responseMimeType: 'application/json' },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-    ],
-  };
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: userContent },
+  ];
 
   let lastErr = null;
-  for (const model of MODELS) {
+  for (const model of VISION_MODELS) {
     let res;
     try {
-      res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      res = await fetch(POLLINATIONS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          model,
+          messages,
+          response_format: { type: 'json_object' },
+          temperature: 0.4,
+          max_tokens: 6000,
+          private: true,
+          referrer: 'golf-swing-coach',
+        }),
       });
     } catch (e) { lastErr = e; continue; }
-    if (res.status === 429 || res.status === 503) { lastErr = new Error('rate_limited'); continue; }
-    if (res.status === 400) {
-      const peek = await res.clone().text();
-      if (/quota|rate limit|resource_exhausted/i.test(peek)) { lastErr = new Error('rate_limited'); continue; }
-    }
-    if (res.status === 401 || res.status === 403) {
-      throw new Error('Your Gemini API key was rejected. Open Setup and paste a fresh one from aistudio.google.com/apikey.');
-    }
+
     if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`Coach error: HTTP ${res.status}. ${txt.slice(0, 200)}`);
+      lastErr = new Error('http_' + res.status);
+      if (res.status === 429 || res.status >= 500 || res.status === 408) continue;
+      const peek = await res.text().catch(() => '');
+      throw new Error('Coach error: HTTP ' + res.status + '. ' + peek.slice(0, 200));
     }
-    const data = await res.json();
-    const cand = (data.candidates || [])[0];
-    const txt = (cand?.content?.parts || []).map(p => p.text || '').join('').trim();
+
+    const ct = res.headers.get('content-type') || '';
+    let txt = '';
+    if (ct.includes('application/json')) {
+      const data = await res.json().catch(() => null);
+      txt = data?.choices?.[0]?.message?.content || '';
+      if (!txt && typeof data === 'string') txt = data;
+      if (!txt && data?.content) txt = String(data.content);
+    } else {
+      txt = await res.text();
+    }
+    txt = (txt || '').trim();
     if (!txt) { lastErr = new Error('empty_response'); continue; }
 
     let s = txt;
     const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fence) s = fence[1].trim();
     const a = s.indexOf('{'), b = s.lastIndexOf('}');
-    if (a !== -1 && b !== -1) s = s.slice(a, b+1);
+    if (a !== -1 && b !== -1) s = s.slice(a, b + 1);
     try { return JSON.parse(s); }
-    catch { throw new Error('Coach mumbled. Try again with a clearer video.'); }
+    catch { lastErr = new Error('parse_error'); continue; }
   }
-  throw new Error('All free models are momentarily busy. Wait ~30 seconds and try again. (No charges - just free-tier quota.)');
+  throw new Error('Coach is temporarily busy. Wait 20 seconds and try again. (Free service, no charges.)');
 }
 
 /* ===== Main flow handlers ===== */
@@ -518,10 +531,6 @@ async function pickFile() {
 
 async function onFile(file) {
   if (!file) return;
-  if (!state.apiKey) {
-    setState({ view: 'setup' });
-    return;
-  }
   if (state.videoUrl) { try { URL.revokeObjectURL(state.videoUrl); } catch(_){} }
   setState({ view: 'analyze', stage: 'scanning', progress: 0, frames: [], swing: null, error: null, report: null, quoteIdx: 0 });
   startQuoteTimer();
@@ -549,7 +558,7 @@ async function runAnalysis(frames) {
   setState({ view: 'analyze', stage: 'analyzing', progress: 1, error: null, quoteIdx: 0 });
   startQuoteTimer();
   try {
-    const report = await analyzeFrames(frames, state.apiKey);
+    const report = await analyzeFrames(frames);
     stopQuoteTimer();
     setState({ report, stage: 'idle', view: 'results', openFrame: null });
   } catch (e) {
@@ -587,17 +596,6 @@ function stopQuoteTimer() {
   if (quoteTimer) { clearInterval(quoteTimer); quoteTimer = null; }
 }
 
-function saveKey() {
-  const v = document.getElementById('apiKeyInput').value.trim();
-  if (!v) { alert('Paste your Gemini API key first.'); return; }
-  localStorage.setItem(KEY_STORAGE, v);
-  setState({ apiKey: v, view: 'home' });
-}
-function clearKey() {
-  localStorage.removeItem(KEY_STORAGE);
-  setState({ apiKey: '' });
-}
-
 /* ===== Renderers ===== */
 function esc(s) {
   return String(s == null ? '' : s)
@@ -622,24 +620,20 @@ function viewHome() {
     <div class="hero frame-inner">
       <div class="eyebrow">Pro Series · Swing Coach</div>
       <h1 class="title">DRIVE.<br><span class="accent">ANALYZE.</span><br>DOMINATE.</h1>
-      <p class="subtitle">Film a swing from any angle. Our coach finds the swing automatically, breaks it into 12 positions, and gives you 5-10 detailed fixes to lower your handicap. 100% free — calls Gemini directly from your browser.</p>
+      <p class="subtitle">Film a swing from any angle. The coach finds it automatically, breaks it into 12 positions, and gives you 5-10 detailed fixes. <b>100% free. No setup. No accounts. No keys.</b></p>
       <div class="hero-stats">
         <div class="hero-stat"><div class="hero-stat-value">12</div><div class="hero-stat-label">Positions</div></div>
         <div class="hero-stat-sep"></div>
         <div class="hero-stat"><div class="hero-stat-value">5-10</div><div class="hero-stat-label">Fixes</div></div>
         <div class="hero-stat-sep"></div>
-        <div class="hero-stat"><div class="hero-stat-value">$0</div><div class="hero-stat-label">Cost</div></div>
+        <div class="hero-stat"><div class="hero-stat-value">$0</div><div class="hero-stat-label">Forever</div></div>
       </div>
     </div>
   </div>
 
   <div class="section-label">Main Menu</div>
   <button class="btn" onclick="pickFile()">
-    <span class="btn-content"><span class="btn-icon">📹</span><span class="btn-text-stack"><span class="label">Upload or Record Swing</span><span class="caption">${state.apiKey ? 'Up to ~20 seconds, any angle' : 'Tap Setup first to add your free API key'}</span></span></span>
-    <span class="btn-chev">▸</span>
-  </button>
-  <button class="btn ${state.apiKey ? 'btn-ghost' : 'btn-gold'}" onclick="setState({view:'setup'})">
-    <span class="btn-content"><span class="btn-icon">⚙︎</span><span class="btn-text-stack"><span class="label">${state.apiKey ? 'Setup · Done' : 'Setup · Required'}</span><span class="caption">${state.apiKey ? 'Free Gemini key is loaded' : 'Free Gemini API key — no credit card'}</span></span></span>
+    <span class="btn-content"><span class="btn-icon">📹</span><span class="btn-text-stack"><span class="label">Upload or Record Swing</span><span class="caption">Up to ~20 seconds, any angle</span></span></span>
     <span class="btn-chev">▸</span>
   </button>
 
@@ -649,28 +643,7 @@ function viewHome() {
     <div class="how-row"><div class="how-num">02</div><div><div class="how-title">Take The Cut</div><div class="how-text">Record up to 20 seconds. Practice swings auto-skipped.</div></div></div>
     <div class="how-row"><div class="how-num">03</div><div><div class="how-title">Get Coached</div><div class="how-text">5-10 specific fixes with drills and a weekly plan.</div></div></div>
   </div>
-  <div class="footer">BUILT WITH GEMINI VISION · NOT AFFILIATED WITH PGA TOUR</div>`;
-}
-
-function viewSetup() {
-  return `
-  <div class="frame">
-    <div class="frame-inner" style="padding:18px">
-      <div class="eyebrow">FREE SETUP</div>
-      <h1 class="title" style="font-size:24px">PASTE YOUR GEMINI KEY</h1>
-      <p class="subtitle">Get a FREE key (no credit card) at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> — click <b>Create API key</b> and copy. The key is stored only on this device, never sent anywhere except directly to Google.</p>
-      <input id="apiKeyInput" class="input" type="password" placeholder="AIzaSy…" value="${esc(state.apiKey || '')}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
-      <button class="btn" onclick="saveKey()">
-        <span class="btn-content"><span class="btn-icon">✓</span><span class="btn-text-stack"><span class="label">Save Key</span></span></span>
-        <span class="btn-chev">▸</span>
-      </button>
-      ${state.apiKey ? `<button class="btn btn-ghost" onclick="clearKey()"><span class="btn-content"><span class="btn-icon">×</span><span class="btn-text-stack"><span class="label">Clear Saved Key</span></span></span><span class="btn-chev">▸</span></button>` : ''}
-      <button class="btn btn-ghost" onclick="setState({view:'home'})">
-        <span class="btn-content"><span class="btn-icon">←</span><span class="btn-text-stack"><span class="label">Back</span></span></span>
-        <span class="btn-chev">▸</span>
-      </button>
-    </div>
-  </div>`;
+  <div class="footer">FREE PUBLIC AI VISION · NOT AFFILIATED WITH PGA TOUR</div>`;
 }
 
 function viewReview() {
@@ -945,7 +918,6 @@ function render() {
   const root = document.getElementById('root');
   let html = '';
   if (state.view === 'home') html = viewHome();
-  else if (state.view === 'setup') html = viewSetup();
   else if (state.view === 'review') html = viewReview();
   else if (state.view === 'analyze') html = viewAnalyze();
   else if (state.view === 'results') html = viewResults();
@@ -953,9 +925,6 @@ function render() {
   root.innerHTML = `
     <input id="fileInput" type="file" accept="video/*" capture="environment" style="display:none" onchange="onFile(this.files && this.files[0])" />
     ${html}`;
-  if (state.view === 'setup') {
-    setTimeout(() => document.getElementById('apiKeyInput')?.focus(), 50);
-  }
 }
 
 window.addEventListener('DOMContentLoaded', render);
@@ -964,8 +933,6 @@ window.onFile = onFile;
 window.runAnalysis = runAnalysis;
 window.rePick = rePick;
 window.reset = reset;
-window.saveKey = saveKey;
-window.clearKey = clearKey;
 window.setState = setState;
 window.toggleScrubber = toggleScrubber;
 window.updatePick = updatePick;
