@@ -706,14 +706,14 @@ function viewReview() {
         <video id="scrubVideo" src="${state.videoUrl}" style="width:100%;max-height:320px;background:#000" playsInline muted controls></video>
         <div style="margin-top:14px">
           <div style="display:flex;justify-content:space-between;font-size:11px;letter-spacing:1.4px;font-weight:900;color:var(--gold);margin-bottom:6px">
-            <span>START · ${fmtTime(start)}</span>
-            <span>WINDOW · ${fmtTime(end - start)}</span>
-            <span>END · ${fmtTime(end)}</span>
+            <span id="lblStart">START · ${fmtTime(start)}</span>
+            <span id="lblWindow">WINDOW · ${fmtTime(end - start)}</span>
+            <span id="lblEnd">END · ${fmtTime(end)}</span>
           </div>
           <label style="font-size:10px;letter-spacing:1.6px;font-weight:900;color:var(--silverDim)">START OF SWING</label>
-          <input type="range" min="0" max="${Math.max(0, state.videoDuration - 0.6).toFixed(2)}" step="0.05" value="${start}" oninput="updatePick('start', this.value)" />
+          <input id="rngStart" type="range" min="0" max="${Math.max(0, state.videoDuration - 0.6).toFixed(2)}" step="0.05" value="${start}" oninput="updatePick('start', this.value)" />
           <label style="font-size:10px;letter-spacing:1.6px;font-weight:900;color:var(--silverDim);margin-top:8px;display:block">END OF SWING</label>
-          <input type="range" min="${Math.min(start + 0.6, state.videoDuration).toFixed(2)}" max="${state.videoDuration.toFixed(2)}" step="0.05" value="${end}" oninput="updatePick('end', this.value)" />
+          <input id="rngEnd" type="range" min="${Math.min(start + 0.6, state.videoDuration).toFixed(2)}" max="${state.videoDuration.toFixed(2)}" step="0.05" value="${end}" oninput="updatePick('end', this.value)" />
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <button class="btn btn-ghost" style="flex:1" onclick="previewWindow()">
@@ -749,13 +749,18 @@ function updatePick(which, val) {
     if (end - start > maxWin) start = end - maxWin;
   }
   state.pickRange = { start, end };
-  // Update labels live without full re-render to keep slider focus.
-  const labels = document.querySelectorAll('#root .frame .frame-inner > div > div span');
-  if (labels.length >= 3) {
-    labels[0].textContent = `START · ${fmtTime(start)}`;
-    labels[1].textContent = `WINDOW · ${fmtTime(end - start)}`;
-    labels[2].textContent = `END · ${fmtTime(end)}`;
-  }
+  // Update labels and the OTHER slider live without full re-render to keep
+  // the slider thumb focus.
+  const ls = document.getElementById('lblStart');
+  const lw = document.getElementById('lblWindow');
+  const le = document.getElementById('lblEnd');
+  if (ls) ls.textContent = `START · ${fmtTime(start)}`;
+  if (lw) lw.textContent = `WINDOW · ${fmtTime(end - start)}`;
+  if (le) le.textContent = `END · ${fmtTime(end)}`;
+  const rs = document.getElementById('rngStart');
+  const re = document.getElementById('rngEnd');
+  if (which === 'start' && re) re.value = String(end);
+  if (which === 'end' && rs) rs.value = String(start);
 }
 function previewWindow() {
   const v = document.getElementById('scrubVideo');
