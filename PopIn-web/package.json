@@ -8,11 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.105.4",
+    "leaflet": "^1.9.4",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@supabase/supabase-js": "^2.45.4",
-    "leaflet": "^1.9.4",
     "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
