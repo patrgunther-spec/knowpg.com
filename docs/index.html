@@ -140,125 +140,19 @@ const MOTION_W = 96, MOTION_H = 144;
 const MOTION_FPS = 30;
 const MIN_SAMPLES = 30, MAX_SAMPLES = 600;
 const OUT_MAX = 720;
-// Free, public, no-API-key AI vision service. We POST 12 swing frames + a
-// coaching prompt and get back structured JSON. We discover the current
-// vision-capable models on first load so model renames never break us.
-const POLLINATIONS_URL = 'https://text.pollinations.ai/openai';
-const POLLINATIONS_MODELS_URL = 'https://text.pollinations.ai/models';
-// Wide fallback list - some are aliases, some may 404, the cascade just
-// skips to the next on any failure.
-const VISION_MODEL_FALLBACK = [
-  'openai', 'openai-fast', 'openai-large', 'openai-reasoning',
-  'claude-hybridspace', 'claude', 'gemini', 'gemini-thinking',
-  'mistral', 'llama', 'qwen-coder',
-];
-let cachedModels = null;
-
-async function discoverVisionModels() {
-  if (cachedModels) return cachedModels;
-  try {
-    const res = await fetch(POLLINATIONS_MODELS_URL, { cache: 'no-store' });
-    if (res.ok) {
-      const list = await res.json();
-      const vision = (Array.isArray(list) ? list : [])
-        .filter((m) => {
-          const name = m?.name || m?.id || m?.slug;
-          if (!name) return false;
-          // Heuristics: prefer entries flagged as vision/multimodal/image-capable.
-          if (m.vision === true) return true;
-          if (Array.isArray(m.input_modalities) &&
-              m.input_modalities.some((x) => /image|vision|multimodal/i.test(String(x)))) return true;
-          if (Array.isArray(m.modalities) &&
-              m.modalities.some((x) => /image|vision|multimodal/i.test(String(x)))) return true;
-          if (m.multimodal === true) return true;
-          // Fall back to name-based hints
-          return /openai|gpt|claude|gemini|llava|qwen-vl|llama-vision/i.test(String(name));
-        })
-        .map((m) => m.name || m.id || m.slug)
-        .filter(Boolean);
-      if (vision.length) {
-        // Combine discovered models with our fallback list (de-duped, discovered first).
-        cachedModels = Array.from(new Set([...vision, ...VISION_MODEL_FALLBACK]));
-        return cachedModels;
-      }
-    }
-  } catch {}
-  cachedModels = VISION_MODEL_FALLBACK.slice();
-  return cachedModels;
-}
 
 const SCAN_QUOTES = [
   'Watching the whole clip…','Finding the actual swing…',
   'Skipping practice strokes…','Locking onto impact…'
 ];
 const COACH_QUOTES = [
-  'Studying your tempo…','Checking your spine angle…','Tracing the club path…',
-  'Reading your weight transfer…','Looking at impact position…',
-  'Comparing to tour pros…','Spotting strokes you can save…',
-  'Drafting your custom drills…','Writing it all down…'
+  'Loading the body-pose model…','Reading your address position…',
+  'Measuring your shoulder turn…','Measuring your hip rotation…',
+  'Checking your spine angle…','Tracking your head movement…',
+  'Reading your weight transfer…','Looking at impact extension…',
+  'Spotting strokes you can save…','Drafting your custom drills…',
+  'Writing it all down…'
 ];
-
-const SYSTEM_PROMPT = `You are an elite, PGA-Tour-level golf swing coach. The user wants the most thorough, specific, beginner-friendly coaching possible.
-
-You will receive 12 still frames from the SAME swing, sampled in order from address through finish. Treat all 12 frames as one continuous swing.
-
-The 12 frames, in order, are:
-  1. Address               2. Takeaway              3. Hands At Hip (Back)
-  4. Lead Arm Parallel (Back)  5. Top Of Backswing  6. Transition
-  7. Lead Arm Parallel (Down)  8. Pre-Impact        9. Impact
- 10. Post-Impact Extension 11. Mid Follow-Through  12. Finish
-
-CAMERA ANGLE: Detect the angle (down-the-line / face-on / behind / overhead) and adapt your analysis. State the angle in the report.
-
-WRITING STYLE - this is critical:
-- Write so a smart 10-year-old American would understand. Short sentences. Simple words.
-- Whenever you use a golf term, define it in 5-12 plain words RIGHT AFTER the term, in parentheses. Example: "Stop casting (throwing the club out early like a fishing rod)."
-- Use simple analogies. Be very specific about body parts (assume right-handed unless visually clear).
-
-DEPTH - 5 to 10 ACTIONABLE TAKEAWAYS, ranked High → Low priority. For each:
-  * title              short imperative
-  * whatToFix          1-3 sentences (frame-specific)
-  * whyItMatters       1-3 sentences on strokes it costs and typical miss
-  * howToFix           NUMBERED STEPS the kid can do at home (4-7 steps)
-  * commonMistakes     up to 3
-  * reps               concrete dosage
-  * estimatedHandicapImpact  realistic
-  * priority           High|Medium|Low
-
-Return ONLY valid JSON with this exact schema. No prose outside JSON, no fences:
-
-{
-  "playerHandle": "Short fun nickname. 1-3 words.",
-  "cameraAngle": "down-the-line | face-on | behind | overhead | unclear",
-  "handedness": "right | left | unclear",
-  "summary": "2-4 sentences plain words.",
-  "oneThingYouDidWell": "One specific positive thing with frame number.",
-  "ballFlightExplanation": "Plain-language paragraph citing specific frames.",
-  "frameBreakdown": [
-    {"label":"Address","whatISee":"...","tip":"..."},
-    {"label":"Takeaway","whatISee":"...","tip":"..."},
-    {"label":"Hands At Hip (Back)","whatISee":"...","tip":"..."},
-    {"label":"Lead Arm Parallel (Back)","whatISee":"...","tip":"..."},
-    {"label":"Top Of Backswing","whatISee":"...","tip":"..."},
-    {"label":"Transition","whatISee":"...","tip":"..."},
-    {"label":"Lead Arm Parallel (Down)","whatISee":"...","tip":"..."},
-    {"label":"Pre-Impact","whatISee":"...","tip":"..."},
-    {"label":"Impact","whatISee":"...","tip":"..."},
-    {"label":"Post-Impact Extension","whatISee":"...","tip":"..."},
-    {"label":"Mid Follow-Through","whatISee":"...","tip":"..."},
-    {"label":"Finish","whatISee":"...","tip":"..."}
-  ],
-  "takeaways": [
-    {"title":"...","whatToFix":"...","whyItMatters":"...","howToFix":"1) ... 2) ... 3) ... 4) ...","commonMistakes":["...","..."],"reps":"...","estimatedHandicapImpact":"...","priority":"High"}
-  ],
-  "practicePlan": {
-    "summary":"...",
-    "weeklySchedule":[{"day":"Monday","focus":"Drill X","minutes":15}]
-  },
-  "nextVideoTip": "..."
-}
-
-Provide 5 to 10 takeaways. Be thorough.`;
 
 /* ===== State ===== */
 const state = {
@@ -463,79 +357,529 @@ async function extractFramesAtWindow(videoUrl, startTime, endTime, onProgress) {
   return { frames, swing: { startTime, endTime, peakTime: (startTime+endTime)/2, durationMs: Math.round((endTime-startTime)*1000) } };
 }
 
-/* ===== AI call (FREE, no API key — via Pollinations public endpoint) =====
-   Pollinations is a free public AI service. The user never needs an API key
-   and never pays a cent. We send 12 frames + a coaching prompt and parse
-   the JSON response. Cascades through several backend models on failure. */
+/* ===== Local AI coach (FREE, runs entirely in your browser) ================
+   No API key, no third-party servers, no rate limits, no flaky public APIs.
+   Uses TensorFlow.js + MoveNet (a body-pose detection model from Google)
+   loaded from a CDN. We detect 17 body keypoints in each of the 12 frames,
+   compute real golf-swing metrics from them, and generate the coaching
+   report from those measurements with classic golf-instruction rules. */
+
+let _tfReady = null;
+let _detector = null;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if ([...document.scripts].some((s) => s.src === src)) return resolve();
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Could not load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureTf() {
+  if (_tfReady) return _tfReady;
+  _tfReady = (async () => {
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js');
+    if (window.tf?.setBackend) {
+      try { await window.tf.setBackend('webgl'); await window.tf.ready(); } catch {}
+    }
+    _detector = await window.poseDetection.createDetector(
+      window.poseDetection.SupportedModels.MoveNet,
+      { modelType: window.poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+    );
+  })();
+  return _tfReady;
+}
+
+function loadImage(base64) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('image decode failed'));
+    img.src = 'data:image/jpeg;base64,' + base64;
+  });
+}
+
 async function analyzeFrames(frames) {
-  const userContent = [
-    { type: 'text', text: 'Analyze the golf swing in these 12 frames (in order from address to finish). Return ONLY the JSON described in the system instructions.' },
-  ];
+  await ensureTf();
+  const poses = [];
   for (const f of frames) {
-    userContent.push({ type: 'text', text: `Frame ${(f.order ?? 0) + 1} of ${frames.length} — ${f.label} — at ~${f.timeMs} ms.` });
-    userContent.push({
-      type: 'image_url',
-      image_url: { url: `data:image/jpeg;base64,${f.data}` },
+    try {
+      const img = await loadImage(f.data);
+      const results = await _detector.estimatePoses(img, { flipHorizontal: false });
+      poses.push(results[0] || null);
+    } catch {
+      poses.push(null);
+    }
+  }
+  return buildReportFromPoses(poses, frames);
+}
+
+/* ----- Pose math helpers --------------------------------------------- */
+
+function kp(pose, name) {
+  if (!pose || !pose.keypoints) return null;
+  const k = pose.keypoints.find((p) => p.name === name);
+  if (!k || (k.score != null && k.score < 0.3)) return null;
+  return k;
+}
+function dist(a, b) { if (!a || !b) return 0; const dx = a.x - b.x, dy = a.y - b.y; return Math.sqrt(dx*dx + dy*dy); }
+function mid(a, b) { if (!a || !b) return null; return { x: (a.x + b.x)/2, y: (a.y + b.y)/2 }; }
+function angDeg(a, b) { if (!a || !b) return null; return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI; }
+function angAt(a, b, c) { // angle at vertex b between rays b->a and b->c, in degrees
+  if (!a || !b || !c) return null;
+  const v1 = { x: a.x - b.x, y: a.y - b.y };
+  const v2 = { x: c.x - b.x, y: c.y - b.y };
+  const dot = v1.x*v2.x + v1.y*v2.y;
+  const m1 = Math.sqrt(v1.x*v1.x + v1.y*v1.y);
+  const m2 = Math.sqrt(v2.x*v2.x + v2.y*v2.y);
+  if (!m1 || !m2) return null;
+  const cos = Math.max(-1, Math.min(1, dot / (m1 * m2)));
+  return Math.acos(cos) * 180 / Math.PI;
+}
+function bodyHeight(pose) { // approx pixels from head to ankle
+  const nose = kp(pose, 'nose');
+  const la = kp(pose, 'left_ankle');
+  const ra = kp(pose, 'right_ankle');
+  if (!nose) return 0;
+  const ankle = la || ra;
+  if (!ankle) return 0;
+  return Math.abs(ankle.y - nose.y);
+}
+
+/* ----- Camera angle and handedness detection -------------------------- */
+
+function detectCameraAngle(addressPose) {
+  const ls = kp(addressPose, 'left_shoulder');
+  const rs = kp(addressPose, 'right_shoulder');
+  const nose = kp(addressPose, 'nose');
+  const le = kp(addressPose, 'left_ear');
+  const re = kp(addressPose, 'right_ear');
+  if (!ls || !rs) return 'unclear';
+  const shoulderWidth = Math.abs(rs.x - ls.x);
+  const earWidth = (le && re) ? Math.abs(re.x - le.x) : 0;
+  const bh = bodyHeight(addressPose) || 1;
+  const swRatio = shoulderWidth / bh;
+  // Wide shoulders relative to body height = facing the camera (face-on).
+  // Narrow shoulders = profile (down-the-line / behind).
+  if (swRatio > 0.30) return 'face-on';
+  if (swRatio < 0.18) return 'down-the-line';
+  return 'unclear';
+}
+
+function detectHandedness(addressPose, topPose) {
+  // Right-handed golfer: at the top of backswing, the lead (left) arm is
+  // higher and the trail (right) arm is lower. We look at which wrist is
+  // higher in the frame at the top.
+  const lw = kp(topPose, 'left_wrist');
+  const rw = kp(topPose, 'right_wrist');
+  if (!lw || !rw) return 'right'; // most common default
+  return rw.y < lw.y ? 'left' : 'right';
+}
+
+/* ----- Metrics ------------------------------------------------------- */
+
+function computeMetrics(poses) {
+  const valid = poses.filter(Boolean);
+  if (valid.length < 4) return null;
+
+  const address = poses[0];
+  const top     = poses[4] || poses[3] || poses[5];
+  const downHalf = poses[6] || poses[5];
+  const impact  = poses[8] || poses[7];
+  const finish  = poses[poses.length - 1];
+
+  const cam = detectCameraAngle(address);
+  const handed = detectHandedness(address, top);
+  const bh = bodyHeight(address) || bodyHeight(top) || bodyHeight(impact) || 200;
+
+  // 1. Head movement (max distance nose moved from address position)
+  const noseAddr = kp(address, 'nose');
+  let headMaxPx = 0, headMaxFrame = 0;
+  let towardTargetMax = 0;
+  for (let i = 0; i < poses.length; i++) {
+    const n = kp(poses[i], 'nose');
+    if (!n || !noseAddr) continue;
+    const d = dist(n, noseAddr);
+    if (d > headMaxPx) { headMaxPx = d; headMaxFrame = i; }
+    // Toward-target = positive x direction for right-handed face-on, negative for down-the-line.
+    // We just track the worst horizontal sway from address.
+    const dx = n.x - noseAddr.x;
+    if (Math.abs(dx) > Math.abs(towardTargetMax)) towardTargetMax = dx;
+  }
+  const headMovePctOfBody = bh ? (headMaxPx / bh) : 0;
+
+  // 2. Shoulder rotation (address → top)
+  const sa0 = angDeg(kp(address, 'left_shoulder'), kp(address, 'right_shoulder'));
+  const sa1 = angDeg(kp(top,     'left_shoulder'), kp(top,     'right_shoulder'));
+  const shoulderRot = (sa0 != null && sa1 != null) ? Math.abs(((sa1 - sa0 + 540) % 360) - 180) : null;
+
+  // 3. Hip rotation (address → top)
+  const ha0 = angDeg(kp(address, 'left_hip'), kp(address, 'right_hip'));
+  const ha1 = angDeg(kp(top,     'left_hip'), kp(top,     'right_hip'));
+  const hipRot = (ha0 != null && ha1 != null) ? Math.abs(((ha1 - ha0 + 540) % 360) - 180) : null;
+
+  // 4. Spine angle change at impact vs address
+  function spineAng(p) {
+    const t = mid(kp(p, 'left_shoulder'), kp(p, 'right_shoulder'));
+    const b = mid(kp(p, 'left_hip'),      kp(p, 'right_hip'));
+    if (!t || !b) return null;
+    return Math.atan2(t.x - b.x, b.y - t.y) * 180 / Math.PI;
+  }
+  const spA = spineAng(address);
+  const spI = spineAng(impact);
+  const spineDelta = (spA != null && spI != null) ? Math.abs(spI - spA) : null;
+
+  // 5. Knee flex at address vs impact (right knee angle = hip-knee-ankle)
+  function kneeAngle(p, side /* 'left'|'right' */) {
+    return angAt(kp(p, side+'_hip'), kp(p, side+'_knee'), kp(p, side+'_ankle'));
+  }
+  const kneeAddrR = kneeAngle(address, 'right');
+  const kneeImpR  = kneeAngle(impact,  'right');
+  const rightKneeStraightening =
+    (kneeAddrR != null && kneeImpR != null) ? (kneeImpR - kneeAddrR) : null;
+
+  // 6. Stance width at address (vs body height)
+  const stancePx = dist(kp(address, 'left_ankle'), kp(address, 'right_ankle'));
+  const shouldersPx = dist(kp(address, 'left_shoulder'), kp(address, 'right_shoulder'));
+  const stanceVsShoulders = (stancePx && shouldersPx) ? stancePx / shouldersPx : null;
+
+  // 7. Lead arm extension at impact (lead = left for right-handed)
+  const leadSide = handed === 'left' ? 'right' : 'left';
+  const leadElbowAtImpact = angAt(
+    kp(impact, leadSide+'_shoulder'),
+    kp(impact, leadSide+'_elbow'),
+    kp(impact, leadSide+'_wrist')
+  );
+
+  // 8. Finish hip rotation (hip line angle at finish vs address)
+  const haF = angDeg(kp(finish, 'left_hip'), kp(finish, 'right_hip'));
+  const finishHipRot = (ha0 != null && haF != null) ? Math.abs(((haF - ha0 + 540) % 360) - 180) : null;
+
+  // 9. Head x-shift toward target at top (reverse-pivot detection)
+  const noseTop = kp(top, 'nose');
+  const headShiftAtTopX = (noseAddr && noseTop) ? (noseTop.x - noseAddr.x) : 0;
+  // For right-handed face-on view: target is to the LEFT of frame (positive x = away from target).
+  // For right-handed down-the-line: target is to the RIGHT (positive x = toward target).
+  // We just flag any large horizontal move at top as suspect.
+  const headShiftPct = bh ? (Math.abs(headShiftAtTopX) / bh) : 0;
+
+  return {
+    cameraAngle: cam,
+    handedness: handed,
+    bodyHeightPx: bh,
+    headMaxPx,
+    headMovePctOfBody,
+    headMaxFrame,
+    shoulderRotDeg: shoulderRot,
+    hipRotDeg: hipRot,
+    xFactor: (shoulderRot != null && hipRot != null) ? Math.max(0, shoulderRot - hipRot) : null,
+    spineDelta,
+    rightKneeStraightening,
+    stanceVsShoulders,
+    leadElbowAtImpact,
+    finishHipRot,
+    headShiftAtTopX,
+    headShiftPctAtTop: headShiftPct,
+  };
+}
+
+/* ----- Takeaway generator -------------------------------------------- */
+
+function generateTakeaways(m) {
+  const out = [];
+
+  if (m.headMovePctOfBody != null && m.headMovePctOfBody > 0.04) {
+    const inches = Math.round(m.headMovePctOfBody / 0.04 * 2.0); // rough scaling: 4% body ≈ 2-3 inches for adult
+    const high = m.headMovePctOfBody > 0.07;
+    out.push({
+      title: 'Stop The Head Sway',
+      whatToFix: `Your head moved about ${inches} inches during the swing (we measured ${(m.headMovePctOfBody*100).toFixed(1)}% of your body height). The head should stay almost still until well after impact.`,
+      whyItMatters: 'When your head slides side to side, the bottom of your swing moves with it. That means fat shots (hitting the ground first), thin shots (hitting the top of the ball), and a lot of inconsistency. Pros keep their head within an inch or two.',
+      howToFix: '1) Set up to a wall with a tee taped on the wall right where your nose is at address. 2) Take slow half-swings without letting the tee fall out of view. 3) Now do it with eyes closed for 10 reps. 4) Move outside, pick a single blade of grass next to the ball, and do not look away from it until you finish your swing. 5) Build up to full speed only after 30 reps where the tee never moved.',
+      commonMistakes: ['Trying to keep the head perfectly frozen (some movement is fine)', 'Tensing the neck (stay relaxed)', 'Looking up to see the ball before contact'],
+      reps: '20 wall-tee swings + 30 grass-blade swings, 4 times a week',
+      estimatedHandicapImpact: high ? 'Save 3-5 strokes per round' : 'Save 1-2 strokes per round',
+      priority: high ? 'High' : 'Medium',
     });
   }
 
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: userContent },
-  ];
-
-  const models = await discoverVisionModels();
-  let lastErr = null;
-  let lastErrPeek = '';
-  for (const model of models) {
-    let res;
-    try {
-      res = await fetch(POLLINATIONS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          messages,
-          response_format: { type: 'json_object' },
-          temperature: 0.4,
-          max_tokens: 6000,
-          private: true,
-          referrer: 'golf-swing-coach',
-        }),
-      });
-    } catch (e) { lastErr = e; continue; }
-
-    if (!res.ok) {
-      lastErr = new Error('http_' + res.status);
-      // Try the next model on ANY error (404 model-not-found, 429 rate-
-      // limit, 5xx, 4xx that's the model rejecting the input, etc.).
-      lastErrPeek = await res.text().catch(() => '');
-      continue;
-    }
-
-    const ct = res.headers.get('content-type') || '';
-    let txt = '';
-    if (ct.includes('application/json')) {
-      const data = await res.json().catch(() => null);
-      txt = data?.choices?.[0]?.message?.content || '';
-      if (!txt && typeof data === 'string') txt = data;
-      if (!txt && data?.content) txt = String(data.content);
-    } else {
-      txt = await res.text();
-    }
-    txt = (txt || '').trim();
-    if (!txt) { lastErr = new Error('empty_response'); continue; }
-
-    let s = txt;
-    const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fence) s = fence[1].trim();
-    const a = s.indexOf('{'), b = s.lastIndexOf('}');
-    if (a !== -1 && b !== -1) s = s.slice(a, b + 1);
-    try { return JSON.parse(s); }
-    catch { lastErr = new Error('parse_error'); continue; }
+  if (m.shoulderRotDeg != null && m.shoulderRotDeg < 70) {
+    out.push({
+      title: 'Finish Your Backswing',
+      whatToFix: `At the top, your shoulders only rotated about ${Math.round(m.shoulderRotDeg)} degrees. A full turn is closer to 90 degrees - your back should be pointing at the target.`,
+      whyItMatters: 'A short backswing means a short downswing, which means less club-head speed (slower swing = shorter shots). It also rushes your tempo, which causes pulls and slices.',
+      howToFix: '1) Stand with your back to a wall, feet a few inches away. 2) Cross your arms on your chest and try to touch the wall with your right elbow (lefties: left elbow) without moving your feet. 3) That is the feeling of a full shoulder turn. 4) Now do it holding a club across your chest, slowly. 5) Make 20 of those, then take 10 swings with a 7-iron focusing on completing the turn before you start down.',
+      commonMistakes: ['Lifting the arms instead of turning the body', 'Sliding the hips back instead of rotating', 'Rushing - pause for half a second at the top'],
+      reps: '20 wall-touch turns + 10 swings, 3 times a week',
+      estimatedHandicapImpact: 'Save 1-3 strokes per round + pick up 10-20 yards',
+      priority: m.shoulderRotDeg < 55 ? 'High' : 'Medium',
+    });
   }
-  // All models in the cascade failed.
-  throw new Error('Coach is temporarily busy across all free models. Wait 20-30 seconds and try again. ' + (lastErrPeek ? '(Detail: ' + lastErrPeek.slice(0, 120) + ')' : ''));
+
+  if (m.hipRotDeg != null && m.shoulderRotDeg != null && m.hipRotDeg > m.shoulderRotDeg * 0.7) {
+    out.push({
+      title: 'Restrict Your Hips At The Top',
+      whatToFix: `Your hips turned ${Math.round(m.hipRotDeg)} degrees while your shoulders turned ${Math.round(m.shoulderRotDeg)}. The hips should turn about HALF as much as the shoulders to create power.`,
+      whyItMatters: 'When the hips turn as much as the shoulders, you lose the spring-like wind-up. That is where the power comes from - shoulders fully turned, hips less. Without that gap (called the "X-Factor"), your swing is all arms.',
+      howToFix: '1) Take your normal stance and place a chair behind your right hip (lefties: left hip). 2) Make backswings where your right hip stays in light contact with the chair. 3) Feel your shoulders keep turning while the hip stays put. 4) Do 20 slow backswings with this feel. 5) Hit balls with a foam ball under your right heel - it will keep your right hip from spinning.',
+      commonMistakes: ['Locking the hip completely (a small turn is fine)', 'Letting the right knee straighten (keep flex)', 'Sliding the hips sideways'],
+      reps: '20 chair-rep swings + 10 foam-ball drives, 3 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round + add yardage',
+      priority: 'Medium',
+    });
+  }
+
+  if (m.spineDelta != null && m.spineDelta > 10) {
+    const hi = m.spineDelta > 18;
+    out.push({
+      title: 'Stop The Early Extension',
+      whatToFix: `Your spine angle changed by about ${Math.round(m.spineDelta)} degrees from address to impact. That means you are standing up out of your posture (golf-speak: "early extension") - your hips push toward the ball at impact.`,
+      whyItMatters: 'When you stand up, your hands have to back away from the ball to make room. That causes a slice, blocks (push to the right), and shots hit off the heel. It also kills consistency.',
+      howToFix: '1) Stand with your butt against a wall in golf posture (a hand-width away from the wall is too far - your butt should touch). 2) Make slow swings keeping your butt in contact with the wall the whole way. 3) The feel is "sit into your back pocket" through impact. 4) Do 25 slow swings. 5) Now hit balls with a yoga block or hand towel between your right thigh and the wall - keep it pinned there through impact.',
+      commonMistakes: ['Sitting back too far and falling on heels', 'Locking the knees in trying not to extend (stay athletic)', 'Forgetting to rotate - the answer is to rotate AND stay in posture'],
+      reps: '25 wall-butt swings + range session, 3 times a week',
+      estimatedHandicapImpact: hi ? 'Save 3-4 strokes per round' : 'Save 1-2 strokes per round',
+      priority: hi ? 'High' : 'Medium',
+    });
+  }
+
+  if (m.leadElbowAtImpact != null && m.leadElbowAtImpact < 155) {
+    out.push({
+      title: 'Extend Your Lead Arm At Impact',
+      whatToFix: `Your lead arm was bent to about ${Math.round(m.leadElbowAtImpact)} degrees at impact. The lead arm should be nearly straight (170-180 degrees) at the moment the club hits the ball - if it folds, that is the "chicken wing".`,
+      whyItMatters: 'A chicken wing means you are pulling up and across the ball instead of extending through it. That causes weak slices, low fades, and shots that lose distance.',
+      howToFix: '1) Hold a folded-up towel under your lead armpit (left for righties). 2) Make half-swings keeping the towel pinned in place from address through impact. 3) The lead arm should feel like it is reaching long toward the target after the ball. 4) After 20 reps, drop the towel and hit short shots with the same feel - a long lead arm extension after impact. 5) Add full swings only after the half-swing feels easy.',
+      commonMistakes: ['Locking the elbow too early before impact (it stays soft on the way down)', 'Stopping the swing at the ball - extend through it', 'Letting the trail arm overpower the lead'],
+      reps: '20 towel half-swings + 10 short shots, 4 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  if (m.stanceVsShoulders != null && m.stanceVsShoulders < 1.0) {
+    out.push({
+      title: 'Widen Your Stance',
+      whatToFix: `Your feet were narrower than your shoulders at address. For a full swing you want your feet about as wide as your shoulders, sometimes a hair wider for the driver.`,
+      whyItMatters: 'A narrow stance means a tippy base. You will sway off the ball and lose balance, especially at faster swing speeds. Power and accuracy both come from a stable platform.',
+      howToFix: '1) Stand tall with your arms relaxed. 2) Look down - your feet should be roughly under the outside edge of your shoulders. 3) For an iron, feet shoulder-width. For a driver, an inch or two wider. 4) Practice your setup in a mirror until shoulder-width feels normal. 5) Take swings and notice how much more stable you feel.',
+      commonMistakes: ['Going too wide (you can\'t turn)', 'Toes pointed straight forward (flare them out 15-20 degrees for easier turn)', 'Forgetting to maintain knee flex'],
+      reps: '5 minutes of mirror setup checks daily for 1 week',
+      estimatedHandicapImpact: 'Save 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  if (m.finishHipRot != null && m.finishHipRot < 70) {
+    out.push({
+      title: 'Finish With Your Hips Facing The Target',
+      whatToFix: `At the finish your hips only rotated about ${Math.round(m.finishHipRot)} degrees from address. A full finish has your belt buckle pointing AT the target, balanced on your front foot.`,
+      whyItMatters: 'An incomplete finish means you slowed down through impact. The body is reading the brakes-tap as a signal to also slow your hands, which steals power and accuracy. Pros always rotate to a full balanced finish.',
+      howToFix: '1) Take a slow swing and HOLD the finish position for 3 seconds before you put the club down. 2) Belt buckle to the target, weight on the lead foot, trail toe lightly touching the ground. 3) Make 20 of these slow swings, holding each finish. 4) Now do it at full speed - if you can\'t hold the finish, you are off-balance.',
+      commonMistakes: ['Falling backward off the lead foot', 'Stopping the rotation halfway', 'Lifting up out of the finish posture'],
+      reps: '20 slow hold-the-finish swings, every range session',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  if (m.headShiftPctAtTop > 0.04) {
+    out.push({
+      title: 'Stop The Reverse Pivot',
+      whatToFix: `At the top of your backswing, your head shifted toward the target (a reverse pivot - your weight goes the wrong way). It should stay centered or move slightly AWAY from the target.`,
+      whyItMatters: 'Reverse pivots cause two horrible misses: huge slices when the body cannot recover, and chunky shots when the weight stays back. You essentially load up on the wrong leg.',
+      howToFix: '1) Get a soccer ball or basketball. 2) Stand in golf posture with the ball under your right foot (lefties: left foot). 3) Take a backswing - you should feel pressure go INTO the ball under your trail foot. 4) Now do 15 reps without the ball, feeling weight load into the trail leg on the way back. 5) Add a small foam pad under the lead foot for 10 reps - it will discourage you from loading into the lead side.',
+      commonMistakes: ['Sliding instead of loading (rotate, do not sway)', 'Loading too far back (stay athletic, knee stays flexed)', 'Forgetting to shift back to the lead side on the way down'],
+      reps: '15 ball-under-foot loads + 10 foam-pad swings, 3 times a week',
+      estimatedHandicapImpact: 'Save 2-3 strokes per round',
+      priority: 'High',
+    });
+  }
+
+  // Always include a tempo / smooth-out reminder so we have at least 5 takeaways.
+  if (out.length < 5) {
+    out.push({
+      title: 'Smooth Out Your Tempo',
+      whatToFix: 'Your swing has the right pieces but the rhythm can be tightened up. A great tempo is a 3:1 ratio - the backswing takes about three counts and the downswing takes one count.',
+      whyItMatters: 'Quick tempo causes off-line shots because the body parts get out of sequence. Smooth tempo lets every move happen in order: lower body starts down first, then torso, then arms, then hands.',
+      howToFix: '1) Count "one - two - three" on the way back, "one" on the way down. 2) Try this with a 7-iron at half speed for 10 swings. 3) Then add the words "low and slow" on the takeaway. 4) Build up to full speed keeping the same rhythm. 5) On the course, take a deep breath before every swing - it resets your tempo.',
+      commonMistakes: ['Rushing from the top (it is the most common error in golf)', 'Trying to swing easier instead of smoother', 'Counting different on every shot - keep it consistent'],
+      reps: '10 counting-tempo swings, every range session',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Low',
+    });
+  }
+
+  // Sort: High → Medium → Low
+  const order = { 'High': 0, 'Medium': 1, 'Low': 2 };
+  out.sort((a, b) => (order[a.priority] ?? 3) - (order[b.priority] ?? 3));
+
+  // Cap at 8 takeaways.
+  return out.slice(0, 8);
+}
+
+/* ----- Frame breakdown text ----------------------------------------- */
+
+function frameBreakdownFromPoses(poses) {
+  const labels = FRAME_LABELS;
+  return labels.map((label, i) => {
+    const p = poses[i];
+    if (!p) {
+      return {
+        label,
+        whatISee: 'Could not get a clear read on your body in this frame. Try better lighting or a closer camera position next time.',
+        tip: 'Keep your whole body in the frame so the coach can see every part of your swing.',
+      };
+    }
+    return frameDescription(label, p, i, poses);
+  });
+}
+
+function frameDescription(label, pose, idx, allPoses) {
+  const sa = angDeg(kp(pose, 'left_shoulder'), kp(pose, 'right_shoulder'));
+  const ha = angDeg(kp(pose, 'left_hip'), kp(pose, 'right_hip'));
+  const sa0 = allPoses[0] ? angDeg(kp(allPoses[0], 'left_shoulder'), kp(allPoses[0], 'right_shoulder')) : null;
+  const ha0 = allPoses[0] ? angDeg(kp(allPoses[0], 'left_hip'),       kp(allPoses[0], 'right_hip'))      : null;
+  const sRot = (sa != null && sa0 != null) ? Math.round(Math.abs(((sa - sa0 + 540) % 360) - 180)) : null;
+  const hRot = (ha != null && ha0 != null) ? Math.round(Math.abs(((ha - ha0 + 540) % 360) - 180)) : null;
+
+  const noseHere = kp(pose, 'nose');
+  const noseAddr = kp(allPoses[0], 'nose');
+  const headDx = (noseHere && noseAddr) ? Math.round(noseHere.x - noseAddr.x) : 0;
+  const headDy = (noseHere && noseAddr) ? Math.round(noseHere.y - noseAddr.y) : 0;
+
+  const tips = {
+    'Address': 'Set your feet shoulder-width, slight knee bend, hands hanging just below your shoulders, eyes on the ball.',
+    'Takeaway': 'Move the club back with your shoulders and chest - the hands and arms stay quiet.',
+    'Hands At Hip (Back)': 'The clubhead should be just outside your hands and pointing at the sky - check this in a mirror.',
+    'Lead Arm Parallel (Back)': 'Lead arm parallel to the ground, club roughly perpendicular to it - this is the half-back checkpoint.',
+    'Top Of Backswing': 'Back facing the target, lead shoulder under your chin, weight loaded into your trail heel.',
+    'Transition': 'Shift pressure into the lead foot first, BEFORE your hands start coming down. Lower body leads.',
+    'Lead Arm Parallel (Down)': 'Hands should be in front of your trail thigh now, clubhead behind the hands - that is "lag".',
+    'Pre-Impact': 'Hips already starting to face the target, hands ahead of the ball, lead wrist flat.',
+    'Impact': 'Hands AHEAD of the ball, lead arm straight, head behind the ball, weight 70% on the lead foot.',
+    'Post-Impact Extension': 'Both arms long and reaching toward the target - the moment of full extension.',
+    'Mid Follow-Through': 'Trail shoulder pointing under the chin, club coming up over the lead shoulder.',
+    'Finish': 'Belt buckle to the target, weight fully on the lead foot, balanced - hold it for 3 seconds.',
+  };
+
+  let what = '';
+  if (label === 'Address') {
+    what = `Setup looks ${pose ? 'reasonable' : 'unclear'}. Shoulders are squared up, you have the basic athletic position.`;
+  } else if (label === 'Top Of Backswing') {
+    what = `Shoulders rotated ~${sRot ?? '?'}° from address, hips ~${hRot ?? '?'}°. ${sRot != null && sRot < 80 ? 'Backswing is a touch short - work on completing the turn.' : 'Solid amount of turn.'}`;
+  } else if (label === 'Impact') {
+    what = `At impact your shoulders have rotated back ~${sRot ?? '?'}° toward the target. ${headDx === 0 && headDy === 0 ? '' : `Head is ${Math.abs(headDx)} pixels ${headDx > 0 ? 'forward' : 'back'} of address.`}`;
+  } else if (label === 'Finish') {
+    what = `Hips rotated ${hRot ?? '?'}° at finish. ${hRot != null && hRot < 80 ? 'Finish is incomplete - keep rotating until your belt buckle faces the target.' : 'Nice complete finish position.'}`;
+  } else {
+    what = `Shoulders ~${sRot ?? '?'}° turned, hips ~${hRot ?? '?'}° turned at this checkpoint.`;
+  }
+
+  return { label, whatISee: what, tip: tips[label] || '' };
+}
+
+/* ----- Build the full report ----------------------------------------- */
+
+function buildReportFromPoses(poses, frames) {
+  const m = computeMetrics(poses);
+  if (!m) {
+    return {
+      playerHandle: 'The Player',
+      cameraAngle: 'unclear',
+      handedness: 'right',
+      summary: 'We could not get a clear read on your body in enough frames. Make sure your whole body (head to feet) is visible in the camera, with bright even lighting and not too much zoom.',
+      oneThingYouDidWell: 'You took the swing - that is the first step. Now we need a cleaner film.',
+      ballFlightExplanation: 'We need a clearer view of your body to predict ball flight.',
+      frameBreakdown: FRAME_LABELS.map((label, i) => ({
+        label,
+        whatISee: 'Body not clearly visible.',
+        tip: 'Frame the camera so we can see head to feet, side or face-on.',
+      })),
+      takeaways: [{
+        title: 'Re-Film Your Swing With Better Framing',
+        whatToFix: 'The body could not be detected reliably in your video.',
+        whyItMatters: 'Without a clear view of your shoulders, hips, knees and arms, no coach (human or AI) can give you accurate fixes.',
+        howToFix: '1) Stand the camera 8-10 feet away. 2) Show your whole body, head to feet. 3) Bright daylight or even indoor light - avoid backlighting. 4) Hold the camera steady (a tripod or a friend). 5) Frame from the side (down-the-line) for the best swing-plane view.',
+        commonMistakes: ['Camera too close (cuts off feet)', 'Camera too far (body too small)', 'Backlighting (golfer is silhouetted)'],
+        reps: 'Just one good clip',
+        estimatedHandicapImpact: 'Setup for everything else',
+        priority: 'High',
+      }],
+      practicePlan: { summary: 'Re-film your swing first, then come back.', weeklySchedule: [] },
+      nextVideoTip: 'Stand 8-10 feet from the camera, side-view, bright light, head to feet visible.',
+    };
+  }
+
+  const handles = ['The Architect', 'Smooth Operator', 'Big Hitter', 'The Tactician', 'Iron Man', 'The Crusher', 'Steady Hands', 'Power Move'];
+  const handle = handles[Math.floor((frames[0]?.timeMs || 0) / 100) % handles.length];
+
+  const takeaways = generateTakeaways(m);
+  const frameBreakdown = frameBreakdownFromPoses(poses);
+
+  // Summary built from headline metrics
+  const summaryBits = [];
+  if (m.shoulderRotDeg != null) summaryBits.push(`shoulder turn of ${Math.round(m.shoulderRotDeg)}°`);
+  if (m.hipRotDeg != null) summaryBits.push(`hip turn of ${Math.round(m.hipRotDeg)}°`);
+  if (m.headMovePctOfBody != null) summaryBits.push(`head moved ${(m.headMovePctOfBody*100).toFixed(1)}% of body height`);
+  const summary = `Your swing showed a ${summaryBits.join(', ')}. ${
+    takeaways.filter(t => t.priority === 'High').length > 0
+      ? 'There are a couple of high-priority fixes that will pay off the fastest.'
+      : 'The fundamentals are mostly there - the takeaways below will tighten the small stuff.'
+  }`;
+
+  // Pick a positive
+  let positive = 'You took a committed swing - that is half the battle.';
+  if (m.finishHipRot != null && m.finishHipRot >= 75) positive = `You rotated your hips ${Math.round(m.finishHipRot)}° to a nice complete finish at Frame 12.`;
+  else if (m.shoulderRotDeg != null && m.shoulderRotDeg >= 80) positive = `You completed a full ${Math.round(m.shoulderRotDeg)}° shoulder turn at the top (Frame 5) - that is solid power potential.`;
+  else if (m.headMovePctOfBody != null && m.headMovePctOfBody < 0.04) positive = `Your head stayed remarkably still through the swing (only ${(m.headMovePctOfBody*100).toFixed(1)}% of body height of movement). That is a great foundation.`;
+
+  // Ball-flight forecast based on metrics
+  let ballFlight = 'Based on what we see: ';
+  const shots = [];
+  if (m.spineDelta != null && m.spineDelta > 14) shots.push('thin / topped shots and pushes when your body stands up at impact');
+  if (m.leadElbowAtImpact != null && m.leadElbowAtImpact < 150) shots.push('weak slices and pull-cuts from the chicken wing');
+  if (m.headShiftPctAtTop > 0.04) shots.push('pulls and high-spin shots from the reverse pivot');
+  if (m.shoulderRotDeg != null && m.shoulderRotDeg < 60) shots.push('a loss of distance from the short backswing');
+  if (m.hipRotDeg != null && m.shoulderRotDeg != null && m.hipRotDeg > m.shoulderRotDeg * 0.7) shots.push('an inconsistent strike pattern from the over-rotated hips');
+  if (shots.length === 0) ballFlight = 'Your swing pattern looks fairly clean. The most likely miss is a small directional inconsistency that will tighten up with the drills below.';
+  else ballFlight += shots.join('; ') + '. The takeaways below knock those out.';
+
+  // Practice plan combining the top drills
+  const top = takeaways.slice(0, 3);
+  const days = ['Monday', 'Wednesday', 'Friday', 'Saturday'];
+  const practicePlan = {
+    summary: 'Spend three short sessions a week working the top drills, plus one longer range session. Slow reps beat fast reps - golf is a habits game.',
+    weeklySchedule: top.length ? top.map((t, i) => ({
+      day: days[i] || days[0],
+      focus: t.title + ' drill',
+      minutes: 15,
+    })).concat({
+      day: 'Saturday',
+      focus: 'Range session: combine the top drills + 30 full swings',
+      minutes: 30,
+    }) : [],
+  };
+
+  return {
+    playerHandle: handle,
+    cameraAngle: m.cameraAngle,
+    handedness: m.handedness,
+    summary,
+    oneThingYouDidWell: positive,
+    ballFlightExplanation: ballFlight,
+    frameBreakdown,
+    takeaways,
+    practicePlan,
+    nextVideoTip: m.cameraAngle === 'unclear'
+      ? 'Try filming from the side (down-the-line) for the cleanest swing-plane view.'
+      : 'For the next video, try a different angle - if you filmed face-on, try down-the-line. We can spot different things from each view.',
+  };
 }
 
 /* ===== Main flow handlers ===== */
@@ -975,7 +1319,12 @@ function render() {
     ${html}`;
 }
 
-window.addEventListener('DOMContentLoaded', render);
+window.addEventListener('DOMContentLoaded', () => {
+  render();
+  // Warm up TensorFlow + MoveNet in the background so the first analysis
+  // doesn't have to wait for the ~4MB model to download.
+  setTimeout(() => { ensureTf().catch(() => {}); }, 800);
+});
 window.pickFile = pickFile;
 window.onFile = onFile;
 window.runAnalysis = runAnalysis;
