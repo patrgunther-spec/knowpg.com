@@ -86,21 +86,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!SUPABASE_CONFIGURED) { setLoading(false); return; }
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) {
-        const { data: prof } = await supabase
-          .from('profiles').select('*').eq('id', data.session.user.id).maybeSingle();
-        if (prof) {
-          setMe(prof as Profile);
-        } else {
-          await supabase.auth.signOut();
-          setSession(null);
+    (async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        setSession(data.session);
+        if (data.session?.user) {
+          try {
+            const { data: prof } = await supabase
+              .from('profiles').select('*').eq('id', data.session.user.id).maybeSingle();
+            if (prof) {
+              setMe(prof as Profile);
+            } else {
+              await supabase.auth.signOut();
+              setSession(null);
+            }
+          } catch {
+            await supabase.auth.signOut().catch(() => {});
+            setSession(null);
+          }
         }
+      } catch (err) {
+        console.error('[auth init]', err);
+      } finally {
+        initDone.current = true;
+        setLoading(false);
       }
-      initDone.current = true;
-      setLoading(false);
-    });
+    })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_, s) => setSession(s));
     return () => { sub.subscription.unsubscribe(); };
