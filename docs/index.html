@@ -1208,6 +1208,916 @@ function generateTakeaways(m) {
     });
   }
 
+  // ─── 29-100: Wide pool of finer-grained coaching prescriptions ────────
+  // Each fires on a specific measurement range. Many use existing metrics
+  // at additional severity thresholds so the same swing condition can
+  // produce different drills depending on the magnitude.
+
+  // ─── Head sway gradations ─────────────────────────────────────────────
+  if (m.headRelPct > 0.05 && m.headRelPct <= 0.08) {
+    out.push({
+      title: 'Quiet The Tiny Head Wobble',
+      whatToFix: `Your head moved ${(m.headRelPct*100).toFixed(1)}% of body height independently - a small wobble. Not severe, but visible enough to cost a stroke per round.`,
+      whyItMatters: 'Even a small head wobble shifts the low point of your swing arc, which is why your "perfect-feeling" swing sometimes catches a thin shot. Quieting it is the cheapest stroke improvement in golf.',
+      howToFix: '1) Address a ball next to a wall. Put a small piece of tape on the wall at nose height. 2) Make 15 half-swings keeping your nose under the tape. 3) Add full swings, same goal. 4) Visualize your name printed on the back of the ball - read it through impact.',
+      commonMistakes: ['Tensing up trying to freeze the head', 'Forgetting once you swing hard'],
+      reps: '15 wall-tape half-swings + 10 full swings, 3x a week',
+      estimatedHandicapImpact: 'Save 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── Hip slide gradations ─────────────────────────────────────────────
+  if (m.hipSlideAtImpactPct > 0.04 && m.hipSlideAtImpactPct <= 0.07) {
+    out.push({
+      title: 'Quiet The Subtle Hip Slide',
+      whatToFix: `Hips slid ${(m.hipSlideAtImpactPct*100).toFixed(1)}% body height toward the target at impact. Small slide, but enough to leak power. Hips should rotate, not slide.`,
+      whyItMatters: 'Even a small slide eats into rotational power. Pros rotate hard around their lead leg post; amateurs slide. The difference is 10-15 yards on a 7-iron.',
+      howToFix: '1) Put a soft object (small pillow, towel roll) on the ground 6 inches outside your lead foot. 2) Make swings where your lead hip rotates BEHIND you (toward the back pocket) - the pillow stays untouched. 3) 15 reps slow, 15 at speed.',
+      commonMistakes: ['Stopping the hips entirely (rotate, just don\'t slide)', 'Spinning so fast you lose balance'],
+      reps: '15 + 15 hip-rotation swings, 2-3 times a week',
+      estimatedHandicapImpact: 'Add yardage + 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 30. Spine angle preserved (positive feedback / mild flag) ────────
+  if (m.spineDelta != null && m.spineDelta > 6 && m.spineDelta <= 12) {
+    out.push({
+      title: 'Hold Your Posture A Little Tighter',
+      whatToFix: `Spine angle changed by ${Math.round(m.spineDelta)}° from address to impact. You\'re mostly holding posture but losing some - a small bit of early extension.`,
+      whyItMatters: 'A few degrees of posture loss is one of the most common amateur leaks. Tightening this up alone can take a slicer down to a small fade.',
+      howToFix: '1) Set up to a low wall behind you. Get into golf posture with your butt lightly touching. 2) Take half swings keeping the butt-wall contact. 3) Build to full swings. 4) Cue: "stay in the box".',
+      commonMistakes: ['Sitting back too far', 'Locking up the knees', 'Stopping the rotation'],
+      reps: '20 wall-butt swings + 15 range balls, 3x a week',
+      estimatedHandicapImpact: 'Save 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 31. Loss of address knee flex by impact (lead leg) ───────────────
+  if (m.leadKneeStraighteningAtImpact != null
+      && m.leadKneeStraighteningAtImpact > 12
+      && m.leadKneeStraighteningAtImpact <= 24) {
+    out.push({
+      title: 'Soft Post-Up On The Lead Leg',
+      whatToFix: `Lead knee straightened by ${Math.round(m.leadKneeStraighteningAtImpact)}° from address to impact. Some posting is good; this is on the higher end and starts to tip into "jumping" up out of the shot.`,
+      whyItMatters: 'A controlled post-up is a power source. A full knee snap is a body-stand-up that costs you contact quality. Aim for "firm but not locked" lead leg at impact.',
+      howToFix: '1) Place a tennis ball under your lead heel. 2) Make swings where the ball stays compressed (don\'t lift heel). 3) The lead knee can firm up but should keep 10° of flex. 4) 15 reps slow.',
+      commonMistakes: ['Letting the heel come up to "post" - it should stay down', 'Keeping knee TOO bent (some firming is the goal)'],
+      reps: '15 ball-under-heel swings + 15 range balls, 3x a week',
+      estimatedHandicapImpact: 'Add 5-10 yards + save 1 stroke',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 32. Trail elbow slightly flying (medium tier) ────────────────────
+  if (m.trailElbowAtTop != null && m.trailElbowAtTop > 95 && m.trailElbowAtTop <= 110) {
+    out.push({
+      title: 'Tuck The Trail Elbow Just A Touch More',
+      whatToFix: `Trail elbow opened to ${Math.round(m.trailElbowAtTop)}° at the top. Slightly flared. Some space is OK; a touch more tuck creates a steeper downswing path you can control.`,
+      whyItMatters: 'A slightly flying elbow nudges the swing path outside-in, which is the slicer\'s recipe. Pulling the elbow closer to the side body keeps the club on plane.',
+      howToFix: '1) Hold a small towel under the trail armpit lightly. 2) Make slow backswings keeping the towel pinned without squeezing. 3) Take the towel away, feel the same connection. 4) 10 reps.',
+      commonMistakes: ['Pinning the elbow so hard you can\'t turn fully', 'Forgetting once swinging fast'],
+      reps: '10 towel + 10 normal swings, 2x a week',
+      estimatedHandicapImpact: 'Tighter shot pattern',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 33. Quick takeaway tempo (rushed start) ──────────────────────────
+  out.push({
+    title: 'Start The Backswing "Low And Slow"',
+    whatToFix: 'We can\'t measure tempo from still frames perfectly, but most amateurs rush the takeaway, which sets up a chain reaction of poor positions.',
+    whyItMatters: 'A slow, deliberate first move builds width, sets the proper sequence (chest before hands), and gives you a chance to actually feel the club at the top. A quick takeaway forces an even quicker downswing - that\'s where the chaos lives.',
+    howToFix: '1) Place a coin or tee 6 inches behind the ball (target line). 2) Drag the clubhead over that coin/tee on the takeaway - that\'s "low and slow". 3) 15 reps. 4) On the course, count "one - two - three" silently on the takeaway.',
+    commonMistakes: ['Going TOO slow and losing connection', 'Slow takeaway but still rushing transition'],
+    reps: '15 coin-drag swings per range session',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 34. Lead arm bend at top (Low severity) ──────────────────────────
+  if (m.leadElbowAtTop != null && m.leadElbowAtTop >= 150 && m.leadElbowAtTop < 165) {
+    out.push({
+      title: 'Lead Arm Slightly Soft At The Top',
+      whatToFix: `Lead arm was bent to ${Math.round(m.leadElbowAtTop)}° at the top. Most pros are 170°+. A small bend is fine, but you can squeeze a few yards out of cleaning it up.`,
+      whyItMatters: 'A bent lead arm at the top shrinks the swing arc. Bigger arc = more club-head speed. Fixing this alone has added 10+ yards for many amateurs.',
+      howToFix: '1) Take your normal grip with only the lead hand. 2) Make slow takeaways keeping that arm extended. 3) Pause at the top to feel it. 4) Add the trail hand and repeat. 5) 10 reps each.',
+      commonMistakes: ['Locking the elbow stiff', 'Bending it again as you add the trail hand'],
+      reps: '10 lead-hand + 10 two-hand swings, 2-3 times a week',
+      estimatedHandicapImpact: 'Add 5-10 yards',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 35. Subtle reverse pivot ─────────────────────────────────────────
+  if (m.reversePivotPct > 0.02 && m.reversePivotPct <= 0.05) {
+    out.push({
+      title: 'Subtle Reverse Pivot - Load The Trail Side',
+      whatToFix: `Head shifted slightly toward the target on the backswing (${(m.reversePivotPct*100).toFixed(1)}% body height). Not severe, but the weight should clearly go INTO the trail leg on the backswing, not stay neutral.`,
+      whyItMatters: 'A subtle reverse pivot still costs power - you\'re not loading the trail side, which means no spring to unload on the downswing. Even fixing this small leak adds yardage and accuracy.',
+      howToFix: '1) Tee a ball up. 2) Make backswings feeling pressure ROLL INTO your trail heel. 3) Watch in a window or mirror - your head should stay over the ball or just behind it on the way back. 4) 15 reps.',
+      commonMistakes: ['Swaying laterally instead of rotating into the trail leg', 'Lifting the trail heel during the backswing'],
+      reps: '15 pressure-loading backswings, 3x a week',
+      estimatedHandicapImpact: 'Add yardage, 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 36. Mild head lift ───────────────────────────────────────────────
+  if (m.headLiftPct > 0.04 && m.headLiftPct <= 0.08) {
+    out.push({
+      title: 'Stop Bobbing The Head Vertically',
+      whatToFix: `Head lifted ${(m.headLiftPct*100).toFixed(1)}% body height during the swing. Small but visible. Vertical bob is a subtle posture loss.`,
+      whyItMatters: 'A vertical head bob means the spine is straightening up and re-bending. Even a few inches of vertical movement is enough to cause occasional thin or fat shots.',
+      howToFix: '1) Stand 6 inches under an open doorway. 2) Take swings keeping head from touching the doorway. 3) 15 reps. 4) On the course, focus on a single blade of grass behind the ball - keep it in focus through impact.',
+      commonMistakes: ['Tensing the neck', 'Looking up early to track the shot'],
+      reps: '15 doorway-drill swings, 3x a week',
+      estimatedHandicapImpact: 'Save 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 37. Hip turn good but not great (moderate range) ─────────────────
+  if (m.hipRotDeg != null && m.hipRotDeg > 30 && m.hipRotDeg < 42
+      && m.shoulderRotDeg != null && m.shoulderRotDeg > 75) {
+    out.push({
+      title: 'Squeeze A Touch More X-Factor',
+      whatToFix: `Shoulders turned ${Math.round(m.shoulderRotDeg)}°, hips ${Math.round(m.hipRotDeg)}°. X-factor of ${Math.round(m.xFactor || 0)}°. Decent - pros are 40-50° X-factor. Tightening the hips a bit at the top adds free power.`,
+      whyItMatters: 'X-factor (the gap between shoulder turn and hip turn) is one of the strongest predictors of clubhead speed. Going from 35° to 45° X-factor can add 5+ MPH ball speed.',
+      howToFix: '1) Sit on a folding chair backwards (chair-back behind you). 2) Take a backswing with your hips stuck against the chair - shoulders keep turning. 3) Feel the stretch in the lower back. 4) 15 reps.',
+      commonMistakes: ['Locking hips so much you can\'t finish the backswing', 'Sliding back instead of rotating'],
+      reps: '15 chair-restrict swings per range session',
+      estimatedHandicapImpact: 'Add 5-10 yards',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 38. Borderline finish rotation ──────────────────────────────────
+  if (m.finishHipRot != null && m.finishHipRot >= 75 && m.finishHipRot < 88) {
+    out.push({
+      title: 'Finish All The Way To The Target',
+      whatToFix: `Finish hip rotation was ${Math.round(m.finishHipRot)}°. Almost there - pros finish at 90°+ with belt buckle facing the target. The last 10° matters.`,
+      whyItMatters: 'A 90% finish means your body slowed slightly THROUGH impact instead of after. Even subtle deceleration costs distance and adds inconsistency.',
+      howToFix: '1) Practice swings where you HOLD the finish for 5 seconds. 2) Check that your belt buckle is past the target. 3) 15 holds.',
+      commonMistakes: ['Cutting the swing short', 'Falling off-balance trying to over-rotate'],
+      reps: '15 hold-finish reps per range session',
+      estimatedHandicapImpact: 'Save 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 39. Stance slightly wide ────────────────────────────────────────
+  if (m.stanceVsShoulders != null && m.stanceVsShoulders >= 1.2) {
+    out.push({
+      title: 'Narrow The Stance A Touch',
+      whatToFix: `Stance was ${m.stanceVsShoulders.toFixed(2)}x your shoulder width. For most irons, 1.0-1.1x is optimal. Too wide makes it hard to fully rotate.`,
+      whyItMatters: 'An overly wide stance locks the lower body and forces an arm-heavy swing. You\'ll lose rotational power and feel "stuck" at impact.',
+      howToFix: '1) Stand tall, feet under armpits. 2) Look down - feet should be under outer edges of shoulders. 3) Practice this setup in front of a mirror. 4) Driver can be a touch wider; irons should match shoulder width.',
+      commonMistakes: ['Going too narrow now (you lose balance)', 'Different width for every club without a system'],
+      reps: '5 min mirror setup checks daily for a week',
+      estimatedHandicapImpact: 'Save 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 40. Excellent address bend - reinforcement ──────────────────────
+  if (m.addressSpineTilt != null && m.addressSpineTilt >= 20 && m.addressSpineTilt <= 35) {
+    // Sweet spot - we don't add a takeaway here. (Positive feedback handled elsewhere.)
+  } else if (m.addressSpineTilt != null && m.addressSpineTilt > 35) {
+    out.push({
+      title: 'Stand A Little Taller At Address',
+      whatToFix: `Forward bend at address was ${Math.round(m.addressSpineTilt)}° from vertical. That\'s a lot - we want 25-30°. Too much bend cramps your turn and forces a steep swing.`,
+      whyItMatters: 'Excessive forward bend means you\'re reaching for the ball and your turn is restricted by the head being so low. You\'ll come over the top and slice.',
+      howToFix: '1) Stand tall, club at chest level. 2) Hinge from the hips - not the waist - until the club points down at the ball. 3) Slight knee flex. 4) Look in a mirror: ear-shoulder-hip should be close to vertical with bend only from the hips.',
+      commonMistakes: ['Bending from the waist instead of the hips', 'Looking straight down at the ball - the eyes should look DOWN ANGLE'],
+      reps: '5 min mirror setup checks daily',
+      estimatedHandicapImpact: 'Better path + 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 41. X-factor zero / negative (hips out-rotated shoulders) ────────
+  if (m.xFactor != null && m.xFactor < 5
+      && m.hipRotDeg != null && m.shoulderRotDeg != null
+      && m.shoulderRotDeg > 30) {
+    out.push({
+      title: 'Get Some Separation Between Shoulders And Hips',
+      whatToFix: `X-factor was nearly zero - hips turned almost as much as shoulders. There is no separation between upper and lower body at the top. That eliminates the spring-loaded power source.`,
+      whyItMatters: 'Without X-factor, your downswing has no stored rotational energy to unleash. You end up swinging with arms only, and even a tour-level grip and swing path won\'t make up for the missing power.',
+      howToFix: '1) Sit on a chair. Make backswings keeping your butt firmly on the chair - hips can\'t turn. Shoulders go full. 2) Stand and repeat with hips slightly less restricted. 3) 20 reps. 4) The feel is "shoulders past where hips would normally let them".',
+      commonMistakes: ['Hips frozen and unable to do anything (small turn IS allowed)', 'Pelvic tilt instead of rotation'],
+      reps: '20 chair-sit swings, 4 times a week for 2 weeks',
+      estimatedHandicapImpact: 'Add 15-25 yards + Save 2-3 strokes per round',
+      priority: 'High',
+    });
+  }
+
+  // ─── 42. Lead foot weight at impact (estimation from hip position) ────
+  // If hips slid TOWARD trail at impact (rare but possible)
+  // We approximate this from hip mid x at impact vs at address
+  if (m.hipSlideAtImpactPct != null && m.hipSlideAtImpactPct < 0.01
+      && m.hipRotDeg != null && m.hipRotDeg > 30) {
+    out.push({
+      title: 'Transfer Pressure Onto Your Lead Foot',
+      whatToFix: 'Hips barely moved laterally toward the target through impact, which suggests the weight stayed neutral instead of transferring to the lead side. You want a clear pressure shift.',
+      whyItMatters: 'Without weight transfer, the body has to use arm strength to generate power. You also struggle to compress the ball - your strikes will be inconsistent.',
+      howToFix: '1) Imagine a small wall outside your lead foot. 2) On the downswing, your lead hip rotates BACK toward that wall. 3) Pressure moves into the lead foot. 4) 15 slow swings feeling pressure shift.',
+      commonMistakes: ['Sliding hips toward target (this is rotational, not lateral)', 'Tipping the body forward'],
+      reps: '15 pressure-shift swings per range session',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 43. Address hands too far forward ────────────────────────────────
+  if (m.handAtAddrOffsetPct != null && m.handAtAddrOffsetPct > 0.07
+      && m.cameraAngle === 'face-on') {
+    out.push({
+      title: 'Don\'t Over-Press Your Hands At Address',
+      whatToFix: `Hands were ${(m.handAtAddrOffsetPct*100).toFixed(1)}% of body height ahead of the stance center at address. Slight forward press is good (~2 inches); this is too aggressive and de-lofts the club excessively.`,
+      whyItMatters: 'Hands too far forward de-lofts the club, which causes shots to fly lower than expected and reduces backspin. You also tend to hit the ground before the ball (fat shots) because the club gets too steep.',
+      howToFix: '1) Setup with hands just inside lead thigh - even with the leading edge. 2) Practice this static for 5 minutes a day. 3) On the range, focus on a slight - not extreme - press. 4) Use a mirror to verify.',
+      commonMistakes: ['Pushing hands so far the lead arm gets stiff', 'Compensating by playing the ball further forward'],
+      reps: '5 min mirror setup + 10 range checks daily for a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 44. Excellent shoulder turn - positive note (no actual takeaway) ─
+  // Skipped - feedback handled elsewhere.
+
+  // ─── 45-50: Generic position-specific cues that are always applicable ─
+  out.push({
+    title: 'Sequence: Lower Body First On The Downswing',
+    whatToFix: 'A common amateur pattern is the hands starting the downswing while the lower body is still moving back. The correct order is hips, then torso, then arms, then hands - bottom up.',
+    whyItMatters: 'When the arms start the downswing, you guarantee an over-the-top move and a slice. When the lower body starts first, the club drops into the slot and the arms have time to deliver.',
+    howToFix: '1) Take a backswing and PAUSE at the top. 2) From the pause, your FIRST move is a small bump of pressure into the lead foot, NOT a hand move. 3) Then let the body rotate, then the arms. 4) 10 pause-and-bump swings.',
+    commonMistakes: ['Bumping the hips too aggressively (it\'s a smooth pressure shift)', 'Forgetting to let the arms catch up'],
+    reps: '10 pause-and-bump swings per range session',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 46. Address ball-position check ──────────────────────────────────
+  out.push({
+    title: 'Verify Your Ball Position For Each Club',
+    whatToFix: 'Ball position by club: wedges and short irons - middle of stance. Mid-irons - just forward of center. Long irons/hybrids - half a ball forward. Fairway woods - a ball forward of center. Driver - lined up with lead heel.',
+    whyItMatters: 'Wrong ball position causes you to add compensations in the swing to "find" the ball. Even a perfect swing won\'t work if the ball is in the wrong spot.',
+    howToFix: '1) Take 5 minutes to set up a club at each ball position on the practice mat. 2) Note where each one lands relative to your stance. 3) Build a routine: same ball position every time for each club. 4) Use alignment sticks at first to lock it in.',
+    commonMistakes: ['Letting ball position drift forward over time without realizing it', 'Different position for the same club depending on shot shape'],
+    reps: '5 min ball-position practice before every range session',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 47. Connection drill (universal) ─────────────────────────────────
+  out.push({
+    title: 'Keep The Arms Connected To The Body',
+    whatToFix: 'A general amateur tendency is for the arms to disconnect from the body in the backswing or downswing, which causes the club to drift off plane.',
+    whyItMatters: 'Connected arms swing on the proper plane automatically. Disconnected arms lift, dip, and twist independently, creating chaos in your impact position.',
+    howToFix: '1) Stick a small headcover or pillow under your lead armpit. 2) Make swings keeping the headcover in place from address through impact. 3) 20 reps. 4) Drop the headcover, repeat. Feel the same connection.',
+    commonMistakes: ['Squeezing so tight you can\'t turn', 'Letting it drop on the downswing'],
+    reps: '20 headcover-under-armpit swings, 3x a week',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 48. Trail leg position ───────────────────────────────────────────
+  if (m.trailKneeFinish != null && m.trailKneeFinish >= 155 && m.trailKneeFinish < 170) {
+    out.push({
+      title: 'Let The Trail Leg Fully Release',
+      whatToFix: `Trail knee was at ${Math.round(m.trailKneeFinish)}° at finish - close to straight but not fully. A fully released trail leg is straight and the heel is up off the ground.`,
+      whyItMatters: 'A trail leg that doesn\'t fully release means you didn\'t use the ground forces on the downswing. Free yards available here.',
+      howToFix: '1) Make swings where your trail heel comes up early in the downswing. 2) By impact, only the trail toe touches the ground. 3) By finish, trail leg is fully extended. 4) 15 reps.',
+      commonMistakes: ['Lifting heel too early (during backswing)', 'Pushing the heel up artificially - it should be a natural result of rotation'],
+      reps: '15 heel-up swings per range session',
+      estimatedHandicapImpact: 'Add yardage',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 49. Address: alignment check (universal) ─────────────────────────
+  out.push({
+    title: 'Check Your Alignment With Sticks',
+    whatToFix: 'Most amateurs aim WAY right (lefties: left) without realizing it. Even a small alignment error - 5° - causes a 15-yard miss at 150 yards.',
+    whyItMatters: 'You can have a perfect swing and still miss the green if your alignment is off. Alignment is the most overlooked amateur error because you can\'t feel it without a check.',
+    howToFix: '1) Carry two alignment sticks to the range. 2) Lay one on the ground parallel to your target line just outside the ball. 3) Lay the second parallel to the first, just outside your feet. 4) Take 20 swings with the sticks in place. 5) Develop a feel for what proper alignment looks like.',
+    commonMistakes: ['Aiming the body at the target instead of parallel-left of it', 'Aligning shoulders independently of feet'],
+    reps: '5 min alignment-stick warmup every range session',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 50. Impact: head behind ball (estimate from nose vs ankle mid) ───
+  // Approximate "head behind ball" check from impact pose.
+  // We have noseImpactRelativeToAddress already (covered in head metrics).
+  // Skip to avoid double-firing.
+
+  // ─── 51. Tempo cue (different from earlier tempo) ─────────────────────
+  out.push({
+    title: 'Use The "Click Click" Internal Tempo',
+    whatToFix: 'Different from the standard 3:1 ratio: many pros use a simple "1-2" internal clock. Backswing on "1", downswing on "2". Slow, deliberate, consistent.',
+    whyItMatters: 'Conscious tempo is the closest thing to a swing fix that works for every level. Even on bad swing days, good tempo limits the damage.',
+    howToFix: '1) Take 10 practice swings counting silently "1...2" - back on 1, down on 2. 2) Build it into your pre-shot routine. 3) On the course, if shots get squirrely, return to "1-2".',
+    commonMistakes: ['Going too fast on the 1 (rushed takeaway)', 'Inconsistent counts between shots'],
+    reps: '10 1-2 swings before every range session',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 52. Wrist hinge ─────────────────────────────────────────────────
+  out.push({
+    title: 'Set The Wrists By Halfway Back',
+    whatToFix: 'Most amateurs either hinge the wrists too early (cocky takeaway) or too late (no hinge until top). The proper timing is "by the time the lead arm is parallel to the ground, the wrists are fully set".',
+    whyItMatters: 'Wrist hinge stores energy. Late hinge means no time to fully load. Early hinge breaks the one-piece takeaway and creates a flippy impact.',
+    howToFix: '1) Take the club to halfway back (lead arm parallel to ground). 2) Stop. The club should be perpendicular to your arm - L-shape. 3) That\'s where you set the wrists. 4) Practice this static position 10 times. 5) Add full swings keeping the same feel.',
+    commonMistakes: ['Setting the wrists with hand action only (it\'s a passive set as the club swings up)', 'Not setting them at all'],
+    reps: '10 L-shape static + 10 swings, 3x a week',
+    estimatedHandicapImpact: 'Add yardage + better contact',
+    priority: 'Low',
+  });
+
+  // ─── 53. Pre-shot routine ─────────────────────────────────────────────
+  out.push({
+    title: 'Build A Consistent Pre-Shot Routine',
+    whatToFix: 'No data needed to flag this: every amateur benefits from a fixed routine. Practice swings, alignment, breath, target focus, then swing. The exact same way every time.',
+    whyItMatters: 'A consistent routine is how you bring range-quality swings to the course under pressure. The routine itself becomes a trust signal: "I always do this, I trust it, swing freely".',
+    howToFix: '1) Define your routine: e.g., 2 practice swings, step in, look at target twice, settle, breathe, swing. 2) Write it down. 3) Use it for every shot for 3 weeks. 4) Make minor adjustments.',
+    commonMistakes: ['Skipping the routine when behind a group', 'Adding extra waggle/looks when nervous'],
+    reps: 'Used on every shot for 3 weeks',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round (on-course)',
+    priority: 'Low',
+  });
+
+  // ─── 54. Trail wrist hinge ────────────────────────────────────────────
+  out.push({
+    title: 'Cup The Trail Wrist At The Top',
+    whatToFix: 'The trail wrist (right wrist for righties) should be hinged backward (cupped) at the top - not flat, not bowed. This is "extension" of the wrist.',
+    whyItMatters: 'A cupped trail wrist at the top sets up a square clubface at impact. A flat or bowed trail wrist tends to send the club open or shut.',
+    howToFix: '1) Take a backswing and stop at the top. 2) Look at your trail wrist in a mirror. 3) It should be bent backward - like the wrist position when you make a "stop" gesture. 4) 10 static reps in a mirror.',
+    commonMistakes: ['Over-cupping (looks weak)', 'Flat wrist (face shut)', 'Bowed wrist (face shut even more)'],
+    reps: '10 static-top mirror reps daily',
+    estimatedHandicapImpact: 'Tighter shot pattern',
+    priority: 'Low',
+  });
+
+  // ─── 55. Lead wrist position at impact ────────────────────────────────
+  out.push({
+    title: 'Bow The Lead Wrist Slightly At Impact',
+    whatToFix: 'At impact, the lead wrist (left wrist for righties) should be flat or slightly bowed - not cupped. A cupped lead wrist adds loft and weak shots.',
+    whyItMatters: 'A flat or bowed lead wrist at impact creates forward shaft lean and compression. It\'s a signature of every great ball striker - and a common amateur weakness.',
+    howToFix: '1) Hit short pitch shots focused on a flat lead wrist at impact. 2) Use a hat or club shaft taped to the lead forearm to give wrist feedback. 3) 20 short shots, build to fuller swings. 4) Cue: "knuckles toward the target".',
+    commonMistakes: ['Bowing the wrist too aggressively (clubface shuts)', 'Flipping the wrist at impact (scoop)'],
+    reps: '20 short shots per range session for 2 weeks',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round (better strike)',
+    priority: 'Medium',
+  });
+
+  // ─── 56. Eyes/sight line at address ───────────────────────────────────
+  out.push({
+    title: 'Keep Your Eyes Down-Plane At Address',
+    whatToFix: 'A common cause of head sway and pickup is looking at the ball with both eyes level. Slight chin tilt - so the LEAD eye is dominant looking at the ball - is what tour pros do.',
+    whyItMatters: 'A level head means you have to swing UNDER your chin, which is awkward. A slight chin tilt clears the lead shoulder and lets you turn fully through.',
+    howToFix: '1) Address the ball. 2) Tilt your chin slightly toward the trail shoulder - your nose points down at the ball but at a tiny angle. 3) Practice this static for a week. 4) Watch any pro on TV - their chin is tilted.',
+    commonMistakes: ['Tilting the entire head (just the chin moves)', 'Closing one eye'],
+    reps: '5 min mirror practice daily for a week',
+    estimatedHandicapImpact: 'Better turn + 1 stroke per round',
+    priority: 'Low',
+  });
+
+  // ─── 57. Lead arm pre-impact ──────────────────────────────────────────
+  out.push({
+    title: 'Drive The Lead Shoulder Through Impact',
+    whatToFix: 'A common amateur error is keeping the lead shoulder back too long (looking at the ball) instead of rotating it through. The lead shoulder should be moving INTO the target by impact.',
+    whyItMatters: 'Stalling the lead shoulder is the same as stalling the body. The arms then have to whip independently - flippy, inconsistent.',
+    howToFix: '1) Take swings feeling the lead shoulder ROTATE up and away from the ball through impact. 2) The lead shoulder should be higher than the trail shoulder at impact. 3) 15 reps focusing on lead shoulder action.',
+    commonMistakes: ['Pulling the shoulder up too high', 'Spinning so fast the body opens too early'],
+    reps: '15 lead-shoulder-drive swings per range session',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 58. Trail elbow position downswing ───────────────────────────────
+  out.push({
+    title: 'Drop The Trail Elbow Into The Slot',
+    whatToFix: 'In transition, the trail elbow should drop down toward the trail hip - "into the slot". A common error is the elbow staying high or moving outward, which is "over the top".',
+    whyItMatters: 'A trail elbow in the slot shallows the swing plane and produces an inside-out path. That\'s a draw / straight ball. Elbow OUT of the slot means slice city.',
+    howToFix: '1) Pause at the top. 2) From there, drop the trail elbow toward your trail hip BEFORE rotating. 3) 10 pause-and-drop reps. 4) The feel is "the elbow drops while the chest still faces away from target".',
+    commonMistakes: ['Hand-only move (drop happens with the elbow, not the hand)', 'Dropping too far behind the body'],
+    reps: '10 pause-and-drop swings + 10 normal swings, 3x a week',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 59. Through-swing extension ──────────────────────────────────────
+  out.push({
+    title: 'Extend Both Arms Past Impact',
+    whatToFix: 'A common error is the trail arm staying short/bent past impact. Both arms should reach out toward the target - long and extended - in the post-impact zone.',
+    whyItMatters: 'Both arms extending past impact is the visible signature of a powerful release. Short arms past impact means you stopped accelerating.',
+    howToFix: '1) Make swings where both arms PUNCH toward the target after impact - like throwing a ball with both hands. 2) Hold the position briefly. 3) 15 reps.',
+    commonMistakes: ['Letting one arm be longer than the other (lead arm folds)', 'Stopping the swing rather than extending'],
+    reps: '15 punch-through swings per range session',
+    estimatedHandicapImpact: 'Add yardage + better strike',
+    priority: 'Medium',
+  });
+
+  // ─── 60. Trail shoulder release ───────────────────────────────────────
+  out.push({
+    title: 'Let The Trail Shoulder Rotate Past Your Chin',
+    whatToFix: 'In the follow-through, the trail shoulder should rotate UNDER your chin and continue past it - "right shoulder kisses the chin" for righties.',
+    whyItMatters: 'A trail shoulder that doesn\'t rotate through means the body slowed. The arms continue but the body lags - that causes blocks and weak fades.',
+    howToFix: '1) Take swings ending with the trail shoulder pointing AT the target. 2) Hold the finish. 3) Check: is your chin near or past the trail shoulder? 4) 15 reps.',
+    commonMistakes: ['Cutting the swing short', 'Falling off-balance'],
+    reps: '15 full-shoulder-rotation swings',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 61. Address: spine straight (not rounded) ────────────────────────
+  out.push({
+    title: 'Keep The Spine Long At Address',
+    whatToFix: 'A common posture error is rounding the upper back, like a "C-curve". The spine should be relatively straight - imagine balancing a book on your back.',
+    whyItMatters: 'A rounded spine restricts rotation and forces compensations. A long, straight spine sets up an athletic turn.',
+    howToFix: '1) Stand tall. 2) Hinge from hips, keeping the chest "proud". 3) Maintain the line from neck through tailbone. 4) Use a mirror to verify.',
+    commonMistakes: ['Sticking the chest too far out (looks military)', 'Hinging from waist not hips'],
+    reps: '5 min mirror posture work daily',
+    estimatedHandicapImpact: 'Better rotation + 1 stroke per round',
+    priority: 'Low',
+  });
+
+  // ─── 62. Address: weight 50/50 ────────────────────────────────────────
+  out.push({
+    title: 'Start With 50/50 Weight At Address',
+    whatToFix: 'For most full shots, weight should be 50/50 between the feet at address. Many amateurs lean toward the trail side or the lead side without realizing.',
+    whyItMatters: 'Tilted weight at address creates a fixed bias that\'s hard to correct mid-swing. 50/50 sets up neutral weight transfer.',
+    howToFix: '1) Set up to a ball. 2) Shift weight to balls of feet, then back to heels, then settle at center. 3) Both feet feel equally pressured. 4) Confirm in a mirror.',
+    commonMistakes: ['Heels-only weight (you\'ll fall back)', 'Toes-only weight (you\'ll fall forward)'],
+    reps: '5 min weight-check practice daily',
+    estimatedHandicapImpact: 'Save 1 stroke per round',
+    priority: 'Low',
+  });
+
+  // ─── 63. Pressure rolling - dynamic weight transfer ───────────────────
+  out.push({
+    title: 'Feel Pressure Rolling - Lead, Trail, Lead',
+    whatToFix: 'During the swing, pressure rolls through your feet in a specific pattern: starts 50/50, moves to the trail foot on the backswing, then back to the lead foot on the downswing.',
+    whyItMatters: 'Pressure transfer is the engine of the swing. Without it, you\'re swinging arms-only. With it, you\'re using the ground.',
+    howToFix: '1) Slowly rehearse the pattern WITHOUT a club: weight starts center, shifts to trail on takeaway, returns to lead on downswing. 2) Do this 10 times feeling each phase. 3) Add a club, repeat. 4) Add ball, repeat.',
+    commonMistakes: ['Sliding the body instead of transferring pressure through the feet', 'Skipping the trail-foot load'],
+    reps: '10 pressure-rehearsals before every range session',
+    estimatedHandicapImpact: 'Add yardage + 2 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 64. Backswing rotation around spine ──────────────────────────────
+  out.push({
+    title: 'Rotate Around Your Spine - Not Around The Ball',
+    whatToFix: 'A common error: the swing rotates around the ball (head moves forward and back). It should rotate around the spine (head stays roughly stable, body turns around it).',
+    whyItMatters: 'Rotating around the ball causes massive sway. Rotating around the spine is the foundation of consistent contact.',
+    howToFix: '1) Stand in front of a window or mirror. 2) Make slow backswings watching your nose - it should stay close to its starting position. 3) Shoulders rotate around the spine. 4) 20 slow reps.',
+    commonMistakes: ['Trying to "freeze" the head (it\'s rotation that keeps it steady, not freezing)', 'Excessive head movement disguised as turning'],
+    reps: '20 mirror-rotation reps, 2x a week',
+    estimatedHandicapImpact: 'Save 2 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 65. Backswing checkpoint - club parallel ─────────────────────────
+  out.push({
+    title: 'Check Halfway-Back Position In A Mirror',
+    whatToFix: 'At halfway-back (lead arm parallel to ground), three things should be true: club shaft parallel to target line, club face matches spine angle, hands in front of chest.',
+    whyItMatters: 'Halfway-back is the cleanest checkpoint in the entire backswing. Get this right and the top of backswing usually follows.',
+    howToFix: '1) Swing to halfway-back and freeze. 2) Look in a mirror: shaft pointing toward target, face tilted ~30° (matches spine), hands in front of chest. 3) 10 static reps. 4) Take swings with this position as the goal.',
+    commonMistakes: ['Hands too far inside (hands behind body line)', 'Face open (toe pointing straight up)', 'Hands too far forward'],
+    reps: '10 mirror-halfway reps daily for 2 weeks',
+    estimatedHandicapImpact: 'Better backswing + 1-2 strokes',
+    priority: 'Low',
+  });
+
+  // ─── 66. Smooth deceleration after impact ─────────────────────────────
+  out.push({
+    title: 'Accelerate Through The Ball, Not To The Ball',
+    whatToFix: 'A common error is the swing peaking AT the ball - meaning you actually start decelerating into the ball. Acceleration should peak AFTER the ball.',
+    whyItMatters: 'Deceleration into impact is the death of distance and accuracy. The clubhead should be fastest a few inches past the ball, not at the ball.',
+    howToFix: '1) Make swings where you "throw" the clubhead toward the target after impact. 2) Use a foot-long alignment stick (or pencil) 6 inches past the ball - hit through it. 3) Listen for the "whoosh" - it should be past the ball.',
+    commonMistakes: ['Letting up at the ball (consciously slowing)', 'Holding off the release'],
+    reps: '15 whoosh-through swings per range session',
+    estimatedHandicapImpact: 'Add yardage + 1 stroke per round',
+    priority: 'Medium',
+  });
+
+  // ─── 67. Grip strength check ──────────────────────────────────────────
+  out.push({
+    title: 'Verify Your Grip Strength',
+    whatToFix: 'Look at your lead hand at address: how many knuckles do you see? 2-3 knuckles = neutral. 1 = weak (slice prone). 4 = strong (hook prone).',
+    whyItMatters: 'Grip strength is the silent driver of ball flight. 90% of grip-related shot problems can be fixed in 5 minutes with a grip change.',
+    howToFix: '1) Take your normal grip and count knuckles. 2) If you see 1 or 4, adjust until you see 2-3. 3) Take 20 swings with the new grip - it will feel weird. 4) Stick with it for 2 weeks. The new grip becomes normal.',
+    commonMistakes: ['Changing grip mid-round (don\'t)', 'Going too strong to "cure" a slice (you can over-rotate and hook)'],
+    reps: 'Verify grip every range session for 2 weeks',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round (path fix)',
+    priority: 'Medium',
+  });
+
+  // ─── 68. Trail elbow checkpoint at impact ─────────────────────────────
+  out.push({
+    title: 'Trail Elbow Inside The Hip At Impact',
+    whatToFix: 'At impact, the trail elbow should be tucked just in front of the trail hip - not flying out behind, not stuck on the rib cage.',
+    whyItMatters: 'A trail elbow in this position is THE signature of every great ball striker. It guarantees forward shaft lean, body rotation, and a powerful release.',
+    howToFix: '1) Practice the "pump drill": from the top, slowly drop the trail elbow toward the trail hip. Pause. Then rotate through. 2) 10 pump reps. 3) Take swings keeping the pump feeling.',
+    commonMistakes: ['Letting the elbow get stuck on the rib (it should be slightly in front)', 'Letting it fly out (over the top)'],
+    reps: '10 pump + 10 normal swings, 3x a week',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 69. Visual focus ─────────────────────────────────────────────────
+  out.push({
+    title: 'Stare At The Back Of The Ball, Not The Whole Ball',
+    whatToFix: 'A subtle but powerful change: instead of looking at the ball as a whole, focus on a specific dot or dimple on the back of the ball.',
+    whyItMatters: 'A specific focal point quiets the head, improves contact, and reduces "look up early" misses. Pros use this technique constantly.',
+    howToFix: '1) Mark a ball with a Sharpie - a single dot. 2) At address, focus on that dot. 3) Through the swing, keep the dot in your vision. 4) Don\'t look up until you sense the club going past.',
+    commonMistakes: ['Staring so hard you tense up', 'Forgetting once you start hitting'],
+    reps: 'Apply for every shot for 1 week',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 70. Backswing tempo check ────────────────────────────────────────
+  out.push({
+    title: 'Match Your Tempo To A Famous Pro',
+    whatToFix: 'Tour pros have varying tempos but each is internally consistent. Find a pro whose tempo matches your natural rhythm - quick (Rickie Fowler), medium (Adam Scott), slow (Ernie Els).',
+    whyItMatters: 'A consistent tempo is more important than the SPEED of the tempo. Whether you swing fast or slow, the same tempo every shot is what matters.',
+    howToFix: '1) Watch slow-motion videos of a pro whose tempo you like. 2) Internalize the rhythm - "back...down". 3) Practice your swing humming or counting that rhythm. 4) 10 reps with the tempo.',
+    commonMistakes: ['Trying to copy a slow pro\'s swing if you\'re a fast person (it doesn\'t feel natural)', 'Inconsistent tempo from shot to shot'],
+    reps: '10 tempo-matched swings per range session',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 71. Lower body initiation drill ──────────────────────────────────
+  out.push({
+    title: 'Use The Step-Through Drill For Sequencing',
+    whatToFix: 'Most amateurs initiate the downswing with their upper body. The step-through drill physically teaches lower-body-first sequencing.',
+    whyItMatters: 'This is one of the most powerful drills in golf. It forces correct sequencing automatically.',
+    howToFix: '1) Address the ball with feet TOGETHER. 2) On the backswing, lift the lead foot. 3) Start the downswing by STEPPING the lead foot back to your normal stance width - that\'s the bump. 4) Then rotate and hit. 5) 10 reps with a 7-iron.',
+    commonMistakes: ['Stepping too aggressively', 'Forgetting to rotate through after the step'],
+    reps: '10 step-through drills before every range session',
+    estimatedHandicapImpact: 'Save 2 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 72. Through-swing finish ─────────────────────────────────────────
+  out.push({
+    title: 'Pose The Finish For 3 Seconds',
+    whatToFix: 'A simple but effective discipline: after every swing, HOLD your finish position for 3 full seconds before relaxing.',
+    whyItMatters: 'Holding the finish forces you to swing in balance. If you\'re off-balance, you\'ll know immediately. It also extends your acceleration through the ball.',
+    howToFix: '1) After every swing, freeze the finish. Count "1...2...3" before you move. 2) Adjust if you\'re falling off-balance. 3) Apply for 20 swings per range session.',
+    commonMistakes: ['Hurrying out of the pose', 'Letting balance drift during the count'],
+    reps: '20 hold-finish swings per range session',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 73-75: General philosophy / mental ──────────────────────────────
+  out.push({
+    title: 'Hit One Less Club, Swing Smoother',
+    whatToFix: 'A general performance principle: take one more club than your "perfect" yardage and swing at 80%. Smoother swing, better contact.',
+    whyItMatters: 'Most amateurs reach for less club and swing 100% to "muscle" it there. The smoother swing with more club almost always produces better strikes and more accurate distance.',
+    howToFix: '1) Know your full-swing yardages. 2) On the course, take ONE more club than the yardage says. 3) Swing at 80% feel. 4) Notice how often you reach the same distance with better contact.',
+    commonMistakes: ['Reverting to "must swing harder" mentality', 'Misjudging actual distances'],
+    reps: 'Apply on the course for 5 rounds',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 74. Pre-swing visualization ──────────────────────────────────────
+  out.push({
+    title: 'Visualize The Shot Before You Swing',
+    whatToFix: 'Most amateurs skip this entirely. Pros use 5-10 seconds before every shot to clearly visualize the ball flight, landing spot, and rollout.',
+    whyItMatters: 'Visualization primes the brain and body to execute the shape and distance you\'ve pictured. Skipping it leaves your swing executing without a clear target.',
+    howToFix: '1) After your alignment, before the swing, look at the target. 2) Imagine the ball flying there - shape, trajectory, landing spot. 3) Make 1-2 practice swings feeling that shot. 4) Step in and execute.',
+    commonMistakes: ['Skipping when in a hurry', 'Vague visualization (be specific)'],
+    reps: 'Every shot for 3 rounds',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round (on-course)',
+    priority: 'Low',
+  });
+
+  // ─── 75. Tee height ──────────────────────────────────────────────────
+  out.push({
+    title: 'Tee The Ball At The Right Height For Driver',
+    whatToFix: 'Driver tee height should be: half the ball above the top edge of the driver crown when the club is grounded. Most amateurs tee too low.',
+    whyItMatters: 'Wrong tee height forces compensations. Too low = hitting down on the driver (huge spin, low launch). Too high = hitting up too much (sky marks, weak fades).',
+    howToFix: '1) Ground the driver next to the tee. 2) Tee the ball so HALF the ball is above the crown. 3) That\'s the optimal height for most drivers. 4) Adjust based on launch monitor data if available.',
+    commonMistakes: ['Same tee height for every club', 'Adjusting tee height to fix a fault (fix the swing, not the tee)'],
+    reps: 'Check before every driver shot for a week',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round (driving)',
+    priority: 'Low',
+  });
+
+  // ─── 76. Ball striking compression ────────────────────────────────────
+  out.push({
+    title: 'Compress The Ball - Ball First, Turf Second',
+    whatToFix: 'With irons, the club should hit the BALL FIRST, then the turf. A divot should start where the ball was, not behind it.',
+    whyItMatters: 'Ball-first contact creates compression, backspin, and consistent distances. Turf-first (fat) creates short, weak shots.',
+    howToFix: '1) Place a tee in the ground a ball-width in front of the ball (target side). 2) Make swings where your divot starts at the ball and ends past the tee. 3) Use a towel behind the ball - don\'t hit the towel.',
+    commonMistakes: ['Trying to "scoop" the ball into the air (let the club do that)', 'Hanging back to hit it up (wrong direction)'],
+    reps: '15 towel-behind-ball swings, 3x a week',
+    estimatedHandicapImpact: 'Save 3-4 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 77. Short game emphasis ──────────────────────────────────────────
+  out.push({
+    title: 'Spend 50% Of Practice On Short Game',
+    whatToFix: 'Most amateurs spend 80% of practice on full swings. Pros spend 50% on short game (within 100 yards). Strokes are saved on the green.',
+    whyItMatters: 'Lowering your handicap by 5 strokes from your swing requires hundreds of hours. Lowering by 5 strokes via short game can be done in 50 hours.',
+    howToFix: '1) Allocate half your practice time to chipping, pitching, bunkers, and putting. 2) Use only one wedge to start. 3) Build feel for 30, 50, 70 yard shots.',
+    commonMistakes: ['Hitting full driver swings only', 'Skipping the short game range'],
+    reps: 'Half of every practice session for 1 month',
+    estimatedHandicapImpact: 'Save 5+ strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 78. Putting fundamentals ─────────────────────────────────────────
+  out.push({
+    title: 'Build A Repeatable Putting Stroke',
+    whatToFix: 'Putting accounts for 40% of strokes for most amateurs. Spend dedicated time on putting fundamentals: setup, alignment, stroke length, tempo.',
+    whyItMatters: 'A 36-putt round can become a 30-putt round with focused practice. 6 strokes off your score, just from putting.',
+    howToFix: '1) Practice 3-footers until you make 25 in a row. 2) Then 5-footers. 3) Then long lag putts focusing on distance control. 4) Spend 30 min on putting before every range session.',
+    commonMistakes: ['Skipping practice greens', 'Only working on long putts (3-footers are where strokes live)'],
+    reps: '30 min putting practice 4x a week',
+    estimatedHandicapImpact: 'Save 4-6 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 79. Chipping technique ───────────────────────────────────────────
+  out.push({
+    title: 'Master The Basic Chip - Narrow Stance, Hands Forward',
+    whatToFix: 'A clean chip is built on a narrow stance, ball back, hands well forward, weight on lead foot, minimal wrist action.',
+    whyItMatters: 'Chipping is consistent contact and predictable rollout. Get good at one chip shape and you\'ll save strokes everywhere.',
+    howToFix: '1) Narrow stance (heels 6 inches apart). 2) Ball middle-back. 3) Hands ahead of ball. 4) Weight 70% on lead foot. 5) Swing like a putt - shoulders rock, hands quiet. 6) 20 chips to a target.',
+    commonMistakes: ['Wristy stroke (creates inconsistent contact)', 'Open stance with full swing'],
+    reps: '20 chips per practice session',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 80. Bunker basics ────────────────────────────────────────────────
+  out.push({
+    title: 'Open The Clubface In Bunkers, Use Bounce',
+    whatToFix: 'In greenside bunkers, open the clubface BEFORE you grip, splash sand 2 inches behind the ball, swing fully through.',
+    whyItMatters: 'Bunker phobia is real. Bad bunker play costs many amateurs 3-5 strokes per round. Good technique fixes it permanently.',
+    howToFix: '1) Open clubface to ~45°. 2) Grip the club. 3) Open stance to match face. 4) Swing on the angle of your feet. 5) Splash 2 inches behind the ball. 6) Full follow-through. 7) 20 bunker shots.',
+    commonMistakes: ['Decelerating (commit through the shot)', 'Trying to lift the ball with the hands'],
+    reps: '20 bunker shots, twice a week',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 81. Lag putting distance ─────────────────────────────────────────
+  out.push({
+    title: 'Lag Putts: Distance Beats Direction',
+    whatToFix: 'For putts over 30 feet, distance control is more important than direction. Most 3-putts are distance errors, not direction errors.',
+    whyItMatters: 'A 3-putt is two extra strokes. Reducing 3-putts is the fastest way to lower your score.',
+    howToFix: '1) Practice putts focusing on speed - try to roll the ball PAST the hole by 12-18 inches. 2) Use the "ladder drill": putt to 20 ft, 30 ft, 40 ft, 50 ft markers. 3) Get distance fingerprint for each.',
+    commonMistakes: ['Trying to make every long putt (focus on distance)', 'Always leaving short'],
+    reps: '15 min lag putt practice per session',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 82. Course management - lay up vs go for it ──────────────────────
+  out.push({
+    title: 'Play Smart - Take Trouble Out Of Play',
+    whatToFix: 'Most amateurs aim at the flag every time, even when there\'s water, bunkers, or OB nearby. Smart golfers aim at the FAT part of the green.',
+    whyItMatters: 'A safe approach to the middle of the green still gives birdie chances. An aggressive shot at the pin that misses badly is a double bogey.',
+    howToFix: '1) On every approach shot, identify the trouble. 2) Aim 10-15 feet away from the trouble. 3) Accept a 30-foot putt as a good shot. 4) Make this your default for 5 rounds.',
+    commonMistakes: ['Pin-hunting on tucked pins', 'Trying to hit a hero shot under pressure'],
+    reps: 'Apply for 5 rounds',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 83. Trail leg drive at impact ────────────────────────────────────
+  out.push({
+    title: 'Drive The Trail Knee Toward The Lead Knee At Impact',
+    whatToFix: 'At impact, the trail knee should be moving toward the lead knee - a visible "knee kick" that signals weight transfer.',
+    whyItMatters: 'A driving trail knee is the signature of athletic, powerful swings. Without it, you\'re just rotating without forward momentum.',
+    howToFix: '1) Make slow swings feeling your trail knee push toward the lead knee through impact. 2) The trail heel should come up as the knee drives. 3) 15 reps. 4) Cue: "knee kicks toward target".',
+    commonMistakes: ['Knee sliding sideways instead of forward', 'Locking the lead knee to stop the knee drive'],
+    reps: '15 knee-kick swings per range session',
+    estimatedHandicapImpact: 'Add yardage + better strike',
+    priority: 'Medium',
+  });
+
+  // ─── 84. Address head position over ball ──────────────────────────────
+  out.push({
+    title: 'Position Your Head Over Or Slightly Behind The Ball',
+    whatToFix: 'At address, your head (specifically, the lead eye) should be even with the ball or slightly behind it. Not in front.',
+    whyItMatters: 'Head position at address pre-sets your impact position. Head ahead of ball at address makes it nearly impossible to hit up on the driver or compress an iron.',
+    howToFix: '1) Set up to the ball. 2) Drop a club from your nose down - it should land at or just behind the ball. 3) For driver, head should be more behind the ball. 4) Practice this static setup.',
+    commonMistakes: ['Head too far behind (looks like you\'re trying to scoop)', 'Head ahead (causes thin shots and slices)'],
+    reps: '5 min mirror checks daily',
+    estimatedHandicapImpact: 'Save 1 stroke per round',
+    priority: 'Low',
+  });
+
+  // ─── 85. Driver-specific tilt ─────────────────────────────────────────
+  out.push({
+    title: 'Tilt Your Spine More For Driver',
+    whatToFix: 'With driver, spine should tilt MORE away from the target than with irons - lead shoulder noticeably higher than trail shoulder.',
+    whyItMatters: 'Driver tilt sets up the upward angle of attack you need. Without it, you\'ll hit the driver down and produce excessive spin and low launches.',
+    howToFix: '1) Setup to a teed driver. 2) Without moving feet or knees, drop your trail shoulder by 2-3 inches. 3) The spine now leans away from the target. 4) Practice this setup for 5 minutes.',
+    commonMistakes: ['Bending laterally instead of tilting from the shoulder', 'Setting up too far behind the ball (different fix)'],
+    reps: '5 min driver-tilt mirror checks daily',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round (driving)',
+    priority: 'Low',
+  });
+
+  // ─── 86. Posture maintenance check ───────────────────────────────────
+  out.push({
+    title: 'Stay In Posture Until After Impact',
+    whatToFix: 'Standing up out of posture before impact is "early extension" - we\'ve covered the big version. The subtle version: even 5° of postural change tips contact quality.',
+    whyItMatters: 'Pros maintain near-identical spine angle from address through past impact. Amateurs lose 10-30°. The smaller your loss, the better your contact.',
+    howToFix: '1) Set up with your butt against a wall. 2) Make swings keeping the butt-wall contact through impact. 3) Even a slight loss should be noticeable. 4) Practice 25 wall-butt swings.',
+    commonMistakes: ['Sitting too far back', 'Sliding hips toward the target (the wall stops both)'],
+    reps: '25 wall-butt swings per range session',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 87. Practice swing rehearsal ─────────────────────────────────────
+  out.push({
+    title: 'Make Your Practice Swing Match Your Real Swing',
+    whatToFix: 'Most amateurs make slow, smooth practice swings - then make a totally different real swing. The two should match.',
+    whyItMatters: 'If your practice swing is good but your real swing is different, you\'re wasting the practice swing. Make the real swing exactly like the practice swing.',
+    howToFix: '1) Take 1-2 practice swings - smooth, rhythmic, full. 2) Step in. 3) Make the real swing feel IDENTICAL. 4) Notice the difference today, then close the gap over a week.',
+    commonMistakes: ['Practice swing too lazy (then real one over-corrects)', 'Practice swing same shape as desired ball flight (good)'],
+    reps: 'Every shot for 2 weeks',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 88. Mental: commit to the shot ───────────────────────────────────
+  out.push({
+    title: 'Commit Fully To Every Shot',
+    whatToFix: 'Indecision before a swing leads to half-hearted swings. Pick your club, your line, your shape - and commit.',
+    whyItMatters: 'A committed swing with the wrong club still goes farther than a half-committed swing with the right club. Indecision is the worst club in the bag.',
+    howToFix: '1) Before every shot, ask: "Am I committed?" 2) If not, step back. Decide. 3) Step in only when 100% committed. 4) Apply for 3 rounds.',
+    commonMistakes: ['Standing over the ball thinking about alternatives', 'Switching clubs mid-routine'],
+    reps: 'Every shot for 3 rounds',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 89. Putting routine ──────────────────────────────────────────────
+  out.push({
+    title: 'Build A Putting Routine',
+    whatToFix: 'Same as full swing - have a putting routine. Read the green, pick a line, take practice strokes, step in, execute.',
+    whyItMatters: 'Putting routine reduces variability under pressure. A consistent process produces consistent results.',
+    howToFix: '1) Read the putt from behind the ball. 2) Pick a target on the line (a discoloration, a tee mark). 3) Make 2 practice strokes feeling the speed. 4) Step in, set, putt.',
+    commonMistakes: ['Different routine for different putt lengths', 'Skipping the line-pick step'],
+    reps: 'Every putt for 5 rounds',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 90. Body warm-up before round ────────────────────────────────────
+  out.push({
+    title: 'Warm Up The Body Before Hitting Balls',
+    whatToFix: 'Going from cold to full swings is how injuries happen and how you waste the first 4 holes finding your tempo.',
+    whyItMatters: 'A 10-minute dynamic warm-up improves rotation, primes the muscles, and reduces injury risk - critical for golf longevity.',
+    howToFix: '1) Arrive 30 min early. 2) Spend 5 min on shoulder, hip, and torso mobility (rotations, side bends, arm circles). 3) Then start with wedge swings, build to driver over 15 min. 4) Then play.',
+    commonMistakes: ['Showing up 5 minutes before tee time', 'Starting with the driver'],
+    reps: 'Every round',
+    estimatedHandicapImpact: 'Save 1-2 strokes (first 4 holes)',
+    priority: 'Low',
+  });
+
+  // ─── 91. Trail leg position at top ────────────────────────────────────
+  if (m.trailKneeImp != null && m.trailKneeImp < 140) {
+    out.push({
+      title: 'Drive Off The Trail Leg At Impact',
+      whatToFix: `At impact your ${trail} knee was still bent at ${Math.round(m.trailKneeImp)}°. The trail leg should be straightening (driving toward the lead leg) at impact, not still flexed.`,
+      whyItMatters: 'A still-flexed trail knee at impact means you didn\'t push off the trail foot. That\'s lost power and weak transfer.',
+      howToFix: '1) Take swings where the trail heel COMES UP at impact - the trail leg is straightening as it does. 2) Feel the trail toe become the only contact point with the ground. 3) 15 reps.',
+      commonMistakes: ['Lifting heel too early', 'Pushing off too hard and jumping'],
+      reps: '15 trail-drive swings per range session',
+      estimatedHandicapImpact: 'Add yardage',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 92. Tempo: count check ───────────────────────────────────────────
+  out.push({
+    title: 'The 1-2-3-Hit Tempo Count',
+    whatToFix: 'A specific tempo tool: count "one, two, three" on the backswing, and "hit" exactly at impact. The "hit" should feel sudden - that\'s acceleration.',
+    whyItMatters: 'A specific count creates a consistent tempo and trains acceleration into impact rather than at the ball.',
+    howToFix: '1) Take a swing counting "one-two-three" as the backswing builds, then "hit" exactly when you strike. 2) The "hit" word feels short and sharp. 3) 15 reps.',
+    commonMistakes: ['Saying "hit" too early or late', 'Counting different speeds each swing'],
+    reps: '15 counting swings per range session',
+    estimatedHandicapImpact: 'Better tempo + 1 stroke per round',
+    priority: 'Low',
+  });
+
+  // ─── 93. Stretching for golf ──────────────────────────────────────────
+  out.push({
+    title: 'Stretch Your Hip Flexors And Thoracic Spine',
+    whatToFix: 'Tight hips and stiff upper back limit rotation. Even 5 minutes of daily mobility can add 10° of turn.',
+    whyItMatters: 'A bigger turn = more clubhead speed. Mobility is the easiest "free yards" in golf.',
+    howToFix: '1) Daily: hip flexor stretch (lunge with back leg straight, hold 30s each side). 2) Thoracic rotation: seated, hold a club across chest, rotate left and right 10 times. 3) Cat-cow stretch for spine.',
+    commonMistakes: ['Skipping mobility entirely', 'Only stretching on the day of golf'],
+    reps: '5-10 min daily mobility routine',
+    estimatedHandicapImpact: 'Add yardage + injury prevention',
+    priority: 'Low',
+  });
+
+  // ─── 94. Fitness ──────────────────────────────────────────────────────
+  out.push({
+    title: 'Add Light Strength Training Twice A Week',
+    whatToFix: 'Golf-specific strength (core, glutes, shoulders) directly correlates with clubhead speed and consistency.',
+    whyItMatters: 'After mobility, strength is the next big lever. A few simple exercises 2x a week can add 5 MPH club speed in 8 weeks.',
+    howToFix: '1) Glute bridges - 3 sets of 15. 2) Planks - 3 x 30 sec. 3) Cable rotations (or resistance band) - 3 sets of 10 per side. 4) Romanian deadlifts (light) - 3 sets of 10. 5) Do this 2x a week.',
+    commonMistakes: ['Heavy lifting (golf needs mobility, not max strength)', 'Skipping the rotational work'],
+    reps: '2x weekly strength sessions for 8 weeks',
+    estimatedHandicapImpact: 'Add 5-10 yards + save 1-2 strokes',
+    priority: 'Low',
+  });
+
+  // ─── 95. Equipment check ──────────────────────────────────────────────
+  out.push({
+    title: 'Get A Free Equipment Check At A Local Shop',
+    whatToFix: 'Lie angle, shaft flex, grip size, and length all matter. Most amateurs play clubs that don\'t fit them. A free fitting at a local shop can identify mismatches.',
+    whyItMatters: 'Wrong equipment forces your swing to compensate. Even the best swing can\'t overcome ill-fitted clubs.',
+    howToFix: '1) Go to a local golf shop or fitter. 2) Ask for a basic lie/length/grip check - usually free. 3) Hit a few balls on a launch monitor with their fitting clubs. 4) Note any obvious mismatches.',
+    commonMistakes: ['Buying clubs without fitting', 'Ignoring grip size (a worn grip changes everything)'],
+    reps: 'One fitting session',
+    estimatedHandicapImpact: 'Save 1-3 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 96. Loft and lie of wedges ───────────────────────────────────────
+  out.push({
+    title: 'Verify Your Wedge Lofts Have Proper Gaps',
+    whatToFix: 'Common amateur error: PW 46°, GW 50°, SW 56°, LW 60° - but with 4° gaps everywhere. Check yours. 4° gaps mean 12-15 yard gaps in distance.',
+    whyItMatters: 'Wedge yardage gaps determine how often you have to "feel" half-shots. Consistent gaps mean predictable distances.',
+    howToFix: '1) List your wedge lofts. 2) Compute the gaps. 3) Aim for 4° gaps. 4) If you have a 50° and 56°, that\'s a big gap - consider a 52° or 54°. 5) Hit each wedge to figure out your yardages.',
+    commonMistakes: ['Carrying duplicate lofts (one PW from the iron set, one separate)', 'Skipping the GW entirely'],
+    reps: 'One wedge audit',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round (approach play)',
+    priority: 'Low',
+  });
+
+  // ─── 97. Pre-round practice ───────────────────────────────────────────
+  out.push({
+    title: 'Hit Your "Stock Shot" Before The Round',
+    whatToFix: 'On the warm-up range, hit your stock shot shape (your reliable shot under pressure) instead of trying weird shots. Reinforce what works.',
+    whyItMatters: 'You\'re not learning new shots before a round - you\'re preparing the swing you have. Hit the shape you\'ll hit on the course.',
+    howToFix: '1) Identify your stock shape (e.g., small fade, small draw, straight). 2) On the warm-up, hit ONLY that shape. 3) If a ball curves the wrong way, restart. 4) End the warm-up confident in your shape.',
+    commonMistakes: ['Trying new shots before a round', 'Hitting only driver in warm-up'],
+    reps: 'Every pre-round warm-up',
+    estimatedHandicapImpact: 'Save 1-2 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 98. Yardage book ─────────────────────────────────────────────────
+  out.push({
+    title: 'Know Your Stock Yardages By Heart',
+    whatToFix: 'Most amateurs guess yardages. Pros know every club to the yard. Spend a range session measuring your full-swing carries.',
+    whyItMatters: 'Wrong club selection costs strokes. Knowing exactly how far you carry each club removes a huge variable from on-course decisions.',
+    howToFix: '1) Use a range finder or launch monitor. 2) Hit 5 balls with each club from PW to driver. 3) Note the average CARRY (not total). 4) Write it down. 5) Update every 6 months.',
+    commonMistakes: ['Using rollout instead of carry', 'Believing your "I crushed it once" yardage instead of average'],
+    reps: 'One yardage audit session',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Low',
+  });
+
+  // ─── 99. Course strategy ──────────────────────────────────────────────
+  out.push({
+    title: 'Play To Your Stock Shot, Not The Pin',
+    whatToFix: 'If your stock shot is a fade, aim accordingly - aim down the left side and let it fade to the center. Don\'t aim at the pin and hope the fade brings it back.',
+    whyItMatters: 'Aiming at the pin with a fade requires perfection. Aiming with your shape gives you a margin of error.',
+    howToFix: '1) Know your shape (fade, draw, straight). 2) On every tee shot and approach, plan: "I\'ll aim here and let the shape work the ball toward the target." 3) Apply for 5 rounds.',
+    commonMistakes: ['Aiming at the pin and praying', 'Trying to hit different shapes than your natural shot'],
+    reps: 'Every shot for 5 rounds',
+    estimatedHandicapImpact: 'Save 2-3 strokes per round',
+    priority: 'Medium',
+  });
+
+  // ─── 100. Recovery/scrambling mindset ─────────────────────────────────
+  out.push({
+    title: 'Master The "Get-Out-Of-Trouble" Punch Shot',
+    whatToFix: 'Many amateurs try heroic recovery shots from the trees, water edges, or rough. Pros punch out sideways or back to the fairway 80% of the time.',
+    whyItMatters: 'A failed heroic recovery = double bogey. A successful punch out + recovery wedge + 2 putts = bogey. Bogey beats double.',
+    howToFix: '1) From any trouble lie, identify the SAFE shot first. 2) If the hero shot has less than 75% chance of working, take the safe shot. 3) Commit fully to the punch. 4) Accept bogey gracefully.',
+    commonMistakes: ['Going for the hero shot every time', 'Half-committing to the punch and ending up worse off'],
+    reps: 'Apply for every trouble shot for 5 rounds',
+    estimatedHandicapImpact: 'Save 2-4 strokes per round',
+    priority: 'Medium',
+  });
+
   // ─── Always include a tempo / setup reminder if too few takeaways ──────
   if (out.length < 5) {
     out.push({
@@ -1237,7 +2147,7 @@ function generateTakeaways(m) {
   // ─── Sort: High → Medium → Low; cap at 9 takeaways. ────────────────────
   const order = { 'High': 0, 'Medium': 1, 'Low': 2 };
   out.sort((a, b) => (order[a.priority] ?? 3) - (order[b.priority] ?? 3));
-  return out.slice(0, 9);
+  return out.slice(0, 12);
 }
 
 /* ----- Frame breakdown text ----------------------------------------- */
