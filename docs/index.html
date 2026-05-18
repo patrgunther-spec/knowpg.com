@@ -255,54 +255,71 @@ async function extractFrames(file, onProgress, onStage) {
     if (onProgress) onProgress(0.5 * ((i + 1) / samples));
   }
 
-  // Max-energy sliding window swing detection.  A real golf swing is the
-  // most concentrated burst of motion in the clip - so we slide a 1.8s
-  // window across the motion curve and pick the window whose total motion
-  // energy is highest.  No height thresholds, no peak picking, no fragile
-  // sharpness math.  This handles videos with long still address periods,
-  // long walks, bend-overs, and waggles - whatever the swing is, it's the
-  // most-motion stretch.
+  // ─── Swing detection: peak-spike (impact-shape) ─────────────────────────
+  // A golf impact is the SHARPEST moment in the clip: motion ramps up over
+  // the backswing, plateaus briefly at the top, ramps up again into impact,
+  // peaks for ~1-3 frames (impact = ball strike), then decays.  We find the
+  // single sample with the highest "spike score" - the ratio of its motion
+  // to the surrounding ~0.5s mean - which corresponds to impact.  This is
+  // robust against long bend-over / walking events whose TOTAL motion may
+  // exceed the swing's, because those events are sustained (low spike
+  // ratio) while impact is a sharp burst (high spike ratio).
   const smoothed = movingAverage(motionScores, 3);
-  const WIN_S = 1.8;                             // detected window length
-  const winSamples = Math.max(8, Math.round(MOTION_FPS * WIN_S));
-  const halfWin = Math.floor(winSamples / 2);
 
-  // Cumulative motion for O(1) window sums.
-  const cum = new Array(smoothed.length + 1).fill(0);
-  for (let i = 0; i < smoothed.length; i++) cum[i + 1] = cum[i] + smoothed[i];
+  const spikeRadius = Math.max(8, Math.round(MOTION_FPS * 0.4));
+  const overallMax = smoothed.reduce((a, b) => Math.max(a, b), 1);
+  const minImpactMotion = overallMax * 0.18; // ignore tiny background spikes
 
-  let bestStart = 0, bestEnergy = -1, bestPeakIdx = 0;
-  for (let s = 0; s + winSamples <= smoothed.length; s++) {
-    const energy = cum[s + winSamples] - cum[s];
-    if (energy > bestEnergy) {
-      bestEnergy = energy;
-      bestStart = s;
+  const impactScore = smoothed.map((v, i) => {
+    if (v < minImpactMotion) return 0;
+    let sum = 0, n = 0;
+    for (let k = -spikeRadius; k <= spikeRadius; k++) {
+      const j = i + k;
+      if (j >= 0 && j < smoothed.length && j !== i) { sum += smoothed[j]; n++; }
     }
-  }
-  // Find the local peak inside the chosen window (used for label "peakTime").
-  {
-    let pv = -1;
-    for (let i = bestStart; i < bestStart + winSamples; i++) {
-      if (smoothed[i] > pv) { pv = smoothed[i]; bestPeakIdx = i; }
-    }
+    const surroundMean = n ? (sum / n) : 1;
+    const ratio = surroundMean > 0 ? (v / surroundMean) : 1;
+    // Score combines raw motion (must be high) with spikiness (must be sharp).
+    return v * Math.pow(ratio, 1.5);
+  });
+
+  let bestPeakIdx = 0, bestPeakScore = -1;
+  for (let i = 1; i < impactScore.length - 1; i++) {
+    if (impactScore[i] > bestPeakScore) { bestPeakScore = impactScore[i]; bestPeakIdx = i; }
   }
 
+  // Sanity check: if no spike was found (very low motion clip), fall back
+  // to the older sliding-window approach.
+  if (bestPeakScore <= 0) {
+    const winSamples = Math.max(8, Math.round(MOTION_FPS * 1.8));
+    const cum = new Array(smoothed.length + 1).fill(0);
+    for (let i = 0; i < smoothed.length; i++) cum[i + 1] = cum[i] + smoothed[i];
+    let bs = 0, be = -1;
+    for (let s = 0; s + winSamples <= smoothed.length; s++) {
+      const en = cum[s + winSamples] - cum[s];
+      if (en > be) { be = en; bs = s; }
+    }
+    bestPeakIdx = bs + Math.round(winSamples * 0.65);
+  }
+
+  // Impact happens ~65-70% of the way through the swing window
+  // (address takeaway top transition impact = roughly 65% of swing duration).
+  // So put the impact frame ~65% from the start of our extracted window.
   const peakTime = motionTimes[bestPeakIdx] ?? duration / 2;
-  let startTime = motionTimes[bestStart] ?? Math.max(0, peakTime - WIN_S / 2);
-  let endTime = motionTimes[Math.min(smoothed.length - 1, bestStart + winSamples)] ?? Math.min(duration, peakTime + WIN_S / 2);
+  const TOTAL_WIN = 2.0; // generous swing window
+  let startTime = Math.max(0, peakTime - TOTAL_WIN * 0.65);
+  let endTime   = Math.min(duration, peakTime + TOTAL_WIN * 0.35);
 
-  // Real swings are roughly 1.4-2.4 s end-to-end; clamp generously.
+  // Clamp to reasonable swing length.
   const MIN_WIN = 1.4, MAX_WIN = 2.4;
   let span = endTime - startTime;
   if (span < MIN_WIN) {
-    const c = (startTime + endTime) / 2;
-    startTime = Math.max(0, c - MIN_WIN / 2);
-    endTime = Math.min(duration, startTime + MIN_WIN);
+    startTime = Math.max(0, peakTime - MIN_WIN * 0.65);
+    endTime   = Math.min(duration, startTime + MIN_WIN);
     if (endTime - startTime < MIN_WIN) startTime = Math.max(0, endTime - MIN_WIN);
   } else if (span > MAX_WIN) {
-    const c = (startTime + endTime) / 2;
-    startTime = Math.max(0, c - MAX_WIN / 2);
-    endTime = Math.min(duration, startTime + MAX_WIN);
+    startTime = Math.max(0, peakTime - MAX_WIN * 0.65);
+    endTime   = Math.min(duration, startTime + MAX_WIN);
   }
 
   if (onStage) onStage('capturing');
@@ -488,104 +505,206 @@ function computeMetrics(poses) {
   const valid = poses.filter(Boolean);
   if (valid.length < 4) return null;
 
-  const address = poses[0];
-  const top     = poses[4] || poses[3] || poses[5];
+  const address  = poses[0];
+  const takeaway = poses[1];
+  const top      = poses[4] || poses[3] || poses[5];
   const downHalf = poses[6] || poses[5];
-  const impact  = poses[8] || poses[7];
-  const finish  = poses[poses.length - 1];
+  const impact   = poses[8] || poses[7];
+  const postImp  = poses[9] || poses[8];
+  const finish   = poses[poses.length - 1];
 
-  const cam = detectCameraAngle(address);
+  const cam    = detectCameraAngle(address);
   const handed = detectHandedness(address, top);
-  const bh = bodyHeight(address) || bodyHeight(top) || bodyHeight(impact) || 200;
+  const bh     = bodyHeight(address) || bodyHeight(top) || bodyHeight(impact) || 200;
+  const leadSide  = handed === 'left' ? 'right' : 'left';
+  const trailSide = handed === 'left' ? 'left'  : 'right';
 
-  // 1. Head movement (max distance nose moved from address position)
-  const noseAddr = kp(address, 'nose');
-  let headMaxPx = 0, headMaxFrame = 0;
-  let towardTargetMax = 0;
-  for (let i = 0; i < poses.length; i++) {
-    const n = kp(poses[i], 'nose');
-    if (!n || !noseAddr) continue;
-    const d = dist(n, noseAddr);
-    if (d > headMaxPx) { headMaxPx = d; headMaxFrame = i; }
-    // Toward-target = positive x direction for right-handed face-on, negative for down-the-line.
-    // We just track the worst horizontal sway from address.
-    const dx = n.x - noseAddr.x;
-    if (Math.abs(dx) > Math.abs(towardTargetMax)) towardTargetMax = dx;
-  }
-  const headMovePctOfBody = bh ? (headMaxPx / bh) : 0;
-
-  // 2. Shoulder rotation (address → top)
-  const sa0 = angDeg(kp(address, 'left_shoulder'), kp(address, 'right_shoulder'));
-  const sa1 = angDeg(kp(top,     'left_shoulder'), kp(top,     'right_shoulder'));
-  const shoulderRot = (sa0 != null && sa1 != null) ? Math.abs(((sa1 - sa0 + 540) % 360) - 180) : null;
-
-  // 3. Hip rotation (address → top)
-  const ha0 = angDeg(kp(address, 'left_hip'), kp(address, 'right_hip'));
-  const ha1 = angDeg(kp(top,     'left_hip'), kp(top,     'right_hip'));
-  const hipRot = (ha0 != null && ha1 != null) ? Math.abs(((ha1 - ha0 + 540) % 360) - 180) : null;
-
-  // 4. Spine angle change at impact vs address
+  // ─── Helpers used only inside this function ────────────────────────────
   function spineAng(p) {
     const t = mid(kp(p, 'left_shoulder'), kp(p, 'right_shoulder'));
     const b = mid(kp(p, 'left_hip'),      kp(p, 'right_hip'));
     if (!t || !b) return null;
     return Math.atan2(t.x - b.x, b.y - t.y) * 180 / Math.PI;
   }
+  function kneeAng(p, side) {
+    return angAt(kp(p, side+'_hip'), kp(p, side+'_knee'), kp(p, side+'_ankle'));
+  }
+  function elbowAng(p, side) {
+    return angAt(kp(p, side+'_shoulder'), kp(p, side+'_elbow'), kp(p, side+'_wrist'));
+  }
+  function shoulderLineAng(p) {
+    return angDeg(kp(p, 'left_shoulder'), kp(p, 'right_shoulder'));
+  }
+  function hipLineAng(p) {
+    return angDeg(kp(p, 'left_hip'), kp(p, 'right_hip'));
+  }
+  function deltaAngle(a, b) {
+    if (a == null || b == null) return null;
+    return Math.abs(((b - a + 540) % 360) - 180);
+  }
+
+  // ─── 1. Head movement RELATIVE to hip midpoint (cancels camera shake) ──
+  // The user's head naturally moves with the whole body (camera shake,
+  // breathing, the body itself sliding sideways), so we measure how much
+  // the head moved RELATIVE to the hip midpoint. That isolates ACTUAL
+  // independent head sway / lift / drop, which is what coaching cares about.
+  const noseAddr   = kp(address, 'nose');
+  const hipMidAddr = mid(kp(address, 'left_hip'), kp(address, 'right_hip'));
+  const headRefAddr = (noseAddr && hipMidAddr)
+    ? { x: noseAddr.x - hipMidAddr.x, y: noseAddr.y - hipMidAddr.y }
+    : null;
+
+  let headRelMaxPx = 0, headAbsMaxPx = 0, headLiftMaxPx = 0;
+  for (let i = 0; i < poses.length; i++) {
+    const n = kp(poses[i], 'nose');
+    const hipMid = mid(kp(poses[i], 'left_hip'), kp(poses[i], 'right_hip'));
+    if (!n) continue;
+    if (noseAddr) {
+      const da = dist(n, noseAddr);
+      if (da > headAbsMaxPx) headAbsMaxPx = da;
+      // Head LIFT specifically (loss of posture / standing up).
+      const lift = noseAddr.y - n.y; // positive = head went UP in frame
+      if (lift > headLiftMaxPx) headLiftMaxPx = lift;
+    }
+    if (hipMid && headRefAddr) {
+      const rel = { x: n.x - hipMid.x, y: n.y - hipMid.y };
+      const dr = dist(rel, headRefAddr);
+      if (dr > headRelMaxPx) headRelMaxPx = dr;
+    }
+  }
+  const headRelPct  = bh ? (headRelMaxPx  / bh) : 0; // body-relative head sway
+  const headAbsPct  = bh ? (headAbsMaxPx  / bh) : 0; // raw head displacement
+  const headLiftPct = bh ? (headLiftMaxPx / bh) : 0; // lifted up out of posture
+
+  // ─── 2. Shoulder & hip rotation, X-factor ──────────────────────────────
+  const shoulderRot = deltaAngle(shoulderLineAng(address), shoulderLineAng(top));
+  const hipRot      = deltaAngle(hipLineAng(address),      hipLineAng(top));
+  const xFactor     = (shoulderRot != null && hipRot != null) ? Math.max(0, shoulderRot - hipRot) : null;
+
+  // ─── 3. Spine angle change at impact vs address ────────────────────────
   const spA = spineAng(address);
   const spI = spineAng(impact);
   const spineDelta = (spA != null && spI != null) ? Math.abs(spI - spA) : null;
 
-  // 5. Knee flex at address vs impact (right knee angle = hip-knee-ankle)
-  function kneeAngle(p, side /* 'left'|'right' */) {
-    return angAt(kp(p, side+'_hip'), kp(p, side+'_knee'), kp(p, side+'_ankle'));
-  }
-  const kneeAddrR = kneeAngle(address, 'right');
-  const kneeImpR  = kneeAngle(impact,  'right');
-  const rightKneeStraightening =
-    (kneeAddrR != null && kneeImpR != null) ? (kneeImpR - kneeAddrR) : null;
+  // ─── 4. Address forward bend (spine tilt from vertical) ────────────────
+  const addressSpineTilt = spA != null ? Math.abs(spA) : null;
 
-  // 6. Stance width at address (vs body height)
-  const stancePx = dist(kp(address, 'left_ankle'), kp(address, 'right_ankle'));
-  const shouldersPx = dist(kp(address, 'left_shoulder'), kp(address, 'right_shoulder'));
+  // ─── 5. Knee flex changes ──────────────────────────────────────────────
+  const kneeAddrTrail = kneeAng(address, trailSide);
+  const kneeTopTrail  = kneeAng(top,     trailSide);
+  const trailKneeLossAtTop = (kneeAddrTrail != null && kneeTopTrail != null)
+    ? (kneeTopTrail - kneeAddrTrail) : null;
+  const kneeAddrLead  = kneeAng(address, leadSide);
+  const kneeImpLead   = kneeAng(impact,  leadSide);
+  const leadKneeStraighteningAtImpact = (kneeAddrLead != null && kneeImpLead != null)
+    ? (kneeImpLead - kneeAddrLead) : null;
+  const trailKneeImp  = kneeAng(impact,  trailSide);
+
+  // ─── 6. Stance width vs shoulder width ────────────────────────────────
+  const stancePx     = dist(kp(address, 'left_ankle'), kp(address, 'right_ankle'));
+  const shouldersPx  = dist(kp(address, 'left_shoulder'), kp(address, 'right_shoulder'));
   const stanceVsShoulders = (stancePx && shouldersPx) ? stancePx / shouldersPx : null;
 
-  // 7. Lead arm extension at impact (lead = left for right-handed)
-  const leadSide = handed === 'left' ? 'right' : 'left';
-  const leadElbowAtImpact = angAt(
-    kp(impact, leadSide+'_shoulder'),
-    kp(impact, leadSide+'_elbow'),
-    kp(impact, leadSide+'_wrist')
-  );
+  // ─── 7. Arm metrics ────────────────────────────────────────────────────
+  const leadElbowAtImpact   = elbowAng(impact, leadSide);
+  const leadElbowAtAddress  = elbowAng(address, leadSide);
+  const trailElbowAtTop     = elbowAng(top, trailSide);
+  // Lead arm bend at top (should stay close to straight ~170°)
+  const leadElbowAtTop      = elbowAng(top, leadSide);
 
-  // 8. Finish hip rotation (hip line angle at finish vs address)
-  const haF = angDeg(kp(finish, 'left_hip'), kp(finish, 'right_hip'));
-  const finishHipRot = (ha0 != null && haF != null) ? Math.abs(((haF - ha0 + 540) % 360) - 180) : null;
+  // ─── 8. Hip slide (lateral hip midpoint movement) ──────────────────────
+  // Excessive hip slide instead of rotation is a power leak. We measure
+  // the horizontal displacement of the hip midpoint from address to impact
+  // (normalized by body height).
+  const hipMidImp = mid(kp(impact, 'left_hip'), kp(impact, 'right_hip'));
+  let hipSlideAtImpactX = 0;
+  if (hipMidAddr && hipMidImp) hipSlideAtImpactX = Math.abs(hipMidImp.x - hipMidAddr.x);
+  const hipSlideAtImpactPct = bh ? hipSlideAtImpactX / bh : 0;
 
-  // 9. Head x-shift toward target at top (reverse-pivot detection)
+  // Hip slide AT TOP (sway off the ball)
+  const hipMidTop = mid(kp(top, 'left_hip'), kp(top, 'right_hip'));
+  let hipSwayAtTopX = 0;
+  if (hipMidAddr && hipMidTop) hipSwayAtTopX = Math.abs(hipMidTop.x - hipMidAddr.x);
+  const hipSwayAtTopPct = bh ? hipSwayAtTopX / bh : 0;
+
+  // ─── 9. Shoulder tilt at impact (should be tilted slightly back) ───────
+  const shoulderTiltImp = shoulderLineAng(impact);
+  const shoulderTiltAddr = shoulderLineAng(address);
+  const shoulderTiltDelta = (shoulderTiltImp != null && shoulderTiltAddr != null)
+    ? (shoulderTiltImp - shoulderTiltAddr) : null;
+
+  // ─── 10. Finish: hip rotation, balance ─────────────────────────────────
+  const finishHipRot = deltaAngle(hipLineAng(address), hipLineAng(finish));
+  const finishShoulderRot = deltaAngle(shoulderLineAng(address), shoulderLineAng(finish));
+  // Balance check: finish nose x-position vs lead ankle x-position.
+  // A balanced finish stacks head over lead foot.
+  const noseFinish = kp(finish, 'nose');
+  const leadAnkleFinish = kp(finish, leadSide+'_ankle');
+  const trailAnkleFinish = kp(finish, trailSide+'_ankle');
+  let finishBalancePct = null;
+  if (noseFinish && leadAnkleFinish && trailAnkleFinish && bh) {
+    const stanceMid = (leadAnkleFinish.x + trailAnkleFinish.x) / 2;
+    const ankleSpan = Math.abs(leadAnkleFinish.x - trailAnkleFinish.x) || 1;
+    // Negative = nose is over trail foot (bad), Positive = over lead (good)
+    finishBalancePct = (noseFinish.x - stanceMid) / (ankleSpan / 2)
+      * (leadAnkleFinish.x > stanceMid ? 1 : -1);
+  }
+
+  // ─── 11. Head reverse-pivot at top ────────────────────────────────────
+  // If the head moved TOWARD the target on the backswing, that's a reverse
+  // pivot. Direction of "toward target" depends on handedness and camera.
   const noseTop = kp(top, 'nose');
-  const headShiftAtTopX = (noseAddr && noseTop) ? (noseTop.x - noseAddr.x) : 0;
-  // For right-handed face-on view: target is to the LEFT of frame (positive x = away from target).
-  // For right-handed down-the-line: target is to the RIGHT (positive x = toward target).
-  // We just flag any large horizontal move at top as suspect.
-  const headShiftPct = bh ? (Math.abs(headShiftAtTopX) / bh) : 0;
+  const headDxAtTop = (noseAddr && noseTop) ? (noseTop.x - noseAddr.x) : 0;
+  // Toward target sign: right-handed face-on: target is on the LEFT (x decreases).
+  // right-handed down-the-line: target is on the RIGHT (x increases).
+  let towardTargetSign;
+  if (handed === 'right') towardTargetSign = (cam === 'down-the-line') ? +1 : -1;
+  else                    towardTargetSign = (cam === 'down-the-line') ? -1 : +1;
+  // Positive value = head moved toward target (bad - reverse pivot).
+  const headTowardTargetAtTopPx = headDxAtTop * towardTargetSign;
+  const reversePivotPct = bh ? Math.max(0, headTowardTargetAtTopPx / bh) : 0;
 
   return {
     cameraAngle: cam,
     handedness: handed,
     bodyHeightPx: bh,
-    headMaxPx,
-    headMovePctOfBody,
-    headMaxFrame,
+
+    // Head metrics
+    headRelPct,                  // body-relative head sway (the one that matters)
+    headAbsPct,                  // raw displacement (includes camera shake)
+    headLiftPct,                 // head lifted out of posture (early extension look)
+    reversePivotPct,             // head moved toward target on backswing
+
+    // Rotation metrics
     shoulderRotDeg: shoulderRot,
     hipRotDeg: hipRot,
-    xFactor: (shoulderRot != null && hipRot != null) ? Math.max(0, shoulderRot - hipRot) : null,
-    spineDelta,
-    rightKneeStraightening,
-    stanceVsShoulders,
-    leadElbowAtImpact,
+    xFactor,
     finishHipRot,
-    headShiftAtTopX,
-    headShiftPctAtTop: headShiftPct,
+    finishShoulderRot,
+
+    // Posture metrics
+    spineDelta,
+    addressSpineTilt,
+    shoulderTiltDelta,
+
+    // Leg metrics
+    trailKneeLossAtTop,
+    leadKneeStraighteningAtImpact,
+    trailKneeImp,
+    stanceVsShoulders,
+
+    // Arm metrics
+    leadElbowAtImpact,
+    leadElbowAtAddress,
+    leadElbowAtTop,
+    trailElbowAtTop,
+
+    // Hip slide / sway
+    hipSlideAtImpactPct,
+    hipSwayAtTopPct,
+
+    // Balance
+    finishBalancePct,
   };
 }
 
@@ -593,115 +712,261 @@ function computeMetrics(poses) {
 
 function generateTakeaways(m) {
   const out = [];
+  const trail = m.handedness === 'left' ? 'left' : 'right';
+  const lead  = m.handedness === 'left' ? 'right' : 'left';
 
-  if (m.headMovePctOfBody != null && m.headMovePctOfBody > 0.04) {
-    const inches = Math.round(m.headMovePctOfBody / 0.04 * 2.0); // rough scaling: 4% body ≈ 2-3 inches for adult
-    const high = m.headMovePctOfBody > 0.07;
+  // ─── 1. Reverse pivot (head moves TOWARD target on backswing) ──────────
+  if (m.reversePivotPct > 0.05) {
+    const sev = m.reversePivotPct > 0.10 ? 'High' : 'Medium';
     out.push({
-      title: 'Stop The Head Sway',
-      whatToFix: `Your head moved about ${inches} inches during the swing (we measured ${(m.headMovePctOfBody*100).toFixed(1)}% of your body height). The head should stay almost still until well after impact.`,
-      whyItMatters: 'When your head slides side to side, the bottom of your swing moves with it. That means fat shots (hitting the ground first), thin shots (hitting the top of the ball), and a lot of inconsistency. Pros keep their head within an inch or two.',
-      howToFix: '1) Set up to a wall with a tee taped on the wall right where your nose is at address. 2) Take slow half-swings without letting the tee fall out of view. 3) Now do it with eyes closed for 10 reps. 4) Move outside, pick a single blade of grass next to the ball, and do not look away from it until you finish your swing. 5) Build up to full speed only after 30 reps where the tee never moved.',
-      commonMistakes: ['Trying to keep the head perfectly frozen (some movement is fine)', 'Tensing the neck (stay relaxed)', 'Looking up to see the ball before contact'],
-      reps: '20 wall-tee swings + 30 grass-blade swings, 4 times a week',
-      estimatedHandicapImpact: high ? 'Save 3-5 strokes per round' : 'Save 1-2 strokes per round',
-      priority: high ? 'High' : 'Medium',
+      title: 'Stop The Reverse Pivot',
+      whatToFix: `At the top of your backswing, your head shifted ~${(m.reversePivotPct*100).toFixed(1)}% of your body height TOWARD the target. That is a reverse pivot - your weight is going the wrong way (forward instead of into the trail leg).`,
+      whyItMatters: 'Reverse pivots cause two of the ugliest misses in golf: a huge slice when the body can\'t recover from the wrong weight position, and chunky fat shots when the weight gets stuck on the wrong leg. It also drains every ounce of power.',
+      howToFix: `1) Get a soccer ball or basketball. 2) Stand in golf posture with the ball under your ${trail} foot. 3) Take a slow backswing - feel pressure go INTO the ball under that trail foot. 4) Take 15 reps without the ball, feeling weight LOAD into the trail leg on the way back. 5) Add a small foam pad or thin towel under the lead foot for 10 swings - it discourages you from leaning forward.`,
+      commonMistakes: ['Sliding sideways instead of loading (rotate, do not sway)', 'Loading too far back and tipping over', 'Forgetting to shift the weight BACK to the lead side on the downswing'],
+      reps: '15 ball-under-foot loads + 10 foam-pad swings, 3 times a week',
+      estimatedHandicapImpact: sev === 'High' ? 'Save 3-4 strokes per round' : 'Save 1-2 strokes per round',
+      priority: sev,
     });
   }
 
-  if (m.shoulderRotDeg != null && m.shoulderRotDeg < 70) {
+  // ─── 2. Early extension (spine straightens up at impact) ───────────────
+  if (m.spineDelta != null && m.spineDelta > 12) {
+    const sev = m.spineDelta > 22 ? 'High' : 'Medium';
     out.push({
-      title: 'Finish Your Backswing',
-      whatToFix: `At the top, your shoulders only rotated about ${Math.round(m.shoulderRotDeg)} degrees. A full turn is closer to 90 degrees - your back should be pointing at the target.`,
-      whyItMatters: 'A short backswing means a short downswing, which means less club-head speed (slower swing = shorter shots). It also rushes your tempo, which causes pulls and slices.',
-      howToFix: '1) Stand with your back to a wall, feet a few inches away. 2) Cross your arms on your chest and try to touch the wall with your right elbow (lefties: left elbow) without moving your feet. 3) That is the feeling of a full shoulder turn. 4) Now do it holding a club across your chest, slowly. 5) Make 20 of those, then take 10 swings with a 7-iron focusing on completing the turn before you start down.',
-      commonMistakes: ['Lifting the arms instead of turning the body', 'Sliding the hips back instead of rotating', 'Rushing - pause for half a second at the top'],
-      reps: '20 wall-touch turns + 10 swings, 3 times a week',
+      title: 'Stop The Early Extension',
+      whatToFix: `Your spine angle changed by ${Math.round(m.spineDelta)}° from address to impact. That means you stood up out of your posture (golf-speak: "early extension") - your hips pushed toward the ball.`,
+      whyItMatters: 'When you stand up, your hands have to back away from the ball to make room. That causes a slice, blocks (push to the right), and shots hit off the heel of the club. It is one of the biggest consistency killers in amateur golf.',
+      howToFix: `1) Stand with your butt against a wall in your golf posture - your butt should TOUCH the wall, not be a fist-width away. 2) Make slow swings keeping your butt in contact with the wall the whole way through. 3) The feel is "sit into your back pocket" through impact. 4) Do 25 slow reps. 5) Take it to the range with a yoga block or hand towel between your ${trail} thigh and the wall (or a chair) - keep it pinned through impact.`,
+      commonMistakes: ['Sitting back too far and falling on your heels', 'Locking the knees stiff trying not to extend (stay athletic)', 'Forgetting to rotate - the answer is to rotate AND stay in posture, not to stop turning'],
+      reps: '25 wall-butt swings + range session, 3-4 times a week for 3 weeks',
+      estimatedHandicapImpact: sev === 'High' ? 'Save 3-5 strokes per round' : 'Save 1-3 strokes per round',
+      priority: sev,
+    });
+  }
+
+  // ─── 3. Hip slide AT IMPACT (lateral instead of rotational) ────────────
+  if (m.hipSlideAtImpactPct > 0.07) {
+    out.push({
+      title: 'Rotate Your Hips, Don\'t Slide Them',
+      whatToFix: `Your hips slid sideways ${(m.hipSlideAtImpactPct*100).toFixed(1)}% of your body height toward the target at impact, instead of rotating around your spine. Hips should ROTATE open, not slide.`,
+      whyItMatters: 'A hip slide leaves the club face open at impact - pushes and slice-pushes are the classic miss. You also lose power because rotational energy gets converted to lateral motion that doesn\'t go into the ball.',
+      howToFix: `1) Push an alignment stick (or a broom) into the ground a few inches outside your lead hip. 2) Take slow swings where your lead hip MUST rotate behind you - if you slide, you hit the stick. 3) Feel your lead hip "go back behind your lead pocket" on the downswing. 4) Do 20 reps in slow motion, then 10 at half speed. 5) Hit balls with the stick still in the ground for 20 swings.`,
+      commonMistakes: ['Trying to spin too fast (slow and rotational beats fast and sliding)', 'Lifting the lead heel before rotating', 'Forgetting to keep your trail foot grounded until after impact'],
+      reps: '20 slow + 20 half-speed + 20 full swings with stick drill, 3 times a week',
+      estimatedHandicapImpact: 'Save 2-3 strokes per round + tighter dispersion',
+      priority: m.hipSlideAtImpactPct > 0.12 ? 'High' : 'Medium',
+    });
+  }
+
+  // ─── 4. Short shoulder turn ────────────────────────────────────────────
+  if (m.shoulderRotDeg != null && m.shoulderRotDeg < 75) {
+    const sev = m.shoulderRotDeg < 55 ? 'High' : (m.shoulderRotDeg < 65 ? 'Medium' : 'Low');
+    out.push({
+      title: 'Complete Your Backswing Turn',
+      whatToFix: `At the top, your shoulders rotated ${Math.round(m.shoulderRotDeg)}°. A full turn is closer to 85-95° - your back should be pointed at the target, lead shoulder under your chin.`,
+      whyItMatters: 'A short shoulder turn means less club-head speed (slower swing = shorter shots, sometimes 20-30 yards off your potential). It also tends to rush your transition, which leads to over-the-top slices and pulls.',
+      howToFix: `1) Stand with your back to a wall, feet a few inches away. 2) Cross your arms on your chest. 3) Try to touch the wall with your ${trail} elbow without moving your feet. 4) That is the feeling of a full shoulder turn - shoulders pivot around your spine. 5) Repeat 20 times slowly, then add a club across your chest. 6) Take 10 swings with a 7-iron focusing on COMPLETING the turn before starting down.`,
+      commonMistakes: ['Lifting the arms instead of turning the body', 'Sliding the hips backward instead of rotating', 'Rushing from the top - try pausing for half a second to feel a complete turn'],
+      reps: '20 wall-touch turns + 10 full swings, 3 times a week',
       estimatedHandicapImpact: 'Save 1-3 strokes per round + pick up 10-20 yards',
-      priority: m.shoulderRotDeg < 55 ? 'High' : 'Medium',
+      priority: sev,
     });
   }
 
-  if (m.hipRotDeg != null && m.shoulderRotDeg != null && m.hipRotDeg > m.shoulderRotDeg * 0.7) {
+  // ─── 5. Hip over-turn (no X-factor) ────────────────────────────────────
+  if (m.hipRotDeg != null && m.shoulderRotDeg != null
+      && m.hipRotDeg > 50 && m.hipRotDeg > m.shoulderRotDeg * 0.65) {
     out.push({
-      title: 'Restrict Your Hips At The Top',
-      whatToFix: `Your hips turned ${Math.round(m.hipRotDeg)} degrees while your shoulders turned ${Math.round(m.shoulderRotDeg)}. The hips should turn about HALF as much as the shoulders to create power.`,
-      whyItMatters: 'When the hips turn as much as the shoulders, you lose the spring-like wind-up. That is where the power comes from - shoulders fully turned, hips less. Without that gap (called the "X-Factor"), your swing is all arms.',
-      howToFix: '1) Take your normal stance and place a chair behind your right hip (lefties: left hip). 2) Make backswings where your right hip stays in light contact with the chair. 3) Feel your shoulders keep turning while the hip stays put. 4) Do 20 slow backswings with this feel. 5) Hit balls with a foam ball under your right heel - it will keep your right hip from spinning.',
-      commonMistakes: ['Locking the hip completely (a small turn is fine)', 'Letting the right knee straighten (keep flex)', 'Sliding the hips sideways'],
-      reps: '20 chair-rep swings + 10 foam-ball drives, 3 times a week',
+      title: 'Build An X-Factor (Hold Your Hips)',
+      whatToFix: `Your hips turned ${Math.round(m.hipRotDeg)}° while your shoulders turned ${Math.round(m.shoulderRotDeg)}°. Pros and big hitters turn their shoulders nearly twice as much as their hips - that gap is called the "X-Factor" and it's where power comes from.`,
+      whyItMatters: 'When the hips spin as much as the shoulders, you lose the spring-like wind-up between them. Without the gap, your downswing has no stored energy to unleash - you end up swinging with arms only, losing 20-30 yards.',
+      howToFix: `1) Take your normal address. Place a chair (or have a friend stand) just behind your ${trail} hip. 2) Make backswings where your ${trail} hip stays in light contact with the chair the whole way. 3) Feel your shoulders KEEP turning even after the hips have stopped. 4) Do 20 slow backswings. 5) Take 10 full swings with the same feel - hips quiet, shoulders fully wound.`,
+      commonMistakes: ['Locking the hip completely (a small turn IS allowed)', 'Letting the trail knee straighten (keep flex)', 'Sliding the hips sideways instead of restricting rotation'],
+      reps: '20 chair-restrict swings + 10 full swings, 3-4 times a week',
       estimatedHandicapImpact: 'Save 1-2 strokes per round + add yardage',
       priority: 'Medium',
     });
   }
 
-  if (m.spineDelta != null && m.spineDelta > 10) {
-    const hi = m.spineDelta > 18;
+  // ─── 6. Lead-arm chicken wing ──────────────────────────────────────────
+  if (m.leadElbowAtImpact != null && m.leadElbowAtImpact < 155) {
     out.push({
-      title: 'Stop The Early Extension',
-      whatToFix: `Your spine angle changed by about ${Math.round(m.spineDelta)} degrees from address to impact. That means you are standing up out of your posture (golf-speak: "early extension") - your hips push toward the ball at impact.`,
-      whyItMatters: 'When you stand up, your hands have to back away from the ball to make room. That causes a slice, blocks (push to the right), and shots hit off the heel. It also kills consistency.',
-      howToFix: '1) Stand with your butt against a wall in golf posture (a hand-width away from the wall is too far - your butt should touch). 2) Make slow swings keeping your butt in contact with the wall the whole way. 3) The feel is "sit into your back pocket" through impact. 4) Do 25 slow swings. 5) Now hit balls with a yoga block or hand towel between your right thigh and the wall - keep it pinned there through impact.',
-      commonMistakes: ['Sitting back too far and falling on heels', 'Locking the knees in trying not to extend (stay athletic)', 'Forgetting to rotate - the answer is to rotate AND stay in posture'],
-      reps: '25 wall-butt swings + range session, 3 times a week',
-      estimatedHandicapImpact: hi ? 'Save 3-4 strokes per round' : 'Save 1-2 strokes per round',
-      priority: hi ? 'High' : 'Medium',
+      title: 'Extend Through Impact (Stop The Chicken Wing)',
+      whatToFix: `Your lead arm was bent to ${Math.round(m.leadElbowAtImpact)}° at impact. The lead arm should be nearly straight (170-180°) at the moment the club meets the ball. A bent lead arm at impact is the classic "chicken wing".`,
+      whyItMatters: 'A chicken wing means you are pulling up and across the ball instead of extending through it. It causes weak slices, low fades, shots that lose distance, and inconsistent strike (sometimes you catch the ball heel-first).',
+      howToFix: `1) Fold up a small towel and tuck it under your ${lead} armpit. 2) Make half-swings keeping the towel pinned in place from address through impact. 3) The ${lead} arm should feel like it is REACHING long toward the target after the ball. 4) After 20 reps, drop the towel and hit short pitches with the same feel. 5) Add full swings only after the half-swing feels natural.`,
+      commonMistakes: ['Locking the elbow before impact (it stays soft on the way down)', 'Stopping the swing at the ball - keep extending', 'Letting the trail arm overpower the lead'],
+      reps: '20 towel half-swings + 10 short pitches, 4 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: m.leadElbowAtImpact < 135 ? 'High' : 'Medium',
     });
   }
 
-  if (m.leadElbowAtImpact != null && m.leadElbowAtImpact < 155) {
+  // ─── 7. Trail knee straightens at top (loss of load) ───────────────────
+  if (m.trailKneeLossAtTop != null && m.trailKneeLossAtTop > 18) {
     out.push({
-      title: 'Extend Your Lead Arm At Impact',
-      whatToFix: `Your lead arm was bent to about ${Math.round(m.leadElbowAtImpact)} degrees at impact. The lead arm should be nearly straight (170-180 degrees) at the moment the club hits the ball - if it folds, that is the "chicken wing".`,
-      whyItMatters: 'A chicken wing means you are pulling up and across the ball instead of extending through it. That causes weak slices, low fades, and shots that lose distance.',
-      howToFix: '1) Hold a folded-up towel under your lead armpit (left for righties). 2) Make half-swings keeping the towel pinned in place from address through impact. 3) The lead arm should feel like it is reaching long toward the target after the ball. 4) After 20 reps, drop the towel and hit short shots with the same feel - a long lead arm extension after impact. 5) Add full swings only after the half-swing feels easy.',
-      commonMistakes: ['Locking the elbow too early before impact (it stays soft on the way down)', 'Stopping the swing at the ball - extend through it', 'Letting the trail arm overpower the lead'],
-      reps: '20 towel half-swings + 10 short shots, 4 times a week',
-      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      title: 'Keep Your Trail Knee Flexed At The Top',
+      whatToFix: `Your ${trail} knee straightened by about ${Math.round(m.trailKneeLossAtTop)}° on the way to the top. The trail knee should stay roughly as flexed as it was at address - that's how you load the trail leg like a coiled spring.`,
+      whyItMatters: 'When the trail knee straightens, you stand UP on the backswing and the body lifts away from the ground. That makes you lose the powerful "ground reaction" push you would otherwise get on the downswing - and it is a big reason for inconsistent contact.',
+      howToFix: `1) Place a slightly inflated soccer ball or a folded yoga mat under your ${trail} heel. 2) Make slow backswings keeping pressure on that ball. 3) The ${trail} knee should feel like it stays in its socket - flexed and loaded. 4) Do 15 reps. 5) Hit balls feeling like you "sit DOWN into the trail leg" on the way back.`,
+      commonMistakes: ['Locking the knee in too tight (athletic flex is the goal, not stiffness)', 'Letting the trail hip slide outward', 'Lifting the trail heel before impact'],
+      reps: '15 loaded backswings + 15 range balls, 2-3 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round + better contact',
       priority: 'Medium',
     });
   }
 
-  if (m.stanceVsShoulders != null && m.stanceVsShoulders < 1.0) {
+  // ─── 8. Lead arm folded at top ─────────────────────────────────────────
+  if (m.leadElbowAtTop != null && m.leadElbowAtTop < 150) {
     out.push({
-      title: 'Widen Your Stance',
-      whatToFix: `Your feet were narrower than your shoulders at address. For a full swing you want your feet about as wide as your shoulders, sometimes a hair wider for the driver.`,
-      whyItMatters: 'A narrow stance means a tippy base. You will sway off the ball and lose balance, especially at faster swing speeds. Power and accuracy both come from a stable platform.',
-      howToFix: '1) Stand tall with your arms relaxed. 2) Look down - your feet should be roughly under the outside edge of your shoulders. 3) For an iron, feet shoulder-width. For a driver, an inch or two wider. 4) Practice your setup in a mirror until shoulder-width feels normal. 5) Take swings and notice how much more stable you feel.',
-      commonMistakes: ['Going too wide (you can\'t turn)', 'Toes pointed straight forward (flare them out 15-20 degrees for easier turn)', 'Forgetting to maintain knee flex'],
-      reps: '5 minutes of mirror setup checks daily for 1 week',
-      estimatedHandicapImpact: 'Save 1 stroke per round',
+      title: 'Keep Your Lead Arm Straighter At The Top',
+      whatToFix: `Your ${lead} arm was bent to ${Math.round(m.leadElbowAtTop)}° at the top. The lead arm should stay relatively straight (160°+) at the top to keep the swing arc wide. A collapsed lead arm equals a short, narrow swing.`,
+      whyItMatters: 'A bent lead arm at the top means a shorter swing arc, which means less club-head speed and shorter shots. It also tends to make the club come down narrow, leading to fat shots and pulls.',
+      howToFix: `1) Hold a club out in front of you with just your ${lead} hand. 2) Take slow takeaways feeling your ${lead} arm STAY long and straight. 3) Add the ${trail} hand and do 15 more. 4) On the range, key on "wide takeaway, straight lead arm" until the top. 5) Pause at the top of each swing and feel the lead arm.`,
+      commonMistakes: ['Trying to lock the elbow (just keep it straight, not stiff)', 'Letting the wrists hinge too early (delay the hinge to the halfway-back point)', 'Folding the lead arm to get more turn (turn your shoulders more instead)'],
+      reps: '15 one-arm + 15 two-arm takeaways, 3 times a week',
+      estimatedHandicapImpact: 'Save 1 stroke per round + add yardage',
       priority: 'Low',
     });
   }
 
-  if (m.finishHipRot != null && m.finishHipRot < 70) {
+  // ─── 9. Incomplete finish ──────────────────────────────────────────────
+  if (m.finishHipRot != null && m.finishHipRot < 75) {
     out.push({
       title: 'Finish With Your Hips Facing The Target',
-      whatToFix: `At the finish your hips only rotated about ${Math.round(m.finishHipRot)} degrees from address. A full finish has your belt buckle pointing AT the target, balanced on your front foot.`,
-      whyItMatters: 'An incomplete finish means you slowed down through impact. The body is reading the brakes-tap as a signal to also slow your hands, which steals power and accuracy. Pros always rotate to a full balanced finish.',
-      howToFix: '1) Take a slow swing and HOLD the finish position for 3 seconds before you put the club down. 2) Belt buckle to the target, weight on the lead foot, trail toe lightly touching the ground. 3) Make 20 of these slow swings, holding each finish. 4) Now do it at full speed - if you can\'t hold the finish, you are off-balance.',
-      commonMistakes: ['Falling backward off the lead foot', 'Stopping the rotation halfway', 'Lifting up out of the finish posture'],
+      whatToFix: `At the finish your hips rotated only ${Math.round(m.finishHipRot)}° from address. A full finish has your belt buckle pointing AT the target, balanced on your lead foot, trail toe lightly touching the ground.`,
+      whyItMatters: 'An incomplete finish is your body telling itself to slow down THROUGH impact. The body reads "I won\'t finish anyway" as a brake signal and slows the hands, which steals power and accuracy. Pros always rotate to a full balanced finish.',
+      howToFix: `1) Take a slow swing and HOLD the finish position for 3 seconds before putting the club down. 2) Check: belt buckle to the target, weight on lead foot, trail toe lightly down. 3) Make 20 of these slow swings, holding each finish. 4) Now do it at full speed. If you can\'t hold the finish for 3 seconds, you\'re off balance.`,
+      commonMistakes: ['Falling backward off the lead foot', 'Stopping rotation halfway', 'Lifting up out of the finish posture'],
       reps: '20 slow hold-the-finish swings, every range session',
       estimatedHandicapImpact: 'Save 1-2 strokes per round',
       priority: 'Medium',
     });
   }
 
-  if (m.headShiftPctAtTop > 0.04) {
+  // ─── 10. Off-balance finish (head not over lead foot) ──────────────────
+  if (m.finishBalancePct != null && m.finishBalancePct < 0.2) {
     out.push({
-      title: 'Stop The Reverse Pivot',
-      whatToFix: `At the top of your backswing, your head shifted toward the target (a reverse pivot - your weight goes the wrong way). It should stay centered or move slightly AWAY from the target.`,
-      whyItMatters: 'Reverse pivots cause two horrible misses: huge slices when the body cannot recover, and chunky shots when the weight stays back. You essentially load up on the wrong leg.',
-      howToFix: '1) Get a soccer ball or basketball. 2) Stand in golf posture with the ball under your right foot (lefties: left foot). 3) Take a backswing - you should feel pressure go INTO the ball under your trail foot. 4) Now do 15 reps without the ball, feeling weight load into the trail leg on the way back. 5) Add a small foam pad under the lead foot for 10 reps - it will discourage you from loading into the lead side.',
-      commonMistakes: ['Sliding instead of loading (rotate, do not sway)', 'Loading too far back (stay athletic, knee stays flexed)', 'Forgetting to shift back to the lead side on the way down'],
-      reps: '15 ball-under-foot loads + 10 foam-pad swings, 3 times a week',
-      estimatedHandicapImpact: 'Save 2-3 strokes per round',
-      priority: 'High',
+      title: 'Stack Your Head Over Your Lead Foot At Finish',
+      whatToFix: `At the finish, your head was not stacked over your lead foot - it stayed back. A balanced finish has the head almost directly over the lead foot, weight 90% on that side.`,
+      whyItMatters: 'A finish with weight stuck on the back leg means you didn\'t fully transfer to the lead side during the downswing. That causes thin shots, blocks to the right, and inconsistent contact - the dreaded "hanging back" miss.',
+      howToFix: `1) Make slow swings and walk through the finish - literally take a small step toward the target after impact. 2) Now make swings WITHOUT walking but with the same feel of pressure moving forward. 3) Hold the finish for 3 seconds with weight pinned on the lead foot. 4) The trail foot should be on its toes lightly.`,
+      commonMistakes: ['Pushing off the trail foot too hard (it\'s a passive transfer, not a jump)', 'Sliding the hips instead of rotating', 'Cutting the swing short to avoid losing balance'],
+      reps: '20 step-through swings + 20 hold-finish swings, 3 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
     });
   }
 
-  // Always include a tempo / smooth-out reminder so we have at least 5 takeaways.
+  // ─── 11. Narrow stance ─────────────────────────────────────────────────
+  if (m.stanceVsShoulders != null && m.stanceVsShoulders < 0.95) {
+    out.push({
+      title: 'Widen Your Stance',
+      whatToFix: `Your feet were narrower than your shoulders at address (${m.stanceVsShoulders.toFixed(2)}x shoulder width - aim for 1.0-1.1x for irons, 1.1-1.2x for driver).`,
+      whyItMatters: 'A narrow stance is a tippy base. You\'ll sway off the ball on the backswing and lose balance at faster speeds. Stability is the foundation of every other improvement.',
+      howToFix: '1) Stand tall, arms relaxed. 2) Look down - feet should be roughly under the outside edges of your shoulders. 3) For an iron, exactly shoulder-width. 4) Driver, an inch or two wider. 5) Practice setup in a mirror until it feels normal. 6) Take 10 swings and feel the stability.',
+      commonMistakes: ['Going too wide (you can\'t turn)', 'Toes straight forward (flare them 15-20° outward for easier rotation)', 'Forgetting to maintain knee flex'],
+      reps: '5 minutes of mirror setup checks daily for 1 week',
+      estimatedHandicapImpact: 'Save 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 12. Poor address posture (not bent forward enough) ────────────────
+  if (m.addressSpineTilt != null && m.addressSpineTilt < 18) {
+    out.push({
+      title: 'Tilt Forward From The Hips At Address',
+      whatToFix: `At address your spine was nearly vertical (${Math.round(m.addressSpineTilt)}° from vertical - we want about 25-35°). You\'re standing too upright.`,
+      whyItMatters: 'When you stand too upright, the club has to swing flat and around your body, which is the #1 cause of slices. A proper forward bend lets the club swing on plane and the arms hang naturally.',
+      howToFix: '1) Stand tall, club held in front of you at chest height, arms relaxed. 2) Bend forward from the HIPS (not the waist) until the club points at the ground. 3) Let your knees soften slightly. 4) Your butt should feel like it\'s pushed back behind your heels. 5) Practice this setup in a mirror until 25-30° of forward bend feels normal.',
+      commonMistakes: ['Bending from the waist instead of the hips (rounded back is bad)', 'Bending the knees too much instead of from the hips', 'Letting the arms reach away from the body - they should hang straight down'],
+      reps: '5 minutes daily for a week in front of a mirror',
+      estimatedHandicapImpact: 'Save 1-3 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 13. Hip sway off the ball at top ──────────────────────────────────
+  if (m.hipSwayAtTopPct > 0.10) {
+    out.push({
+      title: 'Rotate Your Hips, Don\'t Sway Off The Ball',
+      whatToFix: `On the backswing, your hips moved laterally ${(m.hipSwayAtTopPct*100).toFixed(1)}% of body height AWAY from the target. That\'s a sway, not a rotation. The hips should turn in place.`,
+      whyItMatters: 'A hip sway makes it nearly impossible to return to the ball consistently - you\'d have to slide BACK the exact same amount on the downswing. That\'s why swayers get fat shots, thin shots, pushes and pulls all in the same round.',
+      howToFix: `1) Set up with a club shaft (or alignment stick) stuck in the ground a few inches outside your ${trail} hip. 2) Take backswings without your hip touching the stick. 3) Feel the hips ROTATE around your spine, not slide. 4) Do 20 slow reps, then 10 at speed.`,
+      commonMistakes: ['Locking the lower body completely (some turn is fine, no sliding is the goal)', 'Forgetting to load weight INTO the trail foot (rotation creates the load)', 'Lifting the lead heel up - keep it down'],
+      reps: '20 stick-drill backswings + 20 full swings, 3 times a week',
+      estimatedHandicapImpact: 'Save 2-3 strokes per round',
+      priority: m.hipSwayAtTopPct > 0.16 ? 'High' : 'Medium',
+    });
+  }
+
+  // ─── 14. Standing up - head LIFTS (different from sway) ────────────────
+  if (m.headLiftPct > 0.08) {
+    out.push({
+      title: 'Keep Your Head At The Same Height',
+      whatToFix: `Your head LIFTED ${(m.headLiftPct*100).toFixed(1)}% of your body height during the swing - you stood up out of your posture. This usually happens during the downswing.`,
+      whyItMatters: 'When the head lifts, the entire spine straightens - that\'s early extension. The hands have to back away from the ball to make room, causing slices, pushes, and shots hit off the heel.',
+      howToFix: `1) Set up under a low ceiling, doorway, or branch where your head is JUST below the obstacle. 2) Take slow swings keeping your head from touching it. 3) Do 20 reps without ever bumping. 4) Move to the range and KEEP the feel - head stays low through impact and only comes up AFTER the ball is gone.`,
+      commonMistakes: ['Trying to keep the head frozen (some movement is OK, just not vertical lift)', 'Looking up to see the ball before contact', 'Tensing the neck'],
+      reps: '20 doorway-drill swings + range session, 3 times a week',
+      estimatedHandicapImpact: 'Save 2-3 strokes per round',
+      priority: m.headLiftPct > 0.14 ? 'High' : 'Medium',
+    });
+  }
+
+  // ─── 15. Body-relative head sway (the OLD one, but stricter threshold) ─
+  // Only fires if head moved a lot RELATIVE to the hips. Camera shake and
+  // whole-body sliding don't count - this is independent head motion.
+  if (m.headRelPct > 0.08) {
+    const sev = m.headRelPct > 0.14 ? 'High' : 'Medium';
+    out.push({
+      title: 'Quiet Your Head Through The Swing',
+      whatToFix: `Your head moved ${(m.headRelPct*100).toFixed(1)}% of your body height INDEPENDENTLY of your body (we subtracted out the body\'s own motion). That much independent head movement is too much.`,
+      whyItMatters: 'When your head moves on its own (separate from the rest of the body), the bottom of your swing arc moves with it. That means fat shots (ground first), thin shots (top of ball), and a lot of inconsistency.',
+      howToFix: '1) Tape a tee to a wall right where your nose is at address. 2) Take slow half-swings without letting the tee move out of view. 3) Now eyes closed for 10 reps. 4) Move outside and pick a single blade of grass next to the ball - don\'t look away from it until your swing is finished. 5) Build up to full speed only after 30 clean reps.',
+      commonMistakes: ['Trying to freeze the head completely (some movement is fine)', 'Tensing the neck (stay relaxed)', 'Peeking at the ball before contact'],
+      reps: '20 wall-tee swings + 30 grass-blade swings, 4 times a week',
+      estimatedHandicapImpact: sev === 'High' ? 'Save 3-4 strokes per round' : 'Save 1-2 strokes per round',
+      priority: sev,
+    });
+  }
+
+  // ─── 16. Trail elbow flying at top ─────────────────────────────────────
+  if (m.trailElbowAtTop != null && m.trailElbowAtTop > 110) {
+    out.push({
+      title: 'Tuck Your Trail Elbow At The Top',
+      whatToFix: `Your ${trail} elbow was at ${Math.round(m.trailElbowAtTop)}° at the top - it should be closer to 90°. A "flying" trail elbow means it\'s pointed away from your body instead of down.`,
+      whyItMatters: 'A flying trail elbow makes the club travel on a steep, outside path coming down - over-the-top is the classic result. That leads to slices and pulls. A tucked elbow lets the club drop into the slot for a powerful, on-plane downswing.',
+      howToFix: `1) Stick a glove under your ${trail} armpit. 2) Take slow backswings keeping the glove pinned. 3) At the top, your ${trail} elbow should point down at the ground, like a waiter holding a tray. 4) Do 15 reps with the glove drill. 5) Add full swings holding the same feel.`,
+      commonMistakes: ['Pinning the elbow too tight (it can come off the side a little)', 'Restricting the shoulder turn to keep the elbow tucked - turn fully AND tuck', 'Forgetting the drill once you swing fast'],
+      reps: '15 glove-drill swings + 10 full swings, 3 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 17. Lead knee straightening at impact (different from extension) ──
+  if (m.leadKneeStraighteningAtImpact != null && m.leadKneeStraighteningAtImpact > 25) {
+    out.push({
+      title: 'Post Up On A Slightly Bent Lead Knee',
+      whatToFix: `Your ${lead} knee straightened by ${Math.round(m.leadKneeStraighteningAtImpact)}° from address to impact - too much. A small amount of straightening (the "post-up") creates power, but too much is the body jumping out of the shot.`,
+      whyItMatters: 'When the lead knee snaps fully straight, the spine often goes with it (early extension). It also throws off your timing - the body is leaving the shot before the club catches up.',
+      howToFix: `1) Make slow swings and check that your ${lead} knee still has 10-15° of flex at impact. 2) Feel like the knee "posts" (firms up) but doesn\'t lock straight. 3) Try the "chair drill": sit lightly on a chair set up behind your ${lead} hip and swing keeping contact with the chair through impact.`,
+      commonMistakes: ['Keeping the knee TOO flexed (some firming is good, you do need ground force)', 'Standing up instead of rotating', 'Sliding hips forward to "post" instead of rotating'],
+      reps: '15 chair-drill swings + 15 range balls, 3 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 18. Shoulder tilt at impact (should INCREASE from address) ────────
+  // Note: hard to detect reliably across camera angles, so only flag if there's
+  // a clear loss of tilt (positive tilt change at impact means standing up).
+  // We skip if camera angle is unclear - this metric needs face-on or
+  // down-the-line for meaningful measurement.
+
+  // ─── Always include a tempo / setup reminder if too few takeaways ──────
   if (out.length < 5) {
     out.push({
       title: 'Smooth Out Your Tempo',
@@ -714,13 +979,23 @@ function generateTakeaways(m) {
       priority: 'Low',
     });
   }
+  if (out.length < 5) {
+    out.push({
+      title: 'Set Your Grip Pressure Light',
+      whatToFix: 'Grip pressure is hard to see from a video but is a common silent killer. If you grip the club too tightly, you can\'t release the club at impact and your swing feels stiff.',
+      whyItMatters: 'On a 1-10 grip pressure scale, you want to be around a 4. Most amateurs are at 8+. A tight grip kills wrist hinge, kills release, kills speed, and creates tension that ruins tempo.',
+      howToFix: '1) Hold the club at address. 2) Squeeze it as hard as you can for 3 seconds. That\'s a 10. 3) Now lighten until the club almost slips out. That\'s a 1. 4) Find a 4 - firm enough to control, soft enough that you can feel the clubhead. 5) Hit balls keeping that pressure all the way through the swing.',
+      commonMistakes: ['Tightening the grip mid-swing when nervous', 'Different pressure in each hand', 'Death-gripping driver vs. casual grip with wedges'],
+      reps: 'Pressure check before every range ball, 1 week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Low',
+    });
+  }
 
-  // Sort: High → Medium → Low
+  // ─── Sort: High → Medium → Low; cap at 9 takeaways. ────────────────────
   const order = { 'High': 0, 'Medium': 1, 'Low': 2 };
   out.sort((a, b) => (order[a.priority] ?? 3) - (order[b.priority] ?? 3));
-
-  // Cap at 8 takeaways.
-  return out.slice(0, 8);
+  return out.slice(0, 9);
 }
 
 /* ----- Frame breakdown text ----------------------------------------- */
@@ -826,7 +1101,7 @@ function buildReportFromPoses(poses, frames) {
   const summaryBits = [];
   if (m.shoulderRotDeg != null) summaryBits.push(`shoulder turn of ${Math.round(m.shoulderRotDeg)}°`);
   if (m.hipRotDeg != null) summaryBits.push(`hip turn of ${Math.round(m.hipRotDeg)}°`);
-  if (m.headMovePctOfBody != null) summaryBits.push(`head moved ${(m.headMovePctOfBody*100).toFixed(1)}% of body height`);
+  if (m.headRelPct != null) summaryBits.push(`independent head movement of ${(m.headRelPct*100).toFixed(1)}% body height`);
   const summary = `Your swing showed a ${summaryBits.join(', ')}. ${
     takeaways.filter(t => t.priority === 'High').length > 0
       ? 'There are a couple of high-priority fixes that will pay off the fastest.'
@@ -837,14 +1112,16 @@ function buildReportFromPoses(poses, frames) {
   let positive = 'You took a committed swing - that is half the battle.';
   if (m.finishHipRot != null && m.finishHipRot >= 75) positive = `You rotated your hips ${Math.round(m.finishHipRot)}° to a nice complete finish at Frame 12.`;
   else if (m.shoulderRotDeg != null && m.shoulderRotDeg >= 80) positive = `You completed a full ${Math.round(m.shoulderRotDeg)}° shoulder turn at the top (Frame 5) - that is solid power potential.`;
-  else if (m.headMovePctOfBody != null && m.headMovePctOfBody < 0.04) positive = `Your head stayed remarkably still through the swing (only ${(m.headMovePctOfBody*100).toFixed(1)}% of body height of movement). That is a great foundation.`;
+  else if (m.headRelPct != null && m.headRelPct < 0.05) positive = `Your head stayed remarkably steady through the swing (only ${(m.headRelPct*100).toFixed(1)}% of body height of independent movement). That is a great foundation.`;
 
   // Ball-flight forecast based on metrics
   let ballFlight = 'Based on what we see: ';
   const shots = [];
   if (m.spineDelta != null && m.spineDelta > 14) shots.push('thin / topped shots and pushes when your body stands up at impact');
   if (m.leadElbowAtImpact != null && m.leadElbowAtImpact < 150) shots.push('weak slices and pull-cuts from the chicken wing');
-  if (m.headShiftPctAtTop > 0.04) shots.push('pulls and high-spin shots from the reverse pivot');
+  if (m.reversePivotPct > 0.05) shots.push('pulls and high-spin shots from the reverse pivot');
+  if (m.hipSlideAtImpactPct > 0.08) shots.push('pushes and weak right-misses from the hip slide');
+  if (m.headLiftPct > 0.08) shots.push('thin shots and topped balls when you stand up at impact');
   if (m.shoulderRotDeg != null && m.shoulderRotDeg < 60) shots.push('a loss of distance from the short backswing');
   if (m.hipRotDeg != null && m.shoulderRotDeg != null && m.hipRotDeg > m.shoulderRotDeg * 0.7) shots.push('an inconsistent strike pattern from the over-rotated hips');
   if (shots.length === 0) ballFlight = 'Your swing pattern looks fairly clean. The most likely miss is a small directional inconsistency that will tighten up with the drills below.';
