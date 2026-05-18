@@ -650,7 +650,72 @@ function computeMetrics(poses) {
       * (leadAnkleFinish.x > stanceMid ? 1 : -1);
   }
 
-  // ─── 11. Head reverse-pivot at top ────────────────────────────────────
+  // ─── 11. Address geometry ──────────────────────────────────────────────
+  // Hand position vs stance center (proxy for ball position).
+  // Positive = hands forward of stance center (good for irons),
+  // strongly negative = hands well behind ball (a setup mistake).
+  const stanceMidAddrX = mid(kp(address, 'left_ankle'), kp(address, 'right_ankle'))?.x;
+  const handMidAddrX   = mid(kp(address, 'left_wrist'), kp(address, 'right_wrist'))?.x;
+  const handAtAddrOffsetPct = (stanceMidAddrX != null && handMidAddrX != null && bh)
+    ? (handMidAddrX - stanceMidAddrX) / bh : null;
+
+  // Shoulder tilt at address (lead shoulder higher than trail = good).
+  // The sign of the tilt depends on camera view; we just measure absolute
+  // deviation from horizontal.
+  const shoulderTiltAtAddress = (() => {
+    const l = kp(address, 'left_shoulder');
+    const r = kp(address, 'right_shoulder');
+    if (!l || !r) return null;
+    return Math.atan2(r.y - l.y, r.x - l.x) * 180 / Math.PI;
+  })();
+  const shoulderTiltAtAddressMag = shoulderTiltAtAddress != null
+    ? Math.abs(shoulderTiltAtAddress) : null;
+
+  // ─── 12. Hand height at top of backswing ──────────────────────────────
+  // Above head = hands are too high (lifty, narrow swing).
+  // Way below head = flat/short swing.
+  const handTopY = mid(kp(top, 'left_wrist'), kp(top, 'right_wrist'))?.y;
+  const headTopY = kp(top, 'nose')?.y;
+  const handTopRelToHeadPct = (handTopY != null && headTopY != null && bh)
+    ? (headTopY - handTopY) / bh : null;
+  // positive value means hands are ABOVE head (which is up in screen).
+
+  // ─── 13. Hip openness at impact ───────────────────────────────────────
+  const hipImpactRot = deltaAngle(hipLineAng(address), hipLineAng(impact));
+  // Pros: ~35-45° open at impact. <20° = stuck, >55° = spinning out.
+
+  // ─── 14. Hand position at impact (forward press through impact) ───────
+  const handImpactX     = mid(kp(impact, 'left_wrist'), kp(impact, 'right_wrist'))?.x;
+  const ankleImpactMidX = mid(kp(impact, 'left_ankle'), kp(impact, 'right_ankle'))?.x;
+  const handAtImpactOffsetPct = (handImpactX != null && ankleImpactMidX != null && bh)
+    ? (handImpactX - ankleImpactMidX) / bh : null;
+
+  // ─── 15. Lead arm bend through halfway-down ───────────────────────────
+  const leadElbowAtHalfDown = elbowAng(downHalf, leadSide);
+
+  // ─── 16. Spine angle at finish vs address ─────────────────────────────
+  // Negative = leaning back from target (good - "reverse C is overdone"),
+  // positive = still leaning forward = bad / arms-only swing.
+  const spF = spineAng(finish);
+  const finishSpineDelta = (spA != null && spF != null) ? (spF - spA) : null;
+  const reverseCSeverity = (finishSpineDelta != null && finishSpineDelta < -25)
+    ? Math.abs(finishSpineDelta) : null;
+  const finishStillBentForward = (finishSpineDelta != null && finishSpineDelta > 10)
+    ? finishSpineDelta : null;
+
+  // ─── 17. Trail-leg post-up at finish (kicked / heel up) ───────────────
+  const trailKneeFinish = kneeAng(finish, trailSide);
+
+  // ─── 18. Tempo proxy from frame ordering ──────────────────────────────
+  // Since we extract 12 evenly-spaced frames across the swing window, the
+  // index of the "top of backswing" frame relative to the impact frame
+  // tells us the back:down time ratio. We'd expect impact ≈ frame 8 if
+  // tempo is 3:1 (top at ≈ frame 5-6). If impact is much later, swing was
+  // rushed at top.
+  // (This is approximate - real tempo measurement needs the raw motion
+  // curve, which extractFrames doesn't currently pass through.)
+
+  // ─── 19. Head reverse-pivot at top ────────────────────────────────────
   // If the head moved TOWARD the target on the backswing, that's a reverse
   // pivot. Direction of "toward target" depends on handedness and camera.
   const noseTop = kp(top, 'nose');
@@ -705,6 +770,27 @@ function computeMetrics(poses) {
 
     // Balance
     finishBalancePct,
+
+    // Address geometry
+    handAtAddrOffsetPct,
+    shoulderTiltAtAddress,
+    shoulderTiltAtAddressMag,
+
+    // Top of backswing
+    handTopRelToHeadPct,
+
+    // Impact position
+    hipImpactRot,
+    handAtImpactOffsetPct,
+
+    // Halfway down
+    leadElbowAtHalfDown,
+
+    // Finish
+    finishSpineDelta,
+    reverseCSeverity,
+    finishStillBentForward,
+    trailKneeFinish,
   };
 }
 
@@ -965,6 +1051,162 @@ function generateTakeaways(m) {
   // a clear loss of tilt (positive tilt change at impact means standing up).
   // We skip if camera angle is unclear - this metric needs face-on or
   // down-the-line for meaningful measurement.
+
+  // ─── 19. Hands behind the ball at address ─────────────────────────────
+  if (m.handAtAddrOffsetPct != null && m.handAtAddrOffsetPct < -0.04
+      && m.cameraAngle === 'face-on') {
+    out.push({
+      title: 'Get Your Hands In Front Of The Ball At Address',
+      whatToFix: `At address your hands sat ${Math.abs(m.handAtAddrOffsetPct * 100).toFixed(1)}% of your body height BEHIND the stance center. For irons, hands should be slightly ahead of (forward of) the ball - just a few inches.`,
+      whyItMatters: 'Hands behind the ball at address pre-loads a flippy, scooping impact - the wrists try to add loft at the last second and you get thin shots, fat shots, and added spin. The setup itself dictates the impact position.',
+      howToFix: `1) Set up to a ball as usual. 2) Take your normal grip but settle the hands FORWARD so they sit just ahead of the ball - even a touch ahead of your ${lead} thigh. 3) Check in a mirror that the shaft leans slightly toward the target at address. 4) Practice this static setup 5 minutes a day for a week before adding swings. 5) On the range, start every swing by checking the hand position.`,
+      commonMistakes: ['Forcing the hands so far forward you de-loft the club too much', 'Letting the ball position drift forward to compensate', 'Tensing up trying to "set" the hands'],
+      reps: '5 minutes daily setup practice for 7 days',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 20. Shoulders too level at address (no tilt) ──────────────────────
+  if (m.shoulderTiltAtAddressMag != null && m.shoulderTiltAtAddressMag < 4
+      && m.cameraAngle === 'face-on') {
+    out.push({
+      title: 'Set Your Trail Shoulder Lower At Address',
+      whatToFix: `Your shoulder line at address was nearly level (${m.shoulderTiltAtAddressMag.toFixed(1)}° tilt). With a proper grip - trail hand lower on the handle than lead hand - the trail shoulder should naturally sit a touch lower than the lead.`,
+      whyItMatters: 'Level shoulders at address usually means you\'re reaching for the ball or aimed across the line. A small tilt toward the trail side pre-sets a proper inside-out swing path and helps you hit slight draws instead of slices.',
+      howToFix: `1) Take your normal grip - both hands on the club, ${trail} hand below ${lead} hand. 2) Without changing your hand position, let your ${trail} shoulder DROP by an inch or two. 3) Feel the ${lead} arm and shoulder rise a touch. 4) Look in a mirror - the shoulder line should tilt down toward the ${trail} side. 5) Lock this in over a week of setup practice.`,
+      commonMistakes: ['Tilting so much you lean off the ball', 'Bending the spine sideways instead of just dropping the shoulder', 'Letting the trail arm get stiff'],
+      reps: '5 minutes daily mirror setup, 7 days',
+      estimatedHandicapImpact: 'Save 1 stroke per round + better path',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 21. Hands too high at top (lifty / narrow swing) ─────────────────
+  if (m.handTopRelToHeadPct != null && m.handTopRelToHeadPct > 0.20) {
+    out.push({
+      title: 'Don\'t Lift Your Hands At The Top',
+      whatToFix: `At the top, your hands were ${(m.handTopRelToHeadPct * 100).toFixed(1)}% of body height ABOVE your head. The hands should sit roughly at or just above shoulder height - hands over the head means you\'re lifting with the arms instead of turning.`,
+      whyItMatters: 'Hands flying high above the head is the classic "lift the arms" backswing. It creates a steep, narrow, over-the-top downswing - the #1 source of slices, pulled hooks, and chunked irons. The body didn\'t turn; the arms did all the work.',
+      howToFix: `1) Hold a club across your chest with both arms folded over it. 2) Make a backswing TURN - shoulders rotate, club stays across the chest. That is what a turn-driven backswing feels like. 3) Now hold the club normally, repeat the same TURN feel - your hands will end up at shoulder height, not above. 4) Do 15 chest-club turns + 15 normal swings.`,
+      commonMistakes: ['Restricting the shoulder turn (turn fully, just don\'t lift)', 'Tensing the trail arm', 'Reaching for the sky at the top'],
+      reps: '15 chest-club + 15 normal swings, 3 times a week',
+      estimatedHandicapImpact: 'Save 2-3 strokes per round',
+      priority: 'High',
+    });
+  }
+
+  // ─── 22. Hands too low at top (flat swing) ─────────────────────────────
+  if (m.handTopRelToHeadPct != null && m.handTopRelToHeadPct < -0.05
+      && m.shoulderRotDeg != null && m.shoulderRotDeg > 60) {
+    out.push({
+      title: 'Get The Club Up A Little More At The Top',
+      whatToFix: `At the top your hands ended up below shoulder/head height. The swing is flat - the club goes around your body more than up. Some flatness is fine but too much creates path issues.`,
+      whyItMatters: 'A very flat backswing tends to come into the ball from too far inside, causing hooks, pushes, and a club face that\'s hard to control. Some upward set on the way back gives you more options on the way down.',
+      howToFix: `1) Put a chair or low table behind you at hip height. 2) Take a backswing where the club must clear OVER the chair - that forces a bit of vertical set. 3) Do 15 reps. 4) Now without the chair, feel the same "set up over the chair" motion. 5) Stop when hands reach shoulder height roughly.`,
+      commonMistakes: ['Going too vertical and losing turn (you still want shoulders rotating ~90°)', 'Lifting with the arms instead of letting them set naturally on plane'],
+      reps: '15 chair-clearing swings + 15 normal swings, 2-3 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 23. Stuck hips at impact (under-rotated) ──────────────────────────
+  if (m.hipImpactRot != null && m.hipImpactRot < 20) {
+    out.push({
+      title: 'Open Your Hips More At Impact',
+      whatToFix: `At impact your hips were only ${Math.round(m.hipImpactRot)}° open to the target. Pros are 30-45° open at impact - the lower body is leading the hands through the ball.`,
+      whyItMatters: 'Stuck hips at impact means the arms have to do all the work to square the face. That leads to flippy hands, pushes, blocks, and the dreaded hands-ahead-of-body pattern. Hip rotation through impact is THE power source.',
+      howToFix: `1) Set up to the ball and place an alignment stick on the ground pointing at the target, just outside your ${lead} foot. 2) Take slow swings feeling your belt buckle ROTATE to point past the stick by impact. 3) Hips should be ~30° open with hands still over the ball. 4) Do 15 slow + 15 half-speed swings. 5) Cue word: "buckle to target".`,
+      commonMistakes: ['Sliding hips toward target instead of rotating them open', 'Trying to over-rotate so fast you lose balance', 'Forgetting the trail foot - it should be coming up on the toe by impact'],
+      reps: '30 belt-buckle-rotation swings per range session',
+      estimatedHandicapImpact: 'Save 2-3 strokes per round + add yardage',
+      priority: 'High',
+    });
+  }
+
+  // ─── 24. Spun-out hips at impact (over-rotated) ────────────────────────
+  if (m.hipImpactRot != null && m.hipImpactRot > 55) {
+    out.push({
+      title: 'Quiet The Hips A Touch Through Impact',
+      whatToFix: `At impact your hips were already ${Math.round(m.hipImpactRot)}° open. That\'s spinning out - the hips have raced ahead of the arms and the club gets left behind. Pros are typically 30-45° at impact.`,
+      whyItMatters: 'Spinning out gets the body too open too early, which forces the arms to "save" the shot. The result is blocks, pushes, and weak slices because the face is open at impact. The hips should LEAD, not LEAVE the arms.',
+      howToFix: `1) Practice swings with your trail foot stepped slightly back. 2) Feel the lower body resist a bit - the chest catches up. 3) Use the cue "let the arms catch up" on the downswing. 4) Do 15 step-back swings, then 15 normal swings staying patient on the downswing.`,
+      commonMistakes: ['Stopping the hips entirely (they should still rotate, just not race)', 'Decelerating arms instead of letting body wait', 'Steering the ball'],
+      reps: '15 step-back + 15 patient swings, 2-3 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 25. Hands flipping behind ball at impact ──────────────────────────
+  if (m.handAtImpactOffsetPct != null && m.handAtImpactOffsetPct < -0.03
+      && m.cameraAngle === 'face-on') {
+    out.push({
+      title: 'Get Your Hands In Front Of The Ball At Impact',
+      whatToFix: `At impact your hands were BEHIND the stance center (${Math.abs(m.handAtImpactOffsetPct * 100).toFixed(1)}% body height behind). The hands should be AHEAD of the ball at impact for an iron - that\'s "forward shaft lean".`,
+      whyItMatters: 'Hands behind the ball at impact means you\'re flipping the club through impact, adding loft and spin, and losing distance. The leading edge of the club gets to the ball before the bottom of the club - that\'s a thin shot or a chunked fat shot waiting to happen.',
+      howToFix: `1) Place a ball on the ground. Put a tee in the ground 2 inches IN FRONT of the ball (toward the target). 2) Practice taking divots that START at the tee, not behind it. 3) That forces forward shaft lean at impact. 4) Do 10 small chip-style shots with this drill. 5) Build up to full swings keeping the same feel: hands lead, head behind ball.`,
+      commonMistakes: ['Adding too much hand-action trying to "press" forward (it\'s a body-rotation move, not a hand move)', 'Hitting down too steeply', 'Stopping the body to "let" the hands lead'],
+      reps: '10 tee-in-front pitches per range session for 3 weeks',
+      estimatedHandicapImpact: 'Save 2-4 strokes per round',
+      priority: 'High',
+    });
+  }
+
+  // ─── 26. Lead arm collapsing through halfway-down ──────────────────────
+  if (m.leadElbowAtHalfDown != null && m.leadElbowAtHalfDown < 140) {
+    out.push({
+      title: 'Keep Your Lead Arm Wide Through Halfway-Down',
+      whatToFix: `Coming down through halfway (frame 7-ish), your ${lead} arm was bent to ${Math.round(m.leadElbowAtHalfDown)}°. That early collapse means the swing arc is shrinking before impact - power leak.`,
+      whyItMatters: 'A lead arm that folds on the way down loses the width you built in the backswing. You end up swinging "short and narrow" instead of "long and wide", which costs speed and contact quality.',
+      howToFix: `1) Hold a ball against your chest with your ${lead} forearm (no club). 2) Pretend to take a backswing - the ball stays on your chest. 3) Pretend to come down - the ball STILL stays on the chest (lead arm wide and connected). 4) Only release at "impact". 5) 15 reps of this. Then add a club and feel the same width on the way down.`,
+      commonMistakes: ['Holding the ball too high or too low - it should be against the chest', 'Stopping the rotation just to keep the ball in place (rotate AND maintain width)', 'Trying to lock the arm straight (keep it firm but not stiff)'],
+      reps: '15 ball-on-chest swings + 15 range balls, 3 times a week',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round + add yardage',
+      priority: 'Medium',
+    });
+  }
+
+  // ─── 27. No spine lean back at finish (or reverse-C overdone) ─────────
+  if (m.finishStillBentForward != null && m.finishStillBentForward > 12) {
+    out.push({
+      title: 'Lean Back Slightly At The Finish',
+      whatToFix: `At the finish you were still bent FORWARD by ${Math.round(m.finishStillBentForward)}° from address spine angle. A proper finish has the spine slightly LEANED BACK toward the trail side - chest up to the target.`,
+      whyItMatters: 'Staying bent forward at the finish is a sign you didn\'t fully transfer your weight and rotate through. The body is essentially "saving" itself by leaving the shot early. That\'s why the ball flight is short and inconsistent.',
+      howToFix: `1) Take a slow swing and HOLD a tall finish - belt buckle to the target, chest up, ${lead} side bracing. 2) Look at your shadow or in a mirror - you should be slightly leaned back, not bent over. 3) Do 20 hold-the-tall-finish swings. 4) The "feel" cue is "stand UP at the finish, chest to the sky".`,
+      commonMistakes: ['Overdoing the lean back (no need to flop backward)', 'Falling on the heels', 'Losing balance trying to stand up'],
+      reps: '20 hold-the-tall-finish swings per session',
+      estimatedHandicapImpact: 'Save 1-2 strokes per round',
+      priority: 'Medium',
+    });
+  } else if (m.reverseCSeverity != null && m.reverseCSeverity > 30) {
+    out.push({
+      title: 'Tone Down The Reverse C At The Finish',
+      whatToFix: `Your finish has a pronounced "reverse C" - your spine leaned back by ${Math.round(m.reverseCSeverity)}° from address. A little is normal; a lot stresses the lower back and isn\'t actually more powerful.`,
+      whyItMatters: 'Severe reverse C finishes are a relic of 1970s instruction. They put major strain on the lumbar spine and aren\'t correlated with longer drives. Modern swings finish more "stacked" - belt buckle to target, chest up, but spine vertical.',
+      howToFix: `1) Take swings and finish with your hips, shoulders, and head all stacked over the lead foot. 2) Imagine balancing a glass of water on your chest at the finish - if you lean back, it falls. 3) Do 20 stacked-finish swings.`,
+      commonMistakes: ['Cutting the swing short to avoid the lean back', 'Stopping the rotation', 'Falling forward instead'],
+      reps: '20 stacked-finish swings per range session',
+      estimatedHandicapImpact: 'Save the lower back + 1 stroke per round',
+      priority: 'Low',
+    });
+  }
+
+  // ─── 28. Trail leg not kicked at finish (stuck in flex) ───────────────
+  if (m.trailKneeFinish != null && m.trailKneeFinish < 155
+      && m.finishHipRot != null && m.finishHipRot > 50) {
+    out.push({
+      title: 'Let The Trail Leg "Kick" Straight At The Finish',
+      whatToFix: `At your finish, the ${trail} knee was still flexed (${Math.round(m.trailKneeFinish)}° - we want it nearly straight, ~170°+). The trail leg should "kick" straight as the trail heel comes up off the ground.`,
+      whyItMatters: 'A straight trail leg at the finish means you used the ground - pushed off the trail foot for power. A flexed trail knee at the finish means you stayed grounded the wrong way and missed the speed boost from "ground reaction force".',
+      howToFix: `1) Make swings where the trail heel comes UP off the ground through impact. 2) The trail toe is the only thing left touching, like a pivot point. 3) That naturally extends the trail leg. 4) Do 15 swings focused on the trail heel coming up.`,
+      commonMistakes: ['Lifting the trail heel TOO EARLY (it should come up in the through swing, not the backswing)', 'Spinning out on the trail toe', 'Losing balance forward'],
+      reps: '15 heel-up swings per session',
+      estimatedHandicapImpact: 'Add yardage + save 1 stroke',
+      priority: 'Low',
+    });
+  }
 
   // ─── Always include a tempo / setup reminder if too few takeaways ──────
   if (out.length < 5) {
