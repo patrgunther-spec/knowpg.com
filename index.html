@@ -124,12 +124,14 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
 .ibm-nameplate.expanded .name-text{font-size:42px;letter-spacing:5px}
 
 .video-container{position:relative;width:100%;height:100%;background:#000;display:flex;flex-direction:column}
-.video-frame{flex:1;width:100%;border:none;background:#000}
+.video-frame{flex:1;width:100%;border:none;background:#000;pointer-events:auto}
 .video-nav{display:flex;justify-content:center;gap:10px;padding:8px;background:#1a1a1a;border-top:2px solid #FFD700}
 .video-nav button{background:#DA020E;color:#fff;border:2px solid #FFD700;padding:8px 20px;font-weight:bold;cursor:pointer;font-family:'MS Sans Serif',sans-serif;font-size:12px;text-transform:uppercase}
 .video-nav button:hover{background:#ff3333}
 .video-nav button:active{border-color:#8B0000}
 .video-counter{background:#000;color:#FFD700;padding:6px 12px;font-size:11px;font-weight:bold;text-align:center;border-bottom:1px solid #DA020E}
+.swipe-hint{display:none;position:absolute;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#FFD700;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:bold;z-index:10;pointer-events:none;animation:fadeInOut 3s ease-in-out}
+@keyframes fadeInOut{0%,100%{opacity:0}20%,80%{opacity:1}}
 
 #win-trash .trash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:12px;padding:8px}
 #win-trash .trash-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;background:#1a1a1a;border:1px solid #333;cursor:pointer;transition:background 0.2s}
@@ -178,6 +180,10 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
   #start-menu{width:180px}
   .start-menu-item{font-size:11px;padding:8px 10px}
   .video-nav{display:none}
+  .video-counter{padding:8px 12px;font-size:12px}
+  .swipe-hint{display:block}
+  .video-container{position:relative}
+  .video-frame{flex:1;min-height:0}
   .photo-popup{display:none!important}
 }
 @media(max-width:400px){
@@ -323,7 +329,7 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
         <div class="portfolio-grid">
           <div class="portfolio-item">
             <div class="pi-header"><span class="pi-title">THE NEW YORK TIMES</span><span class="pi-years">2023 - PRESENT</span></div>
-            <div class="pi-desc"><strong style="color:#FFD700">DIGITAL VIDEO EDITOR & PRODUCER</strong><br><br><strong style="color:#DA020E">25M VIDEO VIEWS | 60M IMPRESSIONS</strong><br><br>DEVELOPED AND OPTIMIZED SOCIAL VIDEO STRATEGY FOR THE NEW YORK TIMES' FLAGSHIP PODCASTS INCLUDING THE DAILY, MODERN LOVE, THE INTERVIEW, AND POPCAST.</div>
+            <div class="pi-desc"><strong style="color:#FFD700">VIDEO EDITOR / SOCIAL MEDIA @POPCAST</strong><br><br><strong style="color:#DA020E">25M VIDEO VIEWS | 60M IMPRESSIONS</strong><br><br>TASKED WITH DEVELOPING SOCIAL MEDIA VIDEO FOR THE NEW YORK TIMES' FLAGSHIP PODCASTS, WE'VE GAINED OVER 40 MILLION VIDEO VIEWS SINCE OCTOBER OF 2024.<br><br>DEVELOPED, LAUNCHED AND EDITED SOCIAL VIDEO FOR THE DAILY, MODERN LOVE, THE INTERVIEW, POPCAST AND VARIOUS OTHER HIGH-PROFILE NYT PROPERTIES.<br><br>PRODUCED, EDITED AND MANAGED CONTENT FOR @POPCAST, LAUNCHING THE BRAND'S SOCIAL VERTICALS AND YOUTUBE PAGE TO AN AUDIENCE OF OVER 2.5 MILLION VIDEO VIEWERS.<br><br><strong style="color:#FFD700">INCREASED VIDEO VIEWS ON @POPCAST'S SOCIAL PAGES BY NEARLY 16,000 PERCENT ACROSS TIKTOK AND INSTAGRAM.</strong></div>
           </div>
           <div class="portfolio-item">
             <div class="pi-header"><span class="pi-title">THE VOLUME</span><span class="pi-years">2021 - 2025</span></div>
@@ -375,7 +381,7 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
 
     <div class="retro-window" id="win-videos" style="width:500px;height:650px;top:30px;left:150px">
       <div class="win-titlebar" data-window="win-videos">
-        <span class="win-title">VIDEOS - 39 CLIPS</span>
+        <span class="win-title">VIDEOS</span>
         <div class="win-controls">
           <button class="win-btn" onclick="minimizeWindow('videos')">_</button>
           <button class="win-btn" onclick="maximizeWindow('videos')">[]</button>
@@ -383,9 +389,10 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
         </div>
       </div>
       <div class="win-content dark" style="padding:0;overflow:hidden">
-        <div class="video-container">
-          <div class="video-counter">VIDEO <span id="vid-current">1</span> OF <span id="vid-total">39</span></div>
+        <div class="video-container" id="video-container">
+          <div class="video-counter">VIDEO <span id="vid-current">1</span> OF <span id="vid-total">40</span></div>
           <iframe id="video-frame" class="video-frame" src="" allow="autoplay" allowfullscreen></iframe>
+          <div class="swipe-hint" id="swipe-hint">SWIPE UP/DOWN FOR MORE</div>
           <div class="video-nav">
             <button onclick="prevVideo()">< PREV</button>
             <button onclick="nextVideo()">NEXT ></button>
@@ -393,8 +400,8 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
         </div>
       </div>
       <div class="win-statusbar">
-        <span class="status-section">39 VIDEOS</span>
-        <span class="status-section">RANDOM ORDER</span>
+        <span class="status-section">40 VIDEOS</span>
+        <span class="status-section">SWIPE TO NAVIGATE</span>
       </div>
     </div>
 
@@ -628,10 +635,18 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
   window.nextVideo=function(){loadVideo((curVid+1)%shuffledVids.length)};
   window.prevVideo=function(){loadVideo((curVid-1+shuffledVids.length)%shuffledVids.length)};
 
-  var touchY=0,vc=document.querySelector('.video-container');
+  var touchY=0,vc=document.getElementById('video-container');
   if(vc){
     vc.addEventListener('touchstart',function(e){touchY=e.changedTouches[0].screenY},{passive:true});
-    vc.addEventListener('touchend',function(e){var diff=touchY-e.changedTouches[0].screenY;if(diff>50)nextVideo();else if(diff<-50)prevVideo()},{passive:true});
+    vc.addEventListener('touchend',function(e){
+      var diff=touchY-e.changedTouches[0].screenY;
+      if(diff>50){nextVideo();showSwipeHint()}
+      else if(diff<-50){prevVideo();showSwipeHint()}
+    },{passive:true});
+  }
+  function showSwipeHint(){
+    var h=document.getElementById('swipe-hint');
+    if(h&&window.innerWidth<=768){h.style.animation='none';h.offsetHeight;h.style.animation='fadeInOut 2s ease-in-out'}
   }
 })();
 </script>
