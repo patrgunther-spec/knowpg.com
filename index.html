@@ -130,8 +130,13 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
 .video-nav button:hover{background:#ff3333}
 .video-nav button:active{border-color:#8B0000}
 .video-counter{background:#000;color:#FFD700;padding:6px 12px;font-size:11px;font-weight:bold;text-align:center;border-bottom:1px solid #DA020E}
-.swipe-hint{display:none;position:absolute;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#FFD700;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:bold;z-index:10;pointer-events:none;animation:fadeInOut 3s ease-in-out}
-@keyframes fadeInOut{0%,100%{opacity:0}20%,80%{opacity:1}}
+.video-tap-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(218,2,14,0.9);color:#fff;padding:20px 40px;font-size:16px;font-weight:bold;cursor:pointer;border:3px solid #FFD700;text-transform:uppercase;z-index:20;font-family:'MS Sans Serif',sans-serif}
+.video-tap-play:hover{background:#ff3333}
+.video-tap-play.hidden{display:none}
+.mobile-nav{display:none;justify-content:space-between;padding:0;background:#1a1a1a;border-top:2px solid #FFD700;position:absolute;bottom:0;left:0;right:0}
+.mobile-nav button{flex:1;background:#DA020E;color:#fff;border:none;border-right:1px solid #FFD700;padding:14px 0;font-weight:bold;cursor:pointer;font-family:'MS Sans Serif',sans-serif;font-size:14px;text-transform:uppercase}
+.mobile-nav button:last-child{border-right:none}
+.mobile-nav button:active{background:#8B0000}
 
 #win-trash .trash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:12px;padding:8px}
 #win-trash .trash-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;background:#1a1a1a;border:1px solid #333;cursor:pointer;transition:background 0.2s}
@@ -181,9 +186,9 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
   .start-menu-item{font-size:11px;padding:8px 10px}
   .video-nav{display:none}
   .video-counter{padding:8px 12px;font-size:12px}
-  .swipe-hint{display:block}
   .video-container{position:relative}
-  .video-frame{flex:1;min-height:0}
+  .video-frame{flex:1;min-height:0;margin-bottom:48px}
+  .mobile-nav{display:flex}
   .photo-popup{display:none!important}
 }
 @media(max-width:400px){
@@ -392,8 +397,12 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
         <div class="video-container" id="video-container">
           <div class="video-counter">VIDEO <span id="vid-current">1</span> OF <span id="vid-total">40</span></div>
           <iframe id="video-frame" class="video-frame" src="" allow="autoplay" allowfullscreen></iframe>
-          <div class="swipe-hint" id="swipe-hint">SWIPE UP/DOWN FOR MORE</div>
+          <div class="video-tap-play" id="video-tap-play" onclick="startVideo()">TAP TO PLAY</div>
           <div class="video-nav">
+            <button onclick="prevVideo()">< PREV</button>
+            <button onclick="nextVideo()">NEXT ></button>
+          </div>
+          <div class="mobile-nav">
             <button onclick="prevVideo()">< PREV</button>
             <button onclick="nextVideo()">NEXT ></button>
           </div>
@@ -401,7 +410,7 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
       </div>
       <div class="win-statusbar">
         <span class="status-section">40 VIDEOS</span>
-        <span class="status-section">SWIPE TO NAVIGATE</span>
+        <span class="status-section">TAP TO PLAY</span>
       </div>
     </div>
 
@@ -627,26 +636,13 @@ body>*:not(#desktop-root):not(script):not(style){display:none!important}
   window.hideNameplate=function(){document.getElementById('nameplate').classList.add('hidden')};
 
   var videoIds=['1fnmtrYR9G6ac2dG6XHfZKoooDTb0wMlw','1mdkQ6RixFbZC79wrGrTX-i12HP1OaSPn','1vmT9A23V91V62s2RO32TSX8xWLEqRMMM','1VbpBu-b6UnooHnNDxab9H_Itc4U3BVkM','1DZWFyy0KLxLTXAXrvklDLyRkmjLMwjh8','1ooPwSxFJPpgmxuc73-4e5NlhsoCz55op','14T8z7FkAWDoi42736ZLLREJT3kSGdrKb','1QYU-h-f04EiFHXONbOWm_PTVAZDNPUi8','139Ow4J1mpWv7c0b9xLuza970VTKHZm8I','1kXWzKt209jEetr12woc3N4zz397gHKE0','1fO02KcsoyJC025sWXegXgnyfOrhM629t','1AdcyRlHWaKcmyhjiH9MGQqtnTeXh5OW4','1Ja1s6t0iNdlh_Z9SqIWTbtObVDE4lVeb','1KGJ4XtYqhefCyli_ABNPF-TauUIA0SlT','12OmqvHKaAjHGgOANoOlpxT_mO8d-7foj','1eE_IAMpAMCCnz1maIhTYrz3t-fdQng2N','1vFzioVErL1aUjUrjR3o12pJEpzfjjjWj','10TDTMXKbwERCJNqq3jRAwrm8EVmJqMpD','1DpgvcZfvGzxtMtiS3Zdu29Aqpf4qeJeQ','1GtwCnj7cXRIZAa9frkgrUqlOvKggCrLZ','1kAGIK2VRe07hQHdLThDIZmRwfwTV11ZB','1qnpHCmxl3bxs4gFwGuhO26bmFY1ldXGV','1ME3ekglCndAaUVwuqb45KeJY84GlRQPH','1odzzIhjwo1iTWxUedHYc0AG-8WM6E2EW','1nkVeoIxJn3xDrRZmkB61w2YQilwsEXLc','105WSmcuy3r0OtNlYjareKrmfNj_RTyHy','11tGCrwIvH8JDiJ31IVNd4BrhiNRnZAXp','1HC_SQFGuRxouhK5HGfwlGz0HY1WcWmvq','1wzKewGE915FwJUOXjdXVjI1Wmni0qKck','1_CsbqGswBmvRgrwIimcutCXkTT-U6d0S','1CFW2v7q2PtJStLSKVGi6NjN9Jft6S53t','1I7d8VQrDuPj-dk0Xz8YEuyEWNJMGkpTP','1WMJyMPEPt71fpxzghVhogR9gXTdkuJK2','1W7fT6zXfpkw8YZYEVOEkjoev4ZUke4rw','1uX9o1_d4MmfRACVuCuXXrrikjzIm52b8','14RuQcMbpntP8kGhCtYsJagCjHIYMLDn0','11RDzpAPsVBJToTq2eJztLvmqFh6WnGCP','1mKevebBUcr1S-WKjhmWBAXB0t09OB8B6','1UwbKg9YkdFD7zvi4wvEphNybUeVwqdzZ'];
-  var shuffledVids=[],curVid=0,vidInit=false;
+  var shuffledVids=[],curVid=0,vidInit=false,vidPlaying=false;
   function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
-  function initVideos(){if(vidInit)return;vidInit=true;shuffledVids=shuffle(videoIds.slice());document.getElementById('vid-total').textContent=shuffledVids.length;loadVideo(0)}
-  function loadVideo(idx){if(idx<0||idx>=shuffledVids.length)return;curVid=idx;document.getElementById('video-frame').src='https://drive.google.com/file/d/'+shuffledVids[idx]+'/preview';document.getElementById('vid-current').textContent=idx+1}
-  function stopVideo(){document.getElementById('video-frame').src='';vidInit=false}
-  window.nextVideo=function(){loadVideo((curVid+1)%shuffledVids.length)};
-  window.prevVideo=function(){loadVideo((curVid-1+shuffledVids.length)%shuffledVids.length)};
-
-  var touchY=0,vc=document.getElementById('video-container');
-  if(vc){
-    vc.addEventListener('touchstart',function(e){touchY=e.changedTouches[0].screenY},{passive:true});
-    vc.addEventListener('touchend',function(e){
-      var diff=touchY-e.changedTouches[0].screenY;
-      if(diff>50){nextVideo();showSwipeHint()}
-      else if(diff<-50){prevVideo();showSwipeHint()}
-    },{passive:true});
-  }
-  function showSwipeHint(){
-    var h=document.getElementById('swipe-hint');
-    if(h&&window.innerWidth<=768){h.style.animation='none';h.offsetHeight;h.style.animation='fadeInOut 2s ease-in-out'}
-  }
+  function initVideos(){if(vidInit)return;vidInit=true;shuffledVids=shuffle(videoIds.slice());document.getElementById('vid-total').textContent=shuffledVids.length;document.getElementById('vid-current').textContent=1;curVid=0;vidPlaying=false;document.getElementById('video-tap-play').classList.remove('hidden');document.getElementById('video-frame').src=''}
+  window.startVideo=function(){vidPlaying=true;document.getElementById('video-tap-play').classList.add('hidden');loadVideo(curVid)}
+  function loadVideo(idx){if(idx<0||idx>=shuffledVids.length)return;curVid=idx;document.getElementById('vid-current').textContent=idx+1;if(vidPlaying){document.getElementById('video-frame').src='https://drive.google.com/file/d/'+shuffledVids[idx]+'/preview'}}
+  function stopVideo(){document.getElementById('video-frame').src='';vidInit=false;vidPlaying=false}
+  window.nextVideo=function(){if(!vidPlaying){startVideo();return}loadVideo((curVid+1)%shuffledVids.length)};
+  window.prevVideo=function(){if(!vidPlaying){startVideo();return}loadVideo((curVid-1+shuffledVids.length)%shuffledVids.length)}
 })();
 </script>
