@@ -1,7 +1,7 @@
 <style>
 *,:after,:before{box-sizing:border-box;margin:0;padding:0}
 .header,#header,.site-header,.footer-wrapper,#footer,.site-footer,.announcement-bar-wrapper,#siteWrapper>header,#siteWrapper>footer,.sqs-announcement-bar{display:none!important}
-body>*:not(#desktop-root):not(script):not(style){display:none!important}
+body>*:not(#desktop-root):not(#boot-screen):not(script):not(style){display:none!important}
 
 #desktop-root{font-family:'MS Sans Serif','Segoe UI',Tahoma,Geneva,Verdana,sans-serif;width:100vw;height:100vh;overflow:hidden;position:fixed;top:0;left:0;z-index:99999;background:#000;user-select:none;-webkit-user-select:none;image-rendering:pixelated;-webkit-font-smoothing:none}
 #desktop-root::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");opacity:0.03;pointer-events:none;z-index:99998;mix-blend-mode:overlay}
