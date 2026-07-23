@@ -25,10 +25,23 @@ body > *:not(#desktop-root):not(#boot-screen):not(script):not(style) { display:n
   position:fixed;
   inset:0;
   background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity:0.03;
+  opacity:0.16;
   pointer-events:none;
   z-index:99998;
-  mix-blend-mode:overlay;
+  mix-blend-mode:screen;
+}
+
+/* CRT scan lines - full screen, visible over everything */
+#desktop-root::after {
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:99997;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.32) 0px, rgba(0,0,0,0.32) 1px, transparent 1px, transparent 3px),
+    repeating-linear-gradient(0deg, rgba(255,90,90,0.06) 0px, rgba(255,90,90,0.06) 1px, transparent 1px, transparent 3px);
+  background-position:0 0, 0 1.5px;
 }
 
 #desktop-root .desktop-bg {
@@ -41,7 +54,7 @@ body > *:not(#desktop-root):not(#boot-screen):not(script):not(style) { display:n
   content:'';
   position:absolute;
   inset:0;
-  background:radial-gradient(ellipse at center, transparent 30%, rgba(139,0,0,0.15) 70%, rgba(139,0,0,0.35) 100%);
+  background:radial-gradient(ellipse at center, transparent 22%, rgba(139,0,0,0.28) 62%, rgba(139,0,0,0.6) 100%);
   pointer-events:none;
   z-index:1;
 }
