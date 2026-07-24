@@ -324,6 +324,13 @@ header,footer,main,article,aside{
 .video-nav button{background:#DA020E;color:#fff;border:2px solid #FFD700;padding:8px 20px;font-weight:bold;cursor:pointer;font-family:'MS Sans Serif',sans-serif;font-size:12px;text-transform:uppercase}
 .video-nav button:hover{background:#ff3333}
 .video-counter{background:#000;color:#FFD700;padding:6px 12px;font-size:11px;font-weight:bold;text-align:center;border-bottom:1px solid #DA020E;flex-shrink:0}
+/* TAP TO PLAY overlay - hides Google Drive chrome until user taps */
+.video-tap-play{position:absolute;inset:0;z-index:30;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;cursor:pointer;text-align:center;padding:20px;-webkit-user-select:none;user-select:none}
+.video-tap-play.hidden{display:none}
+.video-tap-play .vtp-btn{width:84px;height:84px;border-radius:50%;background:rgba(218,2,14,0.95);border:4px solid #FFD700;display:flex;align-items:center;justify-content:center;font-size:38px;color:#fff;padding-left:8px;box-shadow:0 4px 18px rgba(0,0,0,0.7);transition:transform 0.1s}
+.video-tap-play:active .vtp-btn{transform:scale(0.92)}
+.video-tap-play .vtp-label{color:#FFD700;font-weight:900;font-size:16px;letter-spacing:3px;text-transform:uppercase;font-family:'MS Sans Serif',sans-serif}
+.video-tap-play .vtp-sub{color:#DA020E;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase}
 
 /* TRASH WINDOW */
 #win-trash .trash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:12px;padding:8px}
@@ -665,6 +672,11 @@ header,footer,main,article,aside{
           <div class="video-counter">VIDEO <span id="vid-current">1</span> OF <span id="vid-total">40</span></div>
           <div style="flex:1;width:100%;background:#000;display:flex;align-items:center;justify-content:center;position:relative;" id="video-wrapper">
             <iframe id="video-frame" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope" allowfullscreen disablepictureinpicture sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
+            <div class="video-tap-play" id="video-tap-play" onclick="startVideoPlayback()">
+              <div class="vtp-btn">&#9654;</div>
+              <div class="vtp-label">Tap to Play</div>
+              <div class="vtp-sub" id="vtp-sub">Video 1 of 40</div>
+            </div>
           </div>
           <div class="video-nav">
             <button onclick="prevVideo()">< PREV</button>
@@ -1373,7 +1385,7 @@ header,footer,main,article,aside{
 
   // VIDEOS - autoplay=1 added so video plays immediately on first click
   var videoIds=['1fnmtrYR9G6ac2dG6XHfZKoooDTb0wMlw','1mdkQ6RixFbZC79wrGrTX-i12HP1OaSPn','1vmT9A23V91V62s2RO32TSX8xWLEqRMMM','1VbpBu-b6UnooHnNDxab9H_Itc4U3BVkM','1DZWFyy0KLxLTXAXrvklDLyRkmjLMwjh8','1ooPwSxFJPpgmxuc73-4e5NlhsoCz55op','14T8z7FkAWDoi42736ZLLREJT3kSGdrKb','1QYU-h-f04EiFHXONbOWm_PTVAZDNPUi8','139Ow4J1mpWv7c0b9xLuza970VTKHZm8I','1kXWzKt209jEetr12woc3N4zz397gHKE0','1fO02KcsoyJC025sWXegXgnyfOrhM629t','1AdcyRlHWaKcmyhjiH9MGQqtnTeXh5OW4','1Ja1s6t0iNdlh_Z9SqIWTbtObVDE4lVeb','1KGJ4XtYqhefCyli_ABNPF-TauUIA0SlT','12OmqvHKaAjHGgOANoOlpxT_mO8d-7foj','1eE_IAMpAMCCnz1maIhTYrz3t-fdQng2N','1vFzioVErL1aUjUrjR3o12pJEpzfjjjWj','10TDTMXKbwERCJNqq3jRAwrm8EVmJqMpD','1DpgvcZfvGzxtMtiS3Zdu29Aqpf4qeJeQ','1GtwCnj7cXRIZAa9frkgrUqlOvKggCrLZ','1kAGIK2VRe07hQHdLThDIZmRwfwTV11ZB','1qnpHCmxl3bxs4gFwGuhO26bmFY1ldXGV','1ME3ekglCndAaUVwuqb45KeJY84GlRQPH','1odzzIhjwo1iTWxUedHYc0AG-8WM6E2EW','1nkVeoIxJn3xDrRZmkB61w2YQilwsEXLc','105WSmcuy3r0OtNlYjareKrmfNj_RTyHy','11tGCrwIvH8JDiJ31IVNd4BrhiNRnZAXp','1HC_SQFGuRxouhK5HGfwlGz0HY1WcWmvq','1wzKewGE915FwJUOXjdXVjI1Wmni0qKck','1_CsbqGswBmvRgrwIimcutCXkTT-U6d0S','1CFW2v7q2PtJStLSKVGi6NjN9Jft6S53t','1I7d8VQrDuPj-dk0Xz8YEuyEWNJMGkpTP','1WMJyMPEPt71fpxzghVhogR9gXTdkuJK2','1W7fT6zXfpkw8YZYEVOEkjoev4ZUke4rw','1uX9o1_d4MmfRACVuCuXXrrikjzIm52b8','14RuQcMbpntP8kGhCtYsJagCjHIYMLDn0','11RDzpAPsVBJToTq2eJztLvmqFh6WnGCP','1mKevebBUcr1S-WKjhmWBAXB0t09OB8B6','1UwbKg9YkdFD7zvi4wvEphNybUeVwqdzZ','1cGH7BtIwocPNZzgR2Pu_FkuTNnXh98qY'];
-  var shuffledVids=[],curVid=0,vidInit=false;
+  var shuffledVids=[],curVid=0,vidInit=false,vidStarted=false;
   var preloadedFrame=null;
   function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
   // ===== LOOPING VIDEO ENGINE =====
@@ -1417,7 +1429,21 @@ header,footer,main,article,aside{
   function initVideos(){if(vidInit)return;vidInit=true;
     var seen={};var unique=[];videoIds.forEach(function(id){if(!seen[id]){seen[id]=true;unique.push(id)}});
     shuffledVids=shuffle(unique);
-    document.getElementById('vid-total').textContent=shuffledVids.length;loadVideo(0);}
+    document.getElementById('vid-total').textContent=shuffledVids.length;curVid=0;document.getElementById('vid-current').textContent=1;showTapToPlay();}
+
+  function showTapToPlay(){
+    vidStarted=false;
+    var frame=document.getElementById('video-frame');
+    if(frame){frame.srcdoc='';frame.src='';}
+    var ov=document.getElementById('video-tap-play');
+    if(ov){ov.classList.remove('hidden');var s=document.getElementById('vtp-sub');if(s)s.textContent='Video '+(curVid+1)+' of '+shuffledVids.length;}
+  }
+  window.startVideoPlayback=function(){
+    vidStarted=true;
+    var ov=document.getElementById('video-tap-play');
+    if(ov)ov.classList.add('hidden');
+    loadVideo(curVid);
+  };
 
   function loadVideo(idx){
     if(idx<0||idx>=shuffledVids.length)return;curVid=idx;
@@ -1437,11 +1463,14 @@ header,footer,main,article,aside{
     var frame=document.getElementById('video-frame');
     if(frame){frame.srcdoc='';frame.src='';}
     if(preloadedFrame){preloadedFrame.srcdoc='';preloadedFrame.src='';}
-    vidInit=false;
+    vidInit=false;vidStarted=false;
+    var ov=document.getElementById('video-tap-play');
+    if(ov)ov.classList.remove('hidden');
   }
 
-  window.nextVideo=function(){loadVideo((curVid+1)%shuffledVids.length)};
-  window.prevVideo=function(){loadVideo((curVid-1+shuffledVids.length)%shuffledVids.length)};
+  function ensureStarted(){if(!vidStarted){vidStarted=true;var ov=document.getElementById('video-tap-play');if(ov)ov.classList.add('hidden');}}
+  window.nextVideo=function(){ensureStarted();loadVideo((curVid+1)%shuffledVids.length)};
+  window.prevVideo=function(){ensureStarted();loadVideo((curVid-1+shuffledVids.length)%shuffledVids.length)};
 
   // MORE VIDEOS
   var moreVideoIds=['popup-video-1','popup-video-2','popup-video-3','popup-video-4','popup-video-5','popup-video-6','popup-video-7','popup-video-8'];
